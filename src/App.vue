@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import Button from "primevue/button";
+import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import AppointmentDialog from "./components/AppointmentDialog.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
-import { useAppointments } from "./composables/useAppointments";
+import { useAppointments, type Appointment } from "./composables/useAppointments";
 
 const isDialogOpen = ref(false);
-const { sortedAppointments, statusOptions, statusBadgeClass } = useAppointments();
+const {
+  sortedAppointments,
+  statusOptions,
+  statusBadgeClass,
+  addAppointment,
+  updateAppointment,
+} = useAppointments();
+
+const handleCellEditComplete = (
+  event: DataTableCellEditCompleteEvent<Appointment>
+) => {
+  updateAppointment(event.newData);
+};
 </script>
 
 <template>
@@ -25,9 +38,10 @@ const { sortedAppointments, statusOptions, statusBadgeClass } = useAppointments(
         :appointments="sortedAppointments"
         :status-options="statusOptions"
         :status-badge-class="statusBadgeClass"
+        @cell-edit-complete="handleCellEditComplete"
       />
     </div>
 
-    <AppointmentDialog v-model="isDialogOpen" />
+    <AppointmentDialog v-model="isDialogOpen" @save="addAppointment" />
   </div>
 </template>

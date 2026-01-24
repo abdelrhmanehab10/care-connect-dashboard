@@ -1,4 +1,4 @@
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { statusOptions, type AppointmentStatus } from "../data/options";
 
 export type Appointment = {
@@ -12,7 +12,17 @@ export type Appointment = {
   doctor: string;
 };
 
-const appointments = ref<Appointment[]>([
+export type NewAppointment = {
+  date: string;
+  patient: string;
+  startTime: string;
+  endTime: string;
+  status?: AppointmentStatus;
+  nurse?: string;
+  doctor?: string;
+};
+
+const defaultAppointments: Appointment[] = [
   {
     id: "A-1001",
     date: "2026-01-24",
@@ -63,7 +73,69 @@ const appointments = ref<Appointment[]>([
     nurse: "Maya Reed",
     doctor: "Dr. Diaz",
   },
-]);
+];
+
+const STORAGE_KEY = "care-connect-appointments";
+const hasStorage = typeof window !== "undefined" && "localStorage" in window;
+
+const normalizeAppointment = (value: unknown): Appointment | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.date !== "string" ||
+    typeof record.patient !== "string" ||
+    typeof record.startTime !== "string" ||
+    typeof record.endTime !== "string"
+  ) {
+    return null;
+  }
+
+  const status = statusOptions.includes(record.status as AppointmentStatus)
+    ? (record.status as AppointmentStatus)
+    : "Pending";
+
+  return {
+    id: typeof record.id === "string" ? record.id : "A-0000",
+    date: record.date,
+    patient: record.patient,
+    startTime: record.startTime,
+    endTime: record.endTime,
+    status,
+    nurse: typeof record.nurse === "string" ? record.nurse : "TBD",
+    doctor: typeof record.doctor === "string" ? record.doctor : "TBD",
+  };
+};
+
+const loadAppointments = (): Appointment[] => {
+  if (!hasStorage) {
+    return [...defaultAppointments];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return [...defaultAppointments];
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return [...defaultAppointments];
+    }
+
+    const normalized = parsed
+      .map((entry) => normalizeAppointment(entry))
+      .filter((entry): entry is Appointment => Boolean(entry));
+
+    return normalized.length ? normalized : [...defaultAppointments];
+  } catch {
+    return [...defaultAppointments];
+  }
+};
+
+const appointments = ref<Appointment[]>(loadAppointments());
 
 const sortedAppointments = computed(() => {
   return [...appointments.value].sort((a, b) => {
@@ -87,9 +159,76 @@ const statusBadgeClass = (status: AppointmentStatus) => {
   }
 };
 
-export const useAppointments = () => ({
-  appointments,
-  sortedAppointments,
-  statusOptions,
-  statusBadgeClass,
-});
+const nextAppointmentId = () => {
+  const maxId = appointments.value.reduce((max, appointment) => {
+    const match = appointment.id.match(/A-(\d+)/);
+    if (!match) {
+      return max;
+    }
+    return Math.max(max, Number.parseInt(match[1], 10));
+  }, 0);
+
+  return `A-${String(maxId + 1).padStart(4, "0")}`;
+};
+
+const addAppointment = (payload: NewAppointment) => {
+  appointments.value.push({
+    id: nextAppointmentId(),
+    date: payload.date,
+    patient: payload.patient,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    status: payload.status ?? "Pending",
+    nurse: payload.nurse ?? "TBD",
+    doctor: payload.doctor ?? "TBD",
+  });
+};
+
+const updateAppointment = (updated: Appointment) => {
+  const index = appointments.value.findIndex(
+    (appointment) => appointment.id === updated.id
+  );
+
+  if (index === -1) {
+    return;
+  }
+
+  appointments.value[index] = { ...appointments.value[index], ...updated };
+};
+
+const persistAppointments = (value: Appointment[]) => {
+  if (!hasStorage) {
+    return;
+  }
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+};
+
+let hasWatcher = false;
+const ensurePersistence = () => {
+  if (hasWatcher) {
+    return;
+  }
+
+  hasWatcher = true;
+  watch(
+    appointments,
+    (value) => {
+      persistAppointments(value);
+    },
+    { deep: true, immediate: true }
+  );
+};
+
+export const useAppointments = () => {
+  ensurePersistence();
+
+  return {
+    appointments,
+    sortedAppointments,
+    statusOptions,
+    statusBadgeClass,
+    addAppointment,
+    updateAppointment,
+  };
+};

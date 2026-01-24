@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
+import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import type { Appointment } from "../composables/useAppointments";
 import type { AppointmentStatus } from "../data/options";
 import { dataTablePt } from "../ui/primevuePt";
@@ -9,6 +10,10 @@ defineProps<{
   appointments: ReadonlyArray<Appointment>;
   statusOptions: ReadonlyArray<AppointmentStatus>;
   statusBadgeClass: (status: AppointmentStatus) => string;
+}>();
+
+const emit = defineEmits<{
+  (event: "cell-edit-complete", payload: DataTableCellEditCompleteEvent<Appointment>): void;
 }>();
 </script>
 
@@ -20,6 +25,7 @@ defineProps<{
       rowGroupMode="rowspan"
       groupRowsBy="date"
       editMode="cell"
+      @cell-edit-complete="emit('cell-edit-complete', $event)"
       :pt="dataTablePt"
     >
       <template #empty>
@@ -81,18 +87,7 @@ defineProps<{
         </template>
       </Column>
 
-      <Column header="Actions" style="width: 8.5rem">
-        <template #body>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-primary btn-sm">
-              View
-            </button>
-            <button type="button" class="btn btn-outline-secondary btn-sm">
-              Edit
-            </button>
-          </div>
-        </template>
-      </Column>
+      <Column header="Actions" style="width: 8.5rem" />
     </DataTable>
   </div>
 </template>

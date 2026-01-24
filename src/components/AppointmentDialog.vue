@@ -13,6 +13,7 @@ import {
   type PatientOption,
   type Weekday,
 } from "../data/options";
+import type { NewAppointment } from "../composables/useAppointments";
 import {
   autoCompletePt,
   datePickerPt,
@@ -21,6 +22,9 @@ import {
 } from "../ui/primevuePt";
 
 const visible = defineModel<boolean>({ required: true });
+const emit = defineEmits<{
+  save: [payload: NewAppointment];
+}>();
 
 const selectedPatient = ref<PatientOption | string | null>(null);
 const filteredPatients = ref<PatientOption[]>([]);
@@ -74,6 +78,85 @@ const isPatientOption = (value: unknown): value is PatientOption => {
 const isPatientSelected = computed(() =>
   isPatientOption(selectedPatient.value)
 );
+
+const formatDate = (value: Date | null) => {
+  if (!value) {
+    return "";
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatTime = (value: Date | null) => {
+  if (!value) {
+    return "";
+  }
+
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const resetForm = () => {
+  selectedPatient.value = null;
+  filteredPatients.value = [];
+  address.area = "";
+  address.city = "";
+  address.street = "";
+  visit.type = "";
+  schedule.isRecurring = false;
+  schedule.appointmentDate = null;
+  schedule.appointmentStartTime = null;
+  schedule.appointmentEndTime = null;
+  schedule.recurringStartDate = null;
+  schedule.recurringEndDate = null;
+  recurrenceRowId = 1;
+  recurrenceRows.value = [
+    {
+      id: `row-${recurrenceRowId++}`,
+      day: defaultWeekday,
+      startTime: null,
+      endTime: null,
+    },
+  ];
+};
+
+const handleSave = () => {
+  if (!isPatientOption(selectedPatient.value)) {
+    return;
+  }
+
+  const date = schedule.isRecurring
+    ? schedule.recurringStartDate
+    : schedule.appointmentDate;
+  const startTime = schedule.isRecurring
+    ? recurrenceRows.value[0]?.startTime ?? null
+    : schedule.appointmentStartTime;
+  const endTime = schedule.isRecurring
+    ? recurrenceRows.value[0]?.endTime ?? null
+    : schedule.appointmentEndTime;
+
+  const formattedDate = formatDate(date);
+  const formattedStartTime = formatTime(startTime);
+  const formattedEndTime = formatTime(endTime);
+
+  if (!formattedDate || !formattedStartTime || !formattedEndTime) {
+    return;
+  }
+
+  emit("save", {
+    date: formattedDate,
+    patient: selectedPatient.value.name,
+    startTime: formattedStartTime,
+    endTime: formattedEndTime,
+  });
+
+  visible.value = false;
+  resetForm();
+};
 
 const addRecurrenceRow = () => {
   recurrenceRows.value.push({
@@ -332,12 +415,12 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
                 >
                   +
                 </button>
-                <button
-                  type="button"
-                  class="btn btn-outline-danger flex-grow-1 h-100"
-                  :disabled="recurrenceRows.length === 1"
-                  @click="removeRecurrenceRow(row.id)"
-                >
+                    <button
+                      type="button"
+                      class="btn btn-outline-danger flex-grow-1 h-100"
+                      :disabled="recurrenceRows.length === 1"
+                      @click="removeRecurrenceRow(row.id)"
+                    >
                   -
                 </button>
               </div>
@@ -351,7 +434,9 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
       <button type="button" class="btn btn-outline-secondary" @click="visible = false">
         Cancel
       </button>
-      <button type="button" class="btn btn-warning text-white">Save</button>
+      <button type="button" class="btn btn-warning text-white" @click="handleSave">
+        Save
+      </button>
     </template>
   </Dialog>
 </template>
