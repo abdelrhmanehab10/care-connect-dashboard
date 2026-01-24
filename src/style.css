@@ -28,8 +28,10 @@ body {
   background: var(--bs-body-bg);
   color: var(--bs-body-color);
   border-radius: 0.5rem;
-  width: min(560px, 92vw);
+  width: min(720px, 94vw);
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  max-height: 85vh;
+  overflow: hidden;
 }
 
 .cc-dialog-header {
@@ -42,6 +44,8 @@ body {
 
 .cc-dialog-content {
   padding: 1rem 1.25rem;
+  overflow-y: auto;
+  max-height: calc(85vh - 140px);
 }
 
 .cc-dialog-footer {
@@ -70,4 +74,252 @@ body {
 .cc-autocomplete-panel .list-group-item {
   border: 0;
   padding: 0.5rem 0.75rem;
+}
+
+.cc-datepicker-panel {
+  margin-top: 0.25rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  box-shadow: var(--bs-box-shadow);
+  padding: 0.75rem;
+  min-width: 18rem;
+  width: auto;
+  z-index: 1055;
+}
+
+.cc-time-panel {
+  min-width: 12rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.cc-datepicker-panel-top-left {
+  top: auto !important;
+  bottom: calc(100% + 0.35rem) !important;
+  left: 0 !important;
+  right: auto !important;
+}
+
+.cc-datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cc-datepicker-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+}
+
+.cc-datepicker-title-btn {
+  color: var(--bs-body-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cc-datepicker-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 0.4rem;
+}
+
+.cc-datepicker-nav-icon,
+.cc-time-btn-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cc-datepicker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+}
+
+.cc-datepicker-th,
+.cc-datepicker-day-cell {
+  text-align: center;
+  width: 14.285%;
+}
+
+.cc-datepicker-weekday {
+  display: inline-block;
+  font-weight: 600;
+  padding: 0.25rem 0.2rem;
+  color: var(--bs-secondary-color);
+}
+
+.cc-datepicker-day-cell {
+  text-align: center;
+  padding: 0.1rem;
+}
+
+.cc-datepicker-day-other .cc-datepicker-day {
+  color: var(--bs-secondary-color);
+  opacity: 0.5;
+}
+
+.cc-datepicker-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 2.35rem;
+  height: 2.1rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  margin: 0 auto;
+  font-weight: 500;
+}
+
+.cc-datepicker-day:hover {
+  background: var(--bs-gray-200);
+}
+
+.cc-datepicker-day-today {
+  border: 1px solid var(--bs-warning);
+}
+
+.cc-datepicker-day-selected {
+  background: var(--bs-warning);
+  color: #212529;
+}
+
+.cc-datepicker-day-disabled {
+  color: var(--bs-secondary-color);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cc-time-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.cc-time-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cc-time-value {
+  min-width: 2.75rem;
+  text-align: center;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.35rem;
+  background: var(--bs-body-bg);
+}
+
+.cc-time-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.2rem 0.4rem;
+  line-height: 1;
+  border-radius: 0.4rem;
+}
+
+.cc-time-sep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cc-time-sep-text {
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+
+.cc-datatable {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.cc-datatable .table {
+  margin-bottom: 0;
+}
+
+.cc-datatable th,
+.cc-datatable td {
+  padding: 0.75rem 0.85rem;
+  vertical-align: middle;
+}
+
+.cc-datatable thead th {
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.cc-datatable tbody tr:hover {
+  background: var(--bs-gray-100);
+}
+
+.cc-toggle {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+}
+
+.cc-toggle-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.cc-toggle-slider {
+  width: 2.75rem;
+  height: 1.5rem;
+  background: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  position: relative;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  z-index: 1;
+}
+
+.cc-toggle-handle {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.cc-toggle[data-p-checked="true"] .cc-toggle-slider {
+  background: var(--bs-warning);
+  border-color: var(--bs-warning);
+}
+
+.cc-toggle[data-p-checked="true"] .cc-toggle-handle {
+  transform: translateX(1.2rem);
+}
+
+.cc-toggle[data-p-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
