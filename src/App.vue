@@ -5,6 +5,7 @@ import TabPanel from "primevue/tabpanel";
 import TabView from "primevue/tabview";
 import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import AppointmentDialog from "./components/AppointmentDialog.vue";
+import AppointmentsCalendar from "./components/AppointmentsCalendar.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
 import { useAppointments, type Appointment } from "./composables/useAppointments";
 import { tabViewPt } from "./ui/primevuePt";
@@ -48,14 +49,7 @@ const handleCellEditComplete = (
           />
         </TabPanel>
         <TabPanel header="Calendar View" value="calendar">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body text-center py-5">
-              <div class="fw-semibold mb-2">Calendar view placeholder</div>
-              <p class="text-muted mb-0">
-                The calendar layout will appear here once enabled.
-              </p>
-            </div>
-          </div>
+          <AppointmentsCalendar :appointments="sortedAppointments" />
         </TabPanel>
       </TabView>
     </div>
