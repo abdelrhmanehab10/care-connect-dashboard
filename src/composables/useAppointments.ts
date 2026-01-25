@@ -162,10 +162,11 @@ const statusBadgeClass = (status: AppointmentStatus) => {
 const nextAppointmentId = () => {
   const maxId = appointments.value.reduce((max, appointment) => {
     const match = appointment.id.match(/A-(\d+)/);
-    if (!match) {
+    const matchId = match?.[1];
+    if (!matchId) {
       return max;
     }
-    return Math.max(max, Number.parseInt(match[1], 10));
+    return Math.max(max, Number.parseInt(matchId, 10));
   }, 0);
 
   return `A-${String(maxId + 1).padStart(4, "0")}`;

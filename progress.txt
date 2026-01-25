@@ -1,1 +1,2 @@
 - Added instructions textarea to appointment dialog.
+- Added nurse section with autocomplete and time pickers in appointment dialog.

@@ -11,6 +11,14 @@ export const patientOptions: PatientOption[] = [
   { id: "PT-1005", name: "Isabella Chen" },
 ];
 
+export const nurseOptions = [
+  "Nora King",
+  "Maya Reed",
+  "Eli Brooks",
+  "Ava Sinclair",
+  "Jordan Lee",
+] as const;
+
 export const areaOptions = [
   "Downtown",
   "Riverside",
