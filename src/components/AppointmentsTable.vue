@@ -32,6 +32,23 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
     name.toLowerCase().includes(query)
   );
 };
+
+const handleEditorKeydown = (
+  event: KeyboardEvent,
+  save: (event: Event) => void,
+  cancel: (event: Event) => void
+) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    save(event);
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancel(event);
+  }
+};
 </script>
 
 <template>
@@ -52,8 +69,30 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
       <Column field="date" header="Date" />
 
       <Column field="patient" header="Patient">
-        <template #editor="{ data }">
-          <input v-model="data.patient" class="form-control form-control-sm" />
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <div class="d-flex align-items-center gap-2">
+            <input
+              v-model="data.patient"
+              class="form-control form-control-sm"
+              @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+            />
+            <div class="btn-group btn-group-sm">
+              <button
+                type="button"
+                class="btn btn-outline-success"
+                @click="editorSaveCallback"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="editorCancelCallback"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </template>
       </Column>
 
@@ -61,18 +100,38 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
         <template #body="{ data }">
           <span class="text-nowrap">{{ data.startTime }} - {{ data.endTime }}</span>
         </template>
-        <template #editor="{ data }">
-          <div class="d-flex gap-2">
-            <input
-              v-model="data.startTime"
-              type="time"
-              class="form-control form-control-sm"
-            />
-            <input
-              v-model="data.endTime"
-              type="time"
-              class="form-control form-control-sm"
-            />
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="d-flex gap-2">
+              <input
+                v-model="data.startTime"
+                type="time"
+                class="form-control form-control-sm"
+                @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+              />
+              <input
+                v-model="data.endTime"
+                type="time"
+                class="form-control form-control-sm"
+                @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+              />
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button
+                type="button"
+                class="btn btn-outline-success"
+                @click="editorSaveCallback"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="editorCancelCallback"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </template>
       </Column>
@@ -83,34 +142,97 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
             {{ data.status }}
           </span>
         </template>
-        <template #editor="{ data }">
-          <select v-model="data.status" class="form-select form-select-sm">
-            <option v-for="status in statusOptions" :key="status" :value="status">
-              {{ status }}
-            </option>
-          </select>
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <div class="d-flex align-items-center gap-2">
+            <select
+              v-model="data.status"
+              class="form-select form-select-sm"
+              @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+            >
+              <option v-for="status in statusOptions" :key="status" :value="status">
+                {{ status }}
+              </option>
+            </select>
+            <div class="btn-group btn-group-sm">
+              <button
+                type="button"
+                class="btn btn-outline-success"
+                @click="editorSaveCallback"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="editorCancelCallback"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </template>
       </Column>
 
       <Column field="nurse" header="Nurse">
-        <template #editor="{ data }">
-          <input v-model="data.nurse" class="form-control form-control-sm" />
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <div class="d-flex align-items-center gap-2">
+            <input
+              v-model="data.nurse"
+              class="form-control form-control-sm"
+              @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+            />
+            <div class="btn-group btn-group-sm">
+              <button
+                type="button"
+                class="btn btn-outline-success"
+                @click="editorSaveCallback"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="editorCancelCallback"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </template>
       </Column>
 
       <Column field="doctor" header="Doctor">
-        <template #editor="{ data }">
-          <AutoComplete
-            v-model="data.doctor"
-            :suggestions="filteredDoctors"
-            :completeOnFocus="true"
-            appendTo="self"
-            panelClass="cc-autocomplete-panel"
-            inputClass="form-control form-control-sm"
-            :pt="autoCompletePt"
-            placeholder="Search doctor"
-            @complete="searchDoctors"
-          />
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <div class="d-flex align-items-center gap-2">
+            <AutoComplete
+              v-model="data.doctor"
+              :suggestions="filteredDoctors"
+              :completeOnFocus="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              inputClass="form-control form-control-sm"
+              :pt="autoCompletePt"
+              placeholder="Search doctor"
+              @complete="searchDoctors"
+              @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+            />
+            <div class="btn-group btn-group-sm">
+              <button
+                type="button"
+                class="btn btn-outline-success"
+                @click="editorSaveCallback"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="editorCancelCallback"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </template>
       </Column>
 
