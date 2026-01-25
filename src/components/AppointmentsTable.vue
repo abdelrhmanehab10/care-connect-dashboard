@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import AutoComplete from "primevue/autocomplete";
+import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import type { Appointment } from "../composables/useAppointments";
-import type { AppointmentStatus } from "../data/options";
-import { dataTablePt } from "../ui/primevuePt";
+import { doctorOptions, type AppointmentStatus } from "../data/options";
+import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 
 defineProps<{
   appointments: ReadonlyArray<Appointment>;
@@ -15,6 +18,20 @@ defineProps<{
 const emit = defineEmits<{
   (event: "cell-edit-complete", payload: DataTableCellEditCompleteEvent<Appointment>): void;
 }>();
+
+const filteredDoctors = ref<string[]>([]);
+
+const searchDoctors = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredDoctors.value = [...doctorOptions];
+    return;
+  }
+
+  filteredDoctors.value = doctorOptions.filter((name) =>
+    name.toLowerCase().includes(query)
+  );
+};
 </script>
 
 <template>
@@ -83,7 +100,17 @@ const emit = defineEmits<{
 
       <Column field="doctor" header="Doctor">
         <template #editor="{ data }">
-          <input v-model="data.doctor" class="form-control form-control-sm" />
+          <AutoComplete
+            v-model="data.doctor"
+            :suggestions="filteredDoctors"
+            :completeOnFocus="true"
+            appendTo="self"
+            panelClass="cc-autocomplete-panel"
+            inputClass="form-control form-control-sm"
+            :pt="autoCompletePt"
+            placeholder="Search doctor"
+            @complete="searchDoctors"
+          />
         </template>
       </Column>
 

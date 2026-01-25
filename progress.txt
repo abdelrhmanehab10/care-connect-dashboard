@@ -3,3 +3,4 @@
 - Added doctor section with autocomplete and time pickers in appointment dialog.
 - Added social worker section with autocomplete and time pickers in appointment dialog.
 - Added visit-type filtering to show only applicable nurse, doctor, and social worker sections in the appointment dialog.
+- Added doctor-only autocomplete suggestions to the doctor cell editor in the appointments table.
