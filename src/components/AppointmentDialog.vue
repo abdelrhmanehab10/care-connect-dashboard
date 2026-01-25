@@ -50,7 +50,11 @@ const visit = reactive({
 });
 
 const showNurseSection = computed(() => {
-  return visit.type === "Initial Visit" || visit.type === "Follow Up" || visit.type === "Home Visit";
+  return (
+    visit.type === "Initial Visit" ||
+    visit.type === "Follow Up" ||
+    visit.type === "Home Visit"
+  );
 });
 
 const showDoctorSection = computed(() => {
@@ -113,7 +117,7 @@ const isPatientOption = (value: unknown): value is PatientOption => {
 };
 
 const isPatientSelected = computed(() =>
-  isPatientOption(selectedPatient.value)
+  isPatientOption(selectedPatient.value),
 );
 
 const formatDate = (value: Date | null) => {
@@ -183,10 +187,10 @@ const handleSave = () => {
     ? schedule.recurringStartDate
     : schedule.appointmentDate;
   const startTime = schedule.isRecurring
-    ? recurrenceRows.value[0]?.startTime ?? null
+    ? (recurrenceRows.value[0]?.startTime ?? null)
     : schedule.appointmentStartTime;
   const endTime = schedule.isRecurring
-    ? recurrenceRows.value[0]?.endTime ?? null
+    ? (recurrenceRows.value[0]?.endTime ?? null)
     : schedule.appointmentEndTime;
 
   const formattedDate = formatDate(date);
@@ -197,8 +201,12 @@ const handleSave = () => {
     return;
   }
 
-  const trimmedNurse = showNurseSection.value ? nurseName.value?.trim() ?? "" : "";
-  const trimmedDoctor = showDoctorSection.value ? doctorName.value?.trim() ?? "" : "";
+  const trimmedNurse = showNurseSection.value
+    ? (nurseName.value?.trim() ?? "")
+    : "";
+  const trimmedDoctor = showDoctorSection.value
+    ? (doctorName.value?.trim() ?? "")
+    : "";
   const formattedNurseStartTime = showNurseSection.value
     ? formatTime(nurseSchedule.startTime)
     : "";
@@ -262,7 +270,7 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredNurses.value = nurseOptions.filter((name) =>
-    name.toLowerCase().includes(query)
+    name.toLowerCase().includes(query),
   );
 };
 
@@ -274,7 +282,7 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredDoctors.value = doctorOptions.filter((name) =>
-    name.toLowerCase().includes(query)
+    name.toLowerCase().includes(query),
   );
 };
 
@@ -286,7 +294,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredSocialWorkers.value = socialWorkerOptions.filter((name) =>
-    name.toLowerCase().includes(query)
+    name.toLowerCase().includes(query),
   );
 };
 </script>
@@ -340,7 +348,10 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         <div v-if="!isPatientSelected" class="form-text text-muted mb-2">
           Select a patient to enable address fields.
         </div>
-        <fieldset :disabled="!isPatientSelected" class="d-flex flex-column gap-3">
+        <fieldset
+          :disabled="!isPatientSelected"
+          class="d-flex flex-column gap-3"
+        >
           <div>
             <label for="area" class="form-label">Area</label>
             <select id="area" v-model="address.area" class="form-select">
@@ -383,152 +394,6 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         </select>
       </div>
 
-      <div v-if="showNurseSection" class="border rounded-2 p-3 bg-white">
-        <div class="fw-semibold mb-2">Nurse</div>
-        <div class="row g-3">
-          <div class="col-12 col-lg-6">
-            <label for="nurseName" class="form-label">Nurse name</label>
-            <AutoComplete
-              v-model="nurseName"
-              inputId="nurseName"
-              :suggestions="filteredNurses"
-              :completeOnFocus="true"
-              :forceSelection="true"
-              appendTo="self"
-              panelClass="cc-autocomplete-panel"
-              :pt="autoCompletePt"
-              placeholder="Search nurse"
-              @complete="searchNurses"
-            />
-          </div>
-          <div class="col-12 col-md-6 col-lg-3">
-            <label for="nurseStartTime" class="form-label">Start time</label>
-            <DatePicker
-              v-model="nurseSchedule.startTime"
-              inputId="nurseStartTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-          <div class="col-12 col-md-6 col-lg-3">
-            <label for="nurseEndTime" class="form-label">End time</label>
-            <DatePicker
-              v-model="nurseSchedule.endTime"
-              inputId="nurseEndTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showDoctorSection" class="border rounded-2 p-3 bg-white">
-        <div class="fw-semibold mb-2">Doctor</div>
-        <div class="row g-3">
-          <div class="col-12 col-lg-6">
-            <label for="doctorName" class="form-label">Doctor name</label>
-            <AutoComplete
-              v-model="doctorName"
-              inputId="doctorName"
-              :suggestions="filteredDoctors"
-              :completeOnFocus="true"
-              :forceSelection="true"
-              appendTo="self"
-              panelClass="cc-autocomplete-panel"
-              :pt="autoCompletePt"
-              placeholder="Search doctor"
-              @complete="searchDoctors"
-            />
-          </div>
-          <div class="col-12 col-md-6 col-lg-3">
-            <label for="doctorStartTime" class="form-label">Start time</label>
-            <DatePicker
-              v-model="doctorSchedule.startTime"
-              inputId="doctorStartTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-          <div class="col-12 col-md-6 col-lg-3">
-            <label for="doctorEndTime" class="form-label">End time</label>
-            <DatePicker
-              v-model="doctorSchedule.endTime"
-              inputId="doctorEndTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showSocialWorkerSection" class="border rounded-2 p-3 bg-white">
-        <div class="fw-semibold mb-2">Social worker</div>
-        <div class="row g-3">
-          <div class="col-12 col-lg-6">
-            <label for="socialWorkerName" class="form-label">Social worker name</label>
-            <AutoComplete
-              v-model="socialWorkerName"
-              inputId="socialWorkerName"
-              :suggestions="filteredSocialWorkers"
-              :completeOnFocus="true"
-              :forceSelection="true"
-              appendTo="self"
-              panelClass="cc-autocomplete-panel"
-              :pt="autoCompletePt"
-              placeholder="Search social worker"
-              @complete="searchSocialWorkers"
-            />
-          </div>
-          <div class="col-12 col-md-6 col-lg-3">
-            <label for="socialWorkerStartTime" class="form-label">Start time</label>
-            <DatePicker
-              v-model="socialWorkerSchedule.startTime"
-              inputId="socialWorkerStartTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-          <div class="col-12 col-md-6 col-lg-3">
-            <label for="socialWorkerEndTime" class="form-label">End time</label>
-            <DatePicker
-              v-model="socialWorkerSchedule.endTime"
-              inputId="socialWorkerEndTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label for="instructions" class="form-label fw-semibold">Instructions</label>
-        <textarea
-          id="instructions"
-          v-model="instructions"
-          class="form-control"
-          rows="3"
-          placeholder="Add special instructions or notes"
-        ></textarea>
-      </div>
-
       <div class="border rounded-2 p-3 bg-white">
         <div class="d-flex flex-column gap-2 mb-2">
           <div class="fw-semibold">Date &amp; time</div>
@@ -544,7 +409,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         </div>
 
         <div v-if="!schedule.isRecurring" class="row g-3">
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-6">
             <label for="appointmentDate" class="form-label">Date</label>
             <DatePicker
               v-model="schedule.appointmentDate"
@@ -555,38 +420,44 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               :pt="datePickerPt"
             />
           </div>
-          <div class="col-12 col-md-4">
-            <label for="appointmentStartTime" class="form-label">
-              Start time
-            </label>
-            <DatePicker
-              v-model="schedule.appointmentStartTime"
-              inputId="appointmentStartTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
-          </div>
-          <div class="col-12 col-md-4">
-            <label for="appointmentEndTime" class="form-label">End time</label>
-            <DatePicker
-              v-model="schedule.appointmentEndTime"
-              inputId="appointmentEndTime"
-              timeOnly
-              hourFormat="24"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
-              :pt="datePickerPt"
-            />
+          <div class="row mt-2">
+            <div class="col-12 col-md-6">
+              <label for="appointmentStartTime" class="form-label">
+                Start time
+              </label>
+              <DatePicker
+                v-model="schedule.appointmentStartTime"
+                inputId="appointmentStartTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="appointmentEndTime" class="form-label"
+                >End time</label
+              >
+              <DatePicker
+                v-model="schedule.appointmentEndTime"
+                inputId="appointmentEndTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
           </div>
         </div>
 
         <div v-else class="d-flex flex-column gap-3">
           <div class="row g-3">
             <div class="col-12 col-md-6">
-              <label for="recurringStartDate" class="form-label">Start date</label>
+              <label for="recurringStartDate" class="form-label"
+                >Start date</label
+              >
               <DatePicker
                 v-model="schedule.recurringStartDate"
                 inputId="recurringStartDate"
@@ -642,7 +513,9 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 />
               </div>
               <div class="col-12 col-md-3">
-                <label :for="`end-${row.id}`" class="form-label">End time</label>
+                <label :for="`end-${row.id}`" class="form-label"
+                  >End time</label
+                >
                 <DatePicker
                   v-model="row.endTime"
                   :inputId="`end-${row.id}`"
@@ -661,12 +534,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 >
                   +
                 </button>
-                    <button
-                      type="button"
-                      class="btn btn-outline-danger flex-grow-1 h-100"
-                      :disabled="recurrenceRows.length === 1"
-                      @click="removeRecurrenceRow(row.id)"
-                    >
+                <button
+                  type="button"
+                  class="btn btn-outline-danger flex-grow-1 h-100"
+                  :disabled="recurrenceRows.length === 1"
+                  @click="removeRecurrenceRow(row.id)"
+                >
                   -
                 </button>
               </div>
@@ -674,13 +547,181 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
           </div>
         </div>
       </div>
+
+      <div v-if="showNurseSection" class="border rounded-2 p-3 bg-white">
+        <div class="fw-semibold mb-2">Nurse</div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label for="nurseName" class="form-label">Nurse name</label>
+            <AutoComplete
+              v-model="nurseName"
+              inputId="nurseName"
+              :suggestions="filteredNurses"
+              :completeOnFocus="true"
+              :forceSelection="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              :pt="autoCompletePt"
+              placeholder="Search nurse"
+              @complete="searchNurses"
+            />
+          </div>
+          <div class="row mt-2">
+            <div class="col-12 col-md-6">
+              <label for="nurseStartTime" class="form-label">Start time</label>
+              <DatePicker
+                v-model="nurseSchedule.startTime"
+                inputId="nurseStartTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="nurseEndTime" class="form-label">End time</label>
+              <DatePicker
+                v-model="nurseSchedule.endTime"
+                inputId="nurseEndTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showDoctorSection" class="border rounded-2 p-3 bg-white">
+        <div class="fw-semibold mb-2">Doctor</div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label for="doctorName" class="form-label">Doctor name</label>
+            <AutoComplete
+              v-model="doctorName"
+              inputId="doctorName"
+              :suggestions="filteredDoctors"
+              :completeOnFocus="true"
+              :forceSelection="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              :pt="autoCompletePt"
+              placeholder="Search doctor"
+              @complete="searchDoctors"
+            />
+          </div>
+          <div class="row mt-2">
+            <div class="col-12 col-md-6">
+              <label for="doctorStartTime" class="form-label">Start time</label>
+              <DatePicker
+                v-model="doctorSchedule.startTime"
+                inputId="doctorStartTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="doctorEndTime" class="form-label">End time</label>
+              <DatePicker
+                v-model="doctorSchedule.endTime"
+                inputId="doctorEndTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showSocialWorkerSection" class="border rounded-2 p-3 bg-white">
+        <div class="fw-semibold mb-2">Social worker</div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label for="socialWorkerName" class="form-label"
+              >Social worker name</label
+            >
+            <AutoComplete
+              v-model="socialWorkerName"
+              inputId="socialWorkerName"
+              :suggestions="filteredSocialWorkers"
+              :completeOnFocus="true"
+              :forceSelection="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              :pt="autoCompletePt"
+              placeholder="Search social worker"
+              @complete="searchSocialWorkers"
+            />
+          </div>
+          <div class="row mt-2">
+            <div class="col-12 col-md-6">
+              <label for="socialWorkerStartTime" class="form-label"
+                >Start time</label
+              >
+              <DatePicker
+                v-model="socialWorkerSchedule.startTime"
+                inputId="socialWorkerStartTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="socialWorkerEndTime" class="form-label"
+                >End time</label
+              >
+              <DatePicker
+                v-model="socialWorkerSchedule.endTime"
+                inputId="socialWorkerEndTime"
+                timeOnly
+                hourFormat="24"
+                appendTo="self"
+                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                :pt="datePickerPt"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label for="instructions" class="form-label fw-semibold"
+          >Instructions</label
+        >
+        <textarea
+          id="instructions"
+          v-model="instructions"
+          class="form-control"
+          rows="3"
+          placeholder="Add special instructions or notes"
+        ></textarea>
+      </div>
     </form>
 
     <template #footer>
-      <button type="button" class="btn btn-outline-secondary" @click="visible = false">
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        @click="visible = false"
+      >
         Cancel
       </button>
-      <button type="button" class="btn btn-warning text-white" @click="handleSave">
+      <button
+        type="button"
+        class="btn btn-warning text-white"
+        @click="handleSave"
+      >
         Save
       </button>
     </template>

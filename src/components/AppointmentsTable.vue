@@ -6,7 +6,12 @@ import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import type { Appointment } from "../composables/useAppointments";
-import { doctorOptions, type AppointmentStatus } from "../data/options";
+import {
+  doctorOptions,
+  nurseOptions,
+  patientOptions,
+  type AppointmentStatus,
+} from "../data/options";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 
 defineProps<{
@@ -19,7 +24,33 @@ const emit = defineEmits<{
   (event: "cell-edit-complete", payload: DataTableCellEditCompleteEvent<Appointment>): void;
 }>();
 
+const filteredPatients = ref<string[]>([]);
+const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
+
+const searchPatients = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredPatients.value = patientOptions.map((patient) => patient.name);
+    return;
+  }
+
+  filteredPatients.value = patientOptions
+    .map((patient) => patient.name)
+    .filter((name) => name.toLowerCase().includes(query));
+};
+
+const searchNurses = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredNurses.value = [...nurseOptions];
+    return;
+  }
+
+  filteredNurses.value = nurseOptions.filter((name) =>
+    name.toLowerCase().includes(query)
+  );
+};
 
 const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -71,23 +102,30 @@ const handleEditorKeydown = (
       <Column field="patient" header="Patient">
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <div class="d-flex align-items-center gap-2">
-            <input
+            <AutoComplete
               v-model="data.patient"
-              class="form-control form-control-sm"
+              :suggestions="filteredPatients"
+              :completeOnFocus="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              inputClass="form-control form-control-sm"
+              :pt="autoCompletePt"
+              placeholder="Search patient"
+              @complete="searchPatients"
               @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
             />
             <div class="btn-group btn-group-sm">
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click="editorSaveCallback"
+                @click.stop="editorSaveCallback"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="editorCancelCallback"
+                @click.stop="editorCancelCallback"
               >
                 Cancel
               </button>
@@ -120,14 +158,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click="editorSaveCallback"
+                @click.stop="editorSaveCallback"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="editorCancelCallback"
+                @click.stop="editorCancelCallback"
               >
                 Cancel
               </button>
@@ -157,14 +195,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click="editorSaveCallback"
+                @click.stop="editorSaveCallback"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="editorCancelCallback"
+                @click.stop="editorCancelCallback"
               >
                 Cancel
               </button>
@@ -176,23 +214,30 @@ const handleEditorKeydown = (
       <Column field="nurse" header="Nurse">
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <div class="d-flex align-items-center gap-2">
-            <input
+            <AutoComplete
               v-model="data.nurse"
-              class="form-control form-control-sm"
+              :suggestions="filteredNurses"
+              :completeOnFocus="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              inputClass="form-control form-control-sm"
+              :pt="autoCompletePt"
+              placeholder="Search nurse"
+              @complete="searchNurses"
               @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
             />
             <div class="btn-group btn-group-sm">
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click="editorSaveCallback"
+                @click.stop="editorSaveCallback"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="editorCancelCallback"
+                @click.stop="editorCancelCallback"
               >
                 Cancel
               </button>
@@ -220,14 +265,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click="editorSaveCallback"
+                @click.stop="editorSaveCallback"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click="editorCancelCallback"
+                @click.stop="editorCancelCallback"
               >
                 Cancel
               </button>

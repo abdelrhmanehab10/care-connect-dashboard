@@ -7,8 +7,10 @@ import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import AppointmentDialog from "./components/AppointmentDialog.vue";
 import AppointmentsCalendar from "./components/AppointmentsCalendar.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
-import StyleCompatibilityPanel from "./components/StyleCompatibilityPanel.vue";
-import { useAppointments, type Appointment } from "./composables/useAppointments";
+import {
+  useAppointments,
+  type Appointment,
+} from "./composables/useAppointments";
 import { tabViewPt } from "./ui/primevuePt";
 
 const isDialogOpen = ref(false);
@@ -23,7 +25,7 @@ const {
 } = useAppointments();
 
 const handleCellEditComplete = (
-  event: DataTableCellEditCompleteEvent<Appointment>
+  event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
   updateAppointment(event.newData);
 };
@@ -54,8 +56,6 @@ const handleCellEditComplete = (
           <AppointmentsCalendar :appointments="sortedAppointments" />
         </TabPanel>
       </TabView>
-
-      <StyleCompatibilityPanel v-if="showStyleCompatibilityPanel" />
     </div>
 
     <AppointmentDialog v-model="isDialogOpen" @save="addAppointment" />
