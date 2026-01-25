@@ -15,7 +15,6 @@ import { tabViewPt } from "./ui/primevuePt";
 
 const isDialogOpen = ref(false);
 const activeViewIndex = ref(0);
-const showStyleCompatibilityPanel = import.meta.env.DEV;
 const {
   sortedAppointments,
   statusOptions,
