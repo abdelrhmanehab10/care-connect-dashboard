@@ -10,3 +10,4 @@
 - Added npm scripts for typecheck/test and validated feedback loops (typecheck, test).
 - Added PrimeVue TabView tabs (Bootstrap-styled) to switch between table and calendar placeholders on the appointments page.
 - Replaced calendar placeholder with Vuetify VCalendar showing appointment events, plus week/day controls.
+- Added a dev-only PrimeVue + Tailwind compatibility panel and documented styling compatibility notes.
