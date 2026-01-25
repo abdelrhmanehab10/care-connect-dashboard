@@ -28,6 +28,7 @@ const emit = defineEmits<{
 
 const selectedPatient = ref<PatientOption | string | null>(null);
 const filteredPatients = ref<PatientOption[]>([]);
+const instructions = ref("");
 
 const address = reactive({
   area: "",
@@ -113,6 +114,7 @@ const resetForm = () => {
   schedule.appointmentEndTime = null;
   schedule.recurringStartDate = null;
   schedule.recurringEndDate = null;
+  instructions.value = "";
   recurrenceRowId = 1;
   recurrenceRows.value = [
     {
@@ -281,6 +283,17 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
             {{ type }}
           </option>
         </select>
+      </div>
+
+      <div>
+        <label for="instructions" class="form-label fw-semibold">Instructions</label>
+        <textarea
+          id="instructions"
+          v-model="instructions"
+          class="form-control"
+          rows="3"
+          placeholder="Add special instructions or notes"
+        ></textarea>
       </div>
 
       <div class="border rounded-2 p-3 bg-white">
