@@ -268,6 +268,22 @@ body {
   background: var(--bs-gray-100);
 }
 
+.cc-tabview-nav-container {
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.cc-tabview .nav-tabs {
+  border-bottom: 0;
+}
+
+.cc-tabview .nav-link {
+  cursor: pointer;
+}
+
+.cc-tabview .nav-link:focus-visible {
+  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.35);
+}
+
 .cc-toggle {
   display: inline-flex;
   align-items: center;

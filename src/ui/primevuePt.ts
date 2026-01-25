@@ -87,3 +87,17 @@ export const dataTablePt = {
   thead: { class: "table-light" },
   tbody: { class: "table-group-divider" },
 } as const;
+
+export const tabViewPt = {
+  root: { class: "cc-tabview" },
+  navContainer: { class: "cc-tabview-nav-container" },
+  nav: { class: "nav nav-tabs" },
+  inkbar: { class: "d-none" },
+  tabpanel: {
+    header: { class: "nav-item" },
+    headerAction: ({ context }: { context?: { active?: boolean } }) => ({
+      class: ["nav-link", context?.active ? "active" : ""],
+    }),
+    content: { class: "pt-3" },
+  },
+} as const;

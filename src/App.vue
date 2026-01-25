@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import Button from "primevue/button";
+import TabPanel from "primevue/tabpanel";
+import TabView from "primevue/tabview";
 import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import AppointmentDialog from "./components/AppointmentDialog.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
 import { useAppointments, type Appointment } from "./composables/useAppointments";
+import { tabViewPt } from "./ui/primevuePt";
 
 const isDialogOpen = ref(false);
+const activeViewIndex = ref(0);
 const {
   sortedAppointments,
   statusOptions,
@@ -34,12 +38,26 @@ const handleCellEditComplete = (
         />
       </div>
 
-      <AppointmentsTable
-        :appointments="sortedAppointments"
-        :status-options="statusOptions"
-        :status-badge-class="statusBadgeClass"
-        @cell-edit-complete="handleCellEditComplete"
-      />
+      <TabView v-model:activeIndex="activeViewIndex" :pt="tabViewPt">
+        <TabPanel header="Table View" value="table">
+          <AppointmentsTable
+            :appointments="sortedAppointments"
+            :status-options="statusOptions"
+            :status-badge-class="statusBadgeClass"
+            @cell-edit-complete="handleCellEditComplete"
+          />
+        </TabPanel>
+        <TabPanel header="Calendar View" value="calendar">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+              <div class="fw-semibold mb-2">Calendar view placeholder</div>
+              <p class="text-muted mb-0">
+                The calendar layout will appear here once enabled.
+              </p>
+            </div>
+          </div>
+        </TabPanel>
+      </TabView>
     </div>
 
     <AppointmentDialog v-model="isDialogOpen" @save="addAppointment" />
