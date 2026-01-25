@@ -7,6 +7,7 @@ import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
 import {
   areaOptions,
+  doctorOptions,
   nurseOptions,
   patientOptions,
   visitTypeOptions,
@@ -32,6 +33,8 @@ const filteredPatients = ref<PatientOption[]>([]);
 const instructions = ref("");
 const nurseName = ref<string | null>(null);
 const filteredNurses = ref<string[]>([]);
+const doctorName = ref<string | null>(null);
+const filteredDoctors = ref<string[]>([]);
 
 const address = reactive({
   area: "",
@@ -44,6 +47,11 @@ const visit = reactive({
 });
 
 const nurseSchedule = reactive({
+  startTime: null as Date | null,
+  endTime: null as Date | null,
+});
+
+const doctorSchedule = reactive({
   startTime: null as Date | null,
   endTime: null as Date | null,
 });
@@ -114,12 +122,16 @@ const resetForm = () => {
   filteredPatients.value = [];
   nurseName.value = null;
   filteredNurses.value = [];
+  doctorName.value = null;
+  filteredDoctors.value = [];
   address.area = "";
   address.city = "";
   address.street = "";
   visit.type = "";
   nurseSchedule.startTime = null;
   nurseSchedule.endTime = null;
+  doctorSchedule.startTime = null;
+  doctorSchedule.endTime = null;
   schedule.isRecurring = false;
   schedule.appointmentDate = null;
   schedule.appointmentStartTime = null;
@@ -162,12 +174,14 @@ const handleSave = () => {
   }
 
   const trimmedNurse = nurseName.value?.trim() ?? "";
+  const trimmedDoctor = doctorName.value?.trim() ?? "";
   emit("save", {
     date: formattedDate,
     patient: selectedPatient.value.name,
     startTime: formattedStartTime,
     endTime: formattedEndTime,
     nurse: trimmedNurse || undefined,
+    doctor: trimmedDoctor || undefined,
   });
 
   visible.value = false;
@@ -214,6 +228,18 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredNurses.value = nurseOptions.filter((name) =>
+    name.toLowerCase().includes(query)
+  );
+};
+
+const searchDoctors = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredDoctors.value = [...doctorOptions];
+    return;
+  }
+
+  filteredDoctors.value = doctorOptions.filter((name) =>
     name.toLowerCase().includes(query)
   );
 };
@@ -346,6 +372,51 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
             <DatePicker
               v-model="nurseSchedule.endTime"
               inputId="nurseEndTime"
+              timeOnly
+              hourFormat="24"
+              appendTo="self"
+              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+              :pt="datePickerPt"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="border rounded-2 p-3 bg-white">
+        <div class="fw-semibold mb-2">Doctor</div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label for="doctorName" class="form-label">Doctor name</label>
+            <AutoComplete
+              v-model="doctorName"
+              inputId="doctorName"
+              :suggestions="filteredDoctors"
+              :completeOnFocus="true"
+              :forceSelection="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              :pt="autoCompletePt"
+              placeholder="Search doctor"
+              @complete="searchDoctors"
+            />
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label for="doctorStartTime" class="form-label">Start time</label>
+            <DatePicker
+              v-model="doctorSchedule.startTime"
+              inputId="doctorStartTime"
+              timeOnly
+              hourFormat="24"
+              appendTo="self"
+              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+              :pt="datePickerPt"
+            />
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label for="doctorEndTime" class="form-label">End time</label>
+            <DatePicker
+              v-model="doctorSchedule.endTime"
+              inputId="doctorEndTime"
               timeOnly
               hourFormat="24"
               appendTo="self"

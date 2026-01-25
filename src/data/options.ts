@@ -19,6 +19,14 @@ export const nurseOptions = [
   "Jordan Lee",
 ] as const;
 
+export const doctorOptions = [
+  "Dr. Patel",
+  "Dr. Chen",
+  "Dr. Johnson",
+  "Dr. Diaz",
+  "Dr. Alvarez",
+] as const;
+
 export const areaOptions = [
   "Downtown",
   "Riverside",
@@ -28,10 +36,9 @@ export const areaOptions = [
 ] as const;
 
 export const visitTypeOptions = [
-  "Initial",
-  "Follow-up",
-  "Routine",
-  "Urgent",
+  "Initial Visit",
+  "Follow Up",
+  "Home Visit",
 ] as const;
 
 export const weekdayOptions = [
