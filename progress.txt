@@ -12,3 +12,4 @@
 - Replaced calendar placeholder with Vuetify VCalendar showing appointment events, plus week/day controls.
 - Added a dev-only PrimeVue + Tailwind compatibility panel and documented styling compatibility notes.
 - Persisted appointment instructions in the appointment dialog save payload and appointment storage.
+- Persisted nurse start/end times from the appointment dialog in appointment storage.

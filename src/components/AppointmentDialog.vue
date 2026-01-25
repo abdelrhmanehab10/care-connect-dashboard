@@ -199,6 +199,12 @@ const handleSave = () => {
 
   const trimmedNurse = showNurseSection.value ? nurseName.value?.trim() ?? "" : "";
   const trimmedDoctor = showDoctorSection.value ? doctorName.value?.trim() ?? "" : "";
+  const formattedNurseStartTime = showNurseSection.value
+    ? formatTime(nurseSchedule.startTime)
+    : "";
+  const formattedNurseEndTime = showNurseSection.value
+    ? formatTime(nurseSchedule.endTime)
+    : "";
   const trimmedInstructions = instructions.value.trim();
   emit("save", {
     date: formattedDate,
@@ -206,6 +212,8 @@ const handleSave = () => {
     startTime: formattedStartTime,
     endTime: formattedEndTime,
     nurse: trimmedNurse || undefined,
+    nurseStartTime: formattedNurseStartTime || undefined,
+    nurseEndTime: formattedNurseEndTime || undefined,
     doctor: trimmedDoctor || undefined,
     instructions: trimmedInstructions || undefined,
   });
