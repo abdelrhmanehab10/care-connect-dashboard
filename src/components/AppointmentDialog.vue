@@ -10,6 +10,7 @@ import {
   doctorOptions,
   nurseOptions,
   patientOptions,
+  socialWorkerOptions,
   visitTypeOptions,
   weekdayOptions,
   type PatientOption,
@@ -35,6 +36,8 @@ const nurseName = ref<string | null>(null);
 const filteredNurses = ref<string[]>([]);
 const doctorName = ref<string | null>(null);
 const filteredDoctors = ref<string[]>([]);
+const socialWorkerName = ref<string | null>(null);
+const filteredSocialWorkers = ref<string[]>([]);
 
 const address = reactive({
   area: "",
@@ -52,6 +55,11 @@ const nurseSchedule = reactive({
 });
 
 const doctorSchedule = reactive({
+  startTime: null as Date | null,
+  endTime: null as Date | null,
+});
+
+const socialWorkerSchedule = reactive({
   startTime: null as Date | null,
   endTime: null as Date | null,
 });
@@ -124,6 +132,8 @@ const resetForm = () => {
   filteredNurses.value = [];
   doctorName.value = null;
   filteredDoctors.value = [];
+  socialWorkerName.value = null;
+  filteredSocialWorkers.value = [];
   address.area = "";
   address.city = "";
   address.street = "";
@@ -132,6 +142,8 @@ const resetForm = () => {
   nurseSchedule.endTime = null;
   doctorSchedule.startTime = null;
   doctorSchedule.endTime = null;
+  socialWorkerSchedule.startTime = null;
+  socialWorkerSchedule.endTime = null;
   schedule.isRecurring = false;
   schedule.appointmentDate = null;
   schedule.appointmentStartTime = null;
@@ -240,6 +252,18 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredDoctors.value = doctorOptions.filter((name) =>
+    name.toLowerCase().includes(query)
+  );
+};
+
+const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredSocialWorkers.value = [...socialWorkerOptions];
+    return;
+  }
+
+  filteredSocialWorkers.value = socialWorkerOptions.filter((name) =>
     name.toLowerCase().includes(query)
   );
 };
@@ -417,6 +441,51 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
             <DatePicker
               v-model="doctorSchedule.endTime"
               inputId="doctorEndTime"
+              timeOnly
+              hourFormat="24"
+              appendTo="self"
+              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+              :pt="datePickerPt"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="border rounded-2 p-3 bg-white">
+        <div class="fw-semibold mb-2">Social worker</div>
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label for="socialWorkerName" class="form-label">Social worker name</label>
+            <AutoComplete
+              v-model="socialWorkerName"
+              inputId="socialWorkerName"
+              :suggestions="filteredSocialWorkers"
+              :completeOnFocus="true"
+              :forceSelection="true"
+              appendTo="self"
+              panelClass="cc-autocomplete-panel"
+              :pt="autoCompletePt"
+              placeholder="Search social worker"
+              @complete="searchSocialWorkers"
+            />
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label for="socialWorkerStartTime" class="form-label">Start time</label>
+            <DatePicker
+              v-model="socialWorkerSchedule.startTime"
+              inputId="socialWorkerStartTime"
+              timeOnly
+              hourFormat="24"
+              appendTo="self"
+              panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+              :pt="datePickerPt"
+            />
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label for="socialWorkerEndTime" class="form-label">End time</label>
+            <DatePicker
+              v-model="socialWorkerSchedule.endTime"
+              inputId="socialWorkerEndTime"
               timeOnly
               hourFormat="24"
               appendTo="self"

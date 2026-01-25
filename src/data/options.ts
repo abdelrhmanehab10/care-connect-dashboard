@@ -27,6 +27,14 @@ export const doctorOptions = [
   "Dr. Alvarez",
 ] as const;
 
+export const socialWorkerOptions = [
+  "Avery Morgan",
+  "Harper Bailey",
+  "Riley Evans",
+  "Quinn Carter",
+  "Emerson Lee",
+] as const;
+
 export const areaOptions = [
   "Downtown",
   "Riverside",
