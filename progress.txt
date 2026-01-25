@@ -6,3 +6,4 @@
 - Added doctor-only autocomplete suggestions to the doctor cell editor in the appointments table.
 - Added save/cancel controls and Enter/Escape handling for appointment table cell edits.
 - Added scoped Tailwind setup (prefixed utilities, no preflight, `.cc-tailwind` scope) to isolate styles from Bootstrap.
+- Documented Tailwind + PrimeVue vs Bootstrap styling risk assessment with mitigations and go/no-go guidance.
