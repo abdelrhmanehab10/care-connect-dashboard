@@ -49,6 +49,18 @@ const visit = reactive({
   type: "",
 });
 
+const showNurseSection = computed(() => {
+  return visit.type === "Initial Visit" || visit.type === "Follow Up" || visit.type === "Home Visit";
+});
+
+const showDoctorSection = computed(() => {
+  return visit.type === "Initial Visit" || visit.type === "Follow Up";
+});
+
+const showSocialWorkerSection = computed(() => {
+  return visit.type === "Initial Visit";
+});
+
 const nurseSchedule = reactive({
   startTime: null as Date | null,
   endTime: null as Date | null,
@@ -185,8 +197,8 @@ const handleSave = () => {
     return;
   }
 
-  const trimmedNurse = nurseName.value?.trim() ?? "";
-  const trimmedDoctor = doctorName.value?.trim() ?? "";
+  const trimmedNurse = showNurseSection.value ? nurseName.value?.trim() ?? "" : "";
+  const trimmedDoctor = showDoctorSection.value ? doctorName.value?.trim() ?? "" : "";
   emit("save", {
     date: formattedDate,
     patient: selectedPatient.value.name,
@@ -361,7 +373,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         </select>
       </div>
 
-      <div class="border rounded-2 p-3 bg-white">
+      <div v-if="showNurseSection" class="border rounded-2 p-3 bg-white">
         <div class="fw-semibold mb-2">Nurse</div>
         <div class="row g-3">
           <div class="col-12 col-lg-6">
@@ -406,7 +418,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         </div>
       </div>
 
-      <div class="border rounded-2 p-3 bg-white">
+      <div v-if="showDoctorSection" class="border rounded-2 p-3 bg-white">
         <div class="fw-semibold mb-2">Doctor</div>
         <div class="row g-3">
           <div class="col-12 col-lg-6">
@@ -451,7 +463,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         </div>
       </div>
 
-      <div class="border rounded-2 p-3 bg-white">
+      <div v-if="showSocialWorkerSection" class="border rounded-2 p-3 bg-white">
         <div class="fw-semibold mb-2">Social worker</div>
         <div class="row g-3">
           <div class="col-12 col-lg-6">
