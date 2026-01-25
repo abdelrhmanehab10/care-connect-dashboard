@@ -5,3 +5,4 @@
 - Added visit-type filtering to show only applicable nurse, doctor, and social worker sections in the appointment dialog.
 - Added doctor-only autocomplete suggestions to the doctor cell editor in the appointments table.
 - Added save/cancel controls and Enter/Escape handling for appointment table cell edits.
+- Added scoped Tailwind setup (prefixed utilities, no preflight, `.cc-tailwind` scope) to isolate styles from Bootstrap.
