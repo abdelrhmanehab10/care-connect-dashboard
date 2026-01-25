@@ -10,6 +10,7 @@ export type Appointment = {
   status: AppointmentStatus;
   nurse: string;
   doctor: string;
+  instructions: string;
 };
 
 export type NewAppointment = {
@@ -20,6 +21,7 @@ export type NewAppointment = {
   status?: AppointmentStatus;
   nurse?: string;
   doctor?: string;
+  instructions?: string;
 };
 
 const defaultAppointments: Appointment[] = [
@@ -32,6 +34,7 @@ const defaultAppointments: Appointment[] = [
     status: "Confirmed",
     nurse: "Nora King",
     doctor: "Dr. Patel",
+    instructions: "",
   },
   {
     id: "A-1002",
@@ -42,6 +45,7 @@ const defaultAppointments: Appointment[] = [
     status: "Pending",
     nurse: "Maya Reed",
     doctor: "Dr. Chen",
+    instructions: "",
   },
   {
     id: "A-1003",
@@ -52,6 +56,7 @@ const defaultAppointments: Appointment[] = [
     status: "Cancelled",
     nurse: "Eli Brooks",
     doctor: "Dr. Johnson",
+    instructions: "",
   },
   {
     id: "A-1004",
@@ -62,6 +67,7 @@ const defaultAppointments: Appointment[] = [
     status: "Confirmed",
     nurse: "Nora King",
     doctor: "Dr. Patel",
+    instructions: "",
   },
   {
     id: "A-1005",
@@ -72,6 +78,7 @@ const defaultAppointments: Appointment[] = [
     status: "Pending",
     nurse: "Maya Reed",
     doctor: "Dr. Diaz",
+    instructions: "",
   },
 ];
 
@@ -106,6 +113,8 @@ const normalizeAppointment = (value: unknown): Appointment | null => {
     status,
     nurse: typeof record.nurse === "string" ? record.nurse : "TBD",
     doctor: typeof record.doctor === "string" ? record.doctor : "TBD",
+    instructions:
+      typeof record.instructions === "string" ? record.instructions : "",
   };
 };
 
@@ -182,6 +191,7 @@ const addAppointment = (payload: NewAppointment) => {
     status: payload.status ?? "Pending",
     nurse: payload.nurse ?? "TBD",
     doctor: payload.doctor ?? "TBD",
+    instructions: payload.instructions ?? "",
   });
 };
 

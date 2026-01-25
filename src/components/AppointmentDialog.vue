@@ -199,6 +199,7 @@ const handleSave = () => {
 
   const trimmedNurse = showNurseSection.value ? nurseName.value?.trim() ?? "" : "";
   const trimmedDoctor = showDoctorSection.value ? doctorName.value?.trim() ?? "" : "";
+  const trimmedInstructions = instructions.value.trim();
   emit("save", {
     date: formattedDate,
     patient: selectedPatient.value.name,
@@ -206,6 +207,7 @@ const handleSave = () => {
     endTime: formattedEndTime,
     nurse: trimmedNurse || undefined,
     doctor: trimmedDoctor || undefined,
+    instructions: trimmedInstructions || undefined,
   });
 
   visible.value = false;
