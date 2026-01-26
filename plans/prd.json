@@ -102,7 +102,7 @@
       "Click on the 'Calendar View' tab and ensure that the appointment calendar is displayed.",
       "Switch between the tabs multiple times to ensure that the views toggle correctly without any issues."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",
