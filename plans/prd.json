@@ -19,7 +19,7 @@
       "Verify that all fields within the Nurse section are functional and correctly labeled.",
       "Ensure that the Nurse section adheres to the overall design and layout of the appointment dialog."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",
