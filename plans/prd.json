@@ -30,7 +30,7 @@
       "Verify that all fields within the Doctor section are functional and correctly labeled.",
       "Ensure that the Doctor section adheres to the overall design and layout of the appointment dialog."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",

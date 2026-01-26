@@ -12,6 +12,8 @@ export type Appointment = {
   nurseStartTime: string;
   nurseEndTime: string;
   doctor: string;
+  doctorStartTime: string;
+  doctorEndTime: string;
   instructions: string;
 };
 
@@ -25,6 +27,8 @@ export type NewAppointment = {
   nurseStartTime?: string;
   nurseEndTime?: string;
   doctor?: string;
+  doctorStartTime?: string;
+  doctorEndTime?: string;
   instructions?: string;
 };
 
@@ -40,6 +44,8 @@ const defaultAppointments: Appointment[] = [
     nurseStartTime: "09:00",
     nurseEndTime: "09:30",
     doctor: "Dr. Patel",
+    doctorStartTime: "09:00",
+    doctorEndTime: "09:30",
     instructions: "",
   },
   {
@@ -53,6 +59,8 @@ const defaultAppointments: Appointment[] = [
     nurseStartTime: "10:00",
     nurseEndTime: "10:30",
     doctor: "Dr. Chen",
+    doctorStartTime: "10:00",
+    doctorEndTime: "10:30",
     instructions: "",
   },
   {
@@ -66,6 +74,8 @@ const defaultAppointments: Appointment[] = [
     nurseStartTime: "11:15",
     nurseEndTime: "11:45",
     doctor: "Dr. Johnson",
+    doctorStartTime: "11:15",
+    doctorEndTime: "11:45",
     instructions: "",
   },
   {
@@ -79,6 +89,8 @@ const defaultAppointments: Appointment[] = [
     nurseStartTime: "08:30",
     nurseEndTime: "09:15",
     doctor: "Dr. Patel",
+    doctorStartTime: "08:30",
+    doctorEndTime: "09:15",
     instructions: "",
   },
   {
@@ -92,6 +104,8 @@ const defaultAppointments: Appointment[] = [
     nurseStartTime: "13:00",
     nurseEndTime: "13:30",
     doctor: "Dr. Diaz",
+    doctorStartTime: "13:00",
+    doctorEndTime: "13:30",
     instructions: "",
   },
 ];
@@ -131,6 +145,10 @@ const normalizeAppointment = (value: unknown): Appointment | null => {
     nurseEndTime:
       typeof record.nurseEndTime === "string" ? record.nurseEndTime : "",
     doctor: typeof record.doctor === "string" ? record.doctor : "TBD",
+    doctorStartTime:
+      typeof record.doctorStartTime === "string" ? record.doctorStartTime : "",
+    doctorEndTime:
+      typeof record.doctorEndTime === "string" ? record.doctorEndTime : "",
     instructions:
       typeof record.instructions === "string" ? record.instructions : "",
   };
@@ -211,6 +229,8 @@ const addAppointment = (payload: NewAppointment) => {
     nurseStartTime: payload.nurseStartTime ?? "",
     nurseEndTime: payload.nurseEndTime ?? "",
     doctor: payload.doctor ?? "TBD",
+    doctorStartTime: payload.doctorStartTime ?? "",
+    doctorEndTime: payload.doctorEndTime ?? "",
     instructions: payload.instructions ?? "",
   });
 };
