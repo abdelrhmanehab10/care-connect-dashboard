@@ -71,7 +71,7 @@
       "Click on any cell to edit and press Enter key and make sure cell content change.",
       "Click on any cell to edit and press Esc key and make sure cell content doesn't change."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",
