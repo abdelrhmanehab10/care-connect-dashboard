@@ -15,8 +15,8 @@
   --cc-danger: #cc3f3f;
   --cc-shadow-sm: 0 10px 24px rgba(31, 42, 55, 0.08);
   --cc-shadow: 0 20px 40px rgba(31, 42, 55, 0.14);
-  --cc-radius: 16px;
-  --cc-radius-sm: 10px;
+  --cc-radius: 10px;
+  --cc-radius-sm: 5px;
   --cc-focus: 0 0 0 3px rgba(243, 181, 69, 0.35);
 }
 
@@ -56,9 +56,8 @@ body {
 .cc-sidebar {
   background: var(--cc-surface);
   border: 1px solid var(--cc-border);
-  border-radius: var(--cc-radius);
+  border-radius: var(--cc-radius-sm);
   padding: 1.25rem;
-  box-shadow: var(--cc-shadow-sm);
   position: sticky;
   top: 24px;
 }
@@ -141,7 +140,6 @@ body {
   background: var(--cc-surface);
   border: 1px solid var(--cc-border);
   border-radius: var(--cc-radius);
-  box-shadow: var(--cc-shadow-sm);
 }
 
 .cc-card-body {
@@ -249,7 +247,7 @@ body {
   justify-content: center;
   gap: 0.35rem;
   padding: 0.55rem 1.1rem;
-  border-radius: 999px;
+  border-radius: 5px;
   border: 1px solid transparent;
   font-weight: 600;
   font-size: 0.9rem;
@@ -274,7 +272,6 @@ body {
   background: var(--cc-accent);
   border-color: var(--cc-accent);
   color: #2b1f05;
-  box-shadow: 0 8px 18px rgba(243, 181, 69, 0.35);
 }
 
 .cc-btn-outline {
@@ -667,6 +664,64 @@ body {
   overflow: hidden;
 }
 
+.v-calendar-daily__scroll-area{
+  overflow-y: auto;
+}
+
+.cc-calendar .v-calendar-daily__body,
+.cc-calendar .v-calendar-weekly__body {
+  overflow-x: hidden;
+}
+
+.cc-calendar-event {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-left: 3px solid var(--cc-accent-strong);
+  border-radius: 0.6rem;
+  padding: 0.35rem 0.45rem;
+  box-shadow: 0 4px 10px rgba(31, 42, 55, 0.08);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: content-box;
+}
+
+.cc-calendar-event-title {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--cc-ink);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-calendar-event-meta {
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.7rem;
+  color: var(--cc-muted);
+  line-height: 1.1;
+}
+
+.cc-calendar-event-status {
+  align-self: flex-start;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  margin-top: 0.1rem;
+}
+
+.cc-calendar-event-provider,
+.cc-calendar-event-time {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .cc-datatable td {
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -784,7 +839,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1rem;
-  border-radius: 999px;
+  border-radius: 5px;
   border: 1px solid transparent;
   color: var(--cc-muted);
   background: transparent;
@@ -796,7 +851,6 @@ body {
   background: var(--cc-surface);
   color: var(--cc-ink);
   border-color: var(--cc-border);
-  box-shadow: var(--cc-shadow-sm);
 }
 
 .cc-tab-link:focus-visible {

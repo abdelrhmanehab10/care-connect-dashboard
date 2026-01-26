@@ -10,6 +10,7 @@ type AppointmentCalendarEvent = {
   end: string;
   color: string;
   timed: boolean;
+  appointment: Appointment;
 };
 
 const props = defineProps<{
@@ -51,8 +52,28 @@ const statusToColor = (status: AppointmentStatus) => {
   }
 };
 
+const statusBadgeClass = (status: AppointmentStatus) => {
+  switch (status) {
+    case "Confirmed":
+      return "cc-badge--success";
+    case "Pending":
+      return "cc-badge--warning";
+    case "Cancelled":
+      return "cc-badge--danger";
+    default:
+      return "cc-badge--neutral";
+  }
+};
+
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
+
+const formatTimeRange = (appointment: Appointment) => {
+  if (isValidTime(appointment.startTime) && isValidTime(appointment.endTime)) {
+    return `${appointment.startTime} - ${appointment.endTime}`;
+  }
+  return "All day";
+};
 
 const focus = ref<string>(getInitialFocus(props.appointments));
 const viewType = ref<"week" | "day">("week");
@@ -79,6 +100,7 @@ const events = computed<AppointmentCalendarEvent[]>(() =>
         end,
         color: statusToColor(appointment.status),
         timed: hasTimes,
+        appointment,
       },
     ];
   }),
@@ -184,9 +206,37 @@ const goNext = () => {
         :type="viewType"
         :events="events"
         :height="640"
+        :showWeek="false"
+        :eventHeight="52"
+        class="cc-calendar"
         @click:date="viewDay"
         @click:more="viewMore"
-      />
+      >
+        <template #event="{ event }">
+          <div class="cc-calendar-event" :style="{ borderLeftColor: event.color }">
+            <div class="cc-calendar-event-title">
+              {{ event.appointment.patient }}
+            </div>
+            <div class="cc-calendar-event-meta">
+              <span class="cc-calendar-event-time">
+                {{ formatTimeRange(event.appointment) }}
+              </span>
+              <span class="cc-calendar-event-provider">
+                Dr: {{ event.appointment.doctor || "TBD" }}
+              </span>
+              <span class="cc-calendar-event-provider">
+                Nurse: {{ event.appointment.nurse || "TBD" }}
+              </span>
+            </div>
+            <span
+              class="cc-calendar-event-status"
+              :class="statusBadgeClass(event.appointment.status)"
+            >
+              {{ event.appointment.status }}
+            </span>
+          </div>
+        </template>
+      </VCalendar>
     </div>
   </div>
 </template>
