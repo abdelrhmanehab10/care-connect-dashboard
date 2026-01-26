@@ -118,14 +118,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click.stop="editorSaveCallback"
+                @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click.stop="editorCancelCallback"
+                @click.stop="editorCancelCallback($event)"
               >
                 Cancel
               </button>
@@ -158,14 +158,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click.stop="editorSaveCallback"
+                @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click.stop="editorCancelCallback"
+                @click.stop="editorCancelCallback($event)"
               >
                 Cancel
               </button>
@@ -195,14 +195,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click.stop="editorSaveCallback"
+                @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click.stop="editorCancelCallback"
+                @click.stop="editorCancelCallback($event)"
               >
                 Cancel
               </button>
@@ -230,14 +230,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click.stop="editorSaveCallback"
+                @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click.stop="editorCancelCallback"
+                @click.stop="editorCancelCallback($event)"
               >
                 Cancel
               </button>
@@ -265,14 +265,14 @@ const handleEditorKeydown = (
               <button
                 type="button"
                 class="btn btn-outline-success"
-                @click.stop="editorSaveCallback"
+                @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary"
-                @click.stop="editorCancelCallback"
+                @click.stop="editorCancelCallback($event)"
               >
                 Cancel
               </button>

@@ -17,3 +17,4 @@
 - Marked instructions textarea task as complete in plans/prd.json.
 - Confirmed doctor cell autocomplete only shows doctor names; marked task complete in plans/prd.json.
 - Verified cell editing supports Save/Cancel buttons and Enter/Escape keys; marked task complete in plans/prd.json.
+- Ensured Save buttons pass click events to PrimeVue editor callbacks so cells exit edit mode; marked save-exits-edit-mode task complete in plans/prd.json.
