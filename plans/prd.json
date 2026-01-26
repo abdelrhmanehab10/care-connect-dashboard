@@ -49,7 +49,7 @@
     "steps_to_verify": [
       "Open the appointment dialog and and check if instructions textarea is present."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",

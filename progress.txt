@@ -14,3 +14,4 @@
 - Persisted appointment instructions in the appointment dialog save payload and appointment storage.
 - Persisted nurse start/end times from the appointment dialog in appointment storage.
 - Verified visit type selection now reveals only the applicable care team sections (initial/follow-up/home visit).
+- Marked instructions textarea task as complete in plans/prd.json.
