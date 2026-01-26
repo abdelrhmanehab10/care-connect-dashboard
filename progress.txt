@@ -13,3 +13,4 @@
 - Added a dev-only PrimeVue + Tailwind compatibility panel and documented styling compatibility notes.
 - Persisted appointment instructions in the appointment dialog save payload and appointment storage.
 - Persisted nurse start/end times from the appointment dialog in appointment storage.
+- Verified visit type selection now reveals only the applicable care team sections (initial/follow-up/home visit).

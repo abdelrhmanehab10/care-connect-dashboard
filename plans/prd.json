@@ -1,0 +1,127 @@
+[
+  {
+    "category": "Visit Type Sections",
+    "description": "Configure visit type behavior so each selection reveals the correct care team sections. Acceptance criteria: selecting Initial Visit shows nurse, doctor, and social worker sections; selecting Follow Up shows nurse and doctor sections only; selecting Home Visit shows nurse section only; sections not applicable to the selected visit type are hidden and do not appear on screen.",
+    "steps_to_verify": [
+      "Set visit type to Initial Visit and confirm nurse, doctor, and social worker sections are visible.",
+      "Set visit type to Follow Up and confirm nurse and doctor sections are visible while social worker is hidden.",
+      "Set visit type to Home Visit and confirm only nurse section is visible while doctor and social worker are hidden.",
+      "Switch between all three visit types and confirm the visible sections update immediately and no stale sections remain."
+    ],
+    "passes": true
+  },
+  {
+    "category": "UI",
+    "description": "Add Nurse section to appointment dialog",
+    "steps_to_verify": [
+      "Open the appointment dialog and set visit type to Initial Visit, Follow Up, or Home Visit and confirm the Nurse section is present.",
+      "Nurse section includes fields for Nurse Name (autocomplete input), start time input (time picker) and end time input (time picker).",
+      "Verify that all fields within the Nurse section are functional and correctly labeled.",
+      "Ensure that the Nurse section adheres to the overall design and layout of the appointment dialog."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "Add Doctor section to appointment dialog",
+    "steps_to_verify": [
+      "Open the appointment dialog and set visit type to Initial Visit, Follow Up, or Home Visit and confirm the Doctor section is present.",
+      "Doctor section includes fields for Doctor Name (autocomplete input), start time input (time picker) and end time input (time picker).",
+      "Verify that all fields within the Doctor section are functional and correctly labeled.",
+      "Ensure that the Doctor section adheres to the overall design and layout of the appointment dialog."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "Add Social Worker section to appointment dialog",
+    "steps_to_verify": [
+      "Open the appointment dialog and set visit type to Initial Visit, Follow Up, or Home Visit and confirm the Social Worker section is present.",
+      "Social Worker section includes fields for Social Worker Name (autocomplete input), start time input (time picker) and end time input (time picker).",
+      "Verify that all fields within the Social Worker section are functional and correctly labeled.",
+      "Ensure that the Social Worker section adheres to the overall design and layout of the appointment dialog."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "Add instructions textarea to appointment dialog",
+    "steps_to_verify": [
+      "Open the appointment dialog and and check if instructions textarea is present."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "On doctor cell input, ensure that only doctors are shown in the autocomplete dropdown",
+    "steps_to_verify": [
+      "Open the appointment page.",
+      "Click on the doctor cell to trigger the autocomplete dropdown.",
+      "Verify that only doctor names appear in the dropdown."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "On any cell input, ensure that user can save using button or Enter key and cancel using cancel button or Escape key",
+    "steps_to_verify": [
+      "Open the appointment page.",
+      "Click on any cell to edit and click save button and make sure cell content change.",
+      "Click on any cell to edit and click cancel button and make sure cell content revert or doesn't change.",
+      "Click on any cell to edit and press Enter key and make sure cell content change.",
+      "Click on any cell to edit and press Esc key and make sure cell content doesn't change."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "On click in save when editing a cell, ensure that the cell exits edit mode",
+    "steps_to_verify": [
+      "Open the appointment page.",
+      "Click on any cell to edit and change the content.",
+      "Click on the save button and ensure that the cell exits edit mode and displays the updated content."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "On click in cancel when editing a cell, ensure that the cell exits edit mode",
+    "steps_to_verify": [
+      "Open the appointment page.",
+      "Click on any cell to edit and change the content.",
+      "Click on the cancel button and ensure that the cell exits edit mode and displays the original content."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "Add a 2 tabs from Primvue and style it with bootstrap to toggle between table view and calendar view on appointment page",
+    "steps_to_verify": [
+      "Open the appointment page and verify that there are 2 tabs at the top of the page.",
+      "Click on the 'Table View' tab and ensure that the appointment table is displayed.",
+      "Click on the 'Calendar View' tab and ensure that the appointment calendar is displayed.",
+      "Switch between the tabs multiple times to ensure that the views toggle correctly without any issues."
+    ],
+    "passes": false
+  },
+  {
+    "category": "UI",
+    "description": "In calendar view, ensure that appointments are displayed on the calendar component from Vuetify (Calendars)",
+    "steps_to_verify": [
+      "Open the appointment page and switch to the calendar view tab.",
+      "Verify that all appointments are displayed on the calendar according to their scheduled dates and times.",
+      "Click on different dates to ensure that appointments for those dates are shown correctly."
+    ],
+    "passes": false
+  },
+  {
+    "category": "Migrate",
+    "description": "We need to migrate using bootstrap into using CSS without framework to make ui modernization easier in the future.",
+    "steps_to_verify": [
+      "After removing bootstrap, check all pages for any styling issues.",
+      "Verify that all components are displayed correctly and consistently across different browsers.",
+      "Ensure that responsive design is maintained and works well on various screen sizes.",
+      "Test all interactive elements to ensure they function as expected without any visual glitches."
+    ]
+  }
+]
