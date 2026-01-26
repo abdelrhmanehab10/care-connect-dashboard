@@ -4,7 +4,11 @@ import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
-import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
+import type {
+  DataTableCellEditCancelEvent,
+  DataTableCellEditCompleteEvent,
+  DataTableCellEditInitEvent,
+} from "primevue/datatable";
 import type { Appointment } from "../composables/useAppointments";
 import {
   doctorOptions,
@@ -27,6 +31,7 @@ const emit = defineEmits<{
 const filteredPatients = ref<string[]>([]);
 const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
+const editSnapshots = new Map<string, Appointment[keyof Appointment]>();
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -80,6 +85,42 @@ const handleEditorKeydown = (
     cancel(event);
   }
 };
+
+const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
+
+const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
+  const key = snapshotKey(event.data, event.field);
+  if (editSnapshots.has(key)) {
+    return;
+  }
+
+  const field = event.field as keyof Appointment;
+  if (field in event.data) {
+    editSnapshots.set(key, event.data[field]);
+  }
+};
+
+const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
+  const data = event.data as Appointment;
+  const key = snapshotKey(data, event.field);
+  if (!editSnapshots.has(key)) {
+    return;
+  }
+
+  const field = event.field as keyof Appointment;
+  if (field in data) {
+    data[field] = editSnapshots.get(key) as never;
+  }
+
+  editSnapshots.delete(key);
+};
+
+const handleCellEditComplete = (
+  event: DataTableCellEditCompleteEvent<Appointment>
+) => {
+  editSnapshots.delete(snapshotKey(event.data, event.field));
+  emit("cell-edit-complete", event);
+};
 </script>
 
 <template>
@@ -90,7 +131,9 @@ const handleEditorKeydown = (
       rowGroupMode="rowspan"
       groupRowsBy="date"
       editMode="cell"
-      @cell-edit-complete="emit('cell-edit-complete', $event)"
+      @cell-edit-init="handleCellEditInit"
+      @cell-edit-cancel="handleCellEditCancel"
+      @cell-edit-complete="handleCellEditComplete"
       :pt="dataTablePt"
     >
       <template #empty>

@@ -91,7 +91,7 @@
       "Click on any cell to edit and change the content.",
       "Click on the cancel button and ensure that the cell exits edit mode and displays the original content."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",

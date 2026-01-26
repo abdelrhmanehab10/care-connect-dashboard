@@ -19,3 +19,4 @@
 - Verified cell editing supports Save/Cancel buttons and Enter/Escape keys; marked task complete in plans/prd.json.
 - Ensured Save buttons pass click events to PrimeVue editor callbacks so cells exit edit mode; marked save-exits-edit-mode task complete in plans/prd.json.
 - Verified nurse section UI in appointment dialog and marked task complete in plans/prd.json.
+- Ensured appointment table cancel edits restore the original value and exit edit mode; marked task complete in plans/prd.json.
