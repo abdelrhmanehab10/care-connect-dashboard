@@ -112,16 +112,17 @@
       "Verify that all appointments are displayed on the calendar according to their scheduled dates and times.",
       "Click on different dates to ensure that appointments for those dates are shown correctly."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "Migrate",
-    "description": "We need to migrate using bootstrap into using CSS without framework to make ui modernization easier in the future.",
+    "description": "We need to migrate using Primvue and style it using CSS without framework to make ui modernization easier in the future.",
     "steps_to_verify": [
       "After removing bootstrap, check all pages for any styling issues.",
       "Verify that all components are displayed correctly and consistently across different browsers.",
       "Ensure that responsive design is maintained and works well on various screen sizes.",
       "Test all interactive elements to ensure they function as expected without any visual glitches."
-    ]
+    ],
+    "passes": false
   }
 ]

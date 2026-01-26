@@ -46,17 +46,37 @@ const statusToColor = (status: AppointmentStatus) => {
   }
 };
 
+const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
+
 const focus = ref<string>(getInitialFocus(props.appointments));
 const viewType = ref<"week" | "day">("week");
 
 const events = computed<AppointmentCalendarEvent[]>(() =>
-  props.appointments.map((appointment) => ({
-    name: `${appointment.patient} (${appointment.doctor})`,
-    start: `${appointment.date} ${appointment.startTime}`,
-    end: `${appointment.date} ${appointment.endTime}`,
-    color: statusToColor(appointment.status),
-    timed: true,
-  }))
+  props.appointments.flatMap((appointment) => {
+    if (!isValidDate(appointment.date)) {
+      return [];
+    }
+
+    const hasTimes =
+      isValidTime(appointment.startTime) && isValidTime(appointment.endTime);
+    const start = hasTimes
+      ? `${appointment.date} ${appointment.startTime}`
+      : appointment.date;
+    const end = hasTimes
+      ? `${appointment.date} ${appointment.endTime}`
+      : appointment.date;
+
+    return [
+      {
+        name: `${appointment.patient} (${appointment.doctor || "TBD"})`,
+        start,
+        end,
+        color: statusToColor(appointment.status),
+        timed: hasTimes,
+      },
+    ];
+  })
 );
 
 const setToday = () => {
