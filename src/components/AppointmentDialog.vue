@@ -337,7 +337,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
           :suggestions="filteredPatients"
           :completeOnFocus="true"
           :forceSelection="true"
-          appendTo="self"
+          appendTo="body"
           panelClass="cc-autocomplete-panel"
           :pt="autoCompletePt"
           placeholder="Search by name or ID"
@@ -423,8 +423,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               v-model="schedule.appointmentDate"
               inputId="appointmentDate"
               dateFormat="yy-mm-dd"
-              appendTo="self"
-              panelClass="cc-datepicker-panel cc-datepicker-panel-top-left"
+              appendTo="body"
+              panelClass="cc-datepicker-panel"
               :pt="datePickerPt"
             />
           </div>
@@ -438,8 +438,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="appointmentStartTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -450,8 +450,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="appointmentEndTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -466,8 +466,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 v-model="schedule.recurringStartDate"
                 inputId="recurringStartDate"
                 dateFormat="yy-mm-dd"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -477,8 +477,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 v-model="schedule.recurringEndDate"
                 inputId="recurringEndDate"
                 dateFormat="yy-mm-dd"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -511,8 +511,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                   :inputId="`start-${row.id}`"
                   timeOnly
                   hourFormat="24"
-                  appendTo="self"
-                  panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
                   :pt="datePickerPt"
                 />
               </div>
@@ -523,8 +523,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                   :inputId="`end-${row.id}`"
                   timeOnly
                   hourFormat="24"
-                  appendTo="self"
-                  panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
                   :pt="datePickerPt"
                 />
               </div>
@@ -561,7 +561,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               :suggestions="filteredNurses"
               :completeOnFocus="true"
               :forceSelection="true"
-              appendTo="self"
+              appendTo="body"
               panelClass="cc-autocomplete-panel"
               :pt="autoCompletePt"
               placeholder="Search nurse"
@@ -576,8 +576,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="nurseStartTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -588,8 +588,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="nurseEndTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -608,7 +608,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               :suggestions="filteredDoctors"
               :completeOnFocus="true"
               :forceSelection="true"
-              appendTo="self"
+              appendTo="body"
               panelClass="cc-autocomplete-panel"
               :pt="autoCompletePt"
               placeholder="Search doctor"
@@ -623,8 +623,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="doctorStartTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -635,8 +635,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="doctorEndTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -657,7 +657,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               :suggestions="filteredSocialWorkers"
               :completeOnFocus="true"
               :forceSelection="true"
-              appendTo="self"
+              appendTo="body"
               panelClass="cc-autocomplete-panel"
               :pt="autoCompletePt"
               placeholder="Search social worker"
@@ -674,8 +674,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="socialWorkerStartTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
@@ -686,8 +686,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 inputId="socialWorkerEndTime"
                 timeOnly
                 hourFormat="24"
-                appendTo="self"
-                panelClass="cc-datepicker-panel cc-time-panel cc-datepicker-panel-top-left"
+                appendTo="body"
+                panelClass="cc-datepicker-panel cc-time-panel"
                 :pt="datePickerPt"
               />
             </div>
