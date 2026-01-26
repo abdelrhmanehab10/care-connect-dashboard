@@ -126,8 +126,13 @@ const viewWeek = () => {
 };
 
 const parseFocusDate = (value: string) => {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, (month ?? 1) - 1, day ?? 1);
+  const [yearRaw = Number.NaN, monthRaw = Number.NaN, dayRaw = Number.NaN] =
+    value.split("-").map(Number);
+  const fallback = new Date();
+  const year = Number.isFinite(yearRaw) ? yearRaw : fallback.getFullYear();
+  const month = Number.isFinite(monthRaw) ? monthRaw : fallback.getMonth() + 1;
+  const day = Number.isFinite(dayRaw) ? dayRaw : fallback.getDate();
+  return new Date(year, month - 1, day);
 };
 
 const shiftFocus = (days: number) => {
