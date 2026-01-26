@@ -31,13 +31,13 @@ const handleCellEditComplete = (
 </script>
 
 <template>
-  <div class="min-vh-100 bg-light">
-    <div class="container py-4">
-      <div class="d-flex align-items-center mb-3 gap-2">
-        <h2 class="mb-0">Appointments</h2>
+  <div class="cc-page">
+    <div class="cc-container">
+      <div class="cc-toolbar">
+        <h2 class="cc-title">Appointments</h2>
         <Button
           label="Add appointment"
-          class="btn btn-warning text-white fw-semibold ms-auto"
+          class="cc-btn cc-btn-primary cc-toolbar-action"
           @click="isDialogOpen = true"
         />
       </div>

@@ -194,13 +194,13 @@ const sortedAppointments = computed(() => {
 const statusBadgeClass = (status: AppointmentStatus) => {
   switch (status) {
     case "Confirmed":
-      return "text-bg-success";
+      return "cc-badge--success";
     case "Pending":
-      return "text-bg-warning";
+      return "cc-badge--warning";
     case "Cancelled":
-      return "text-bg-danger";
+      return "cc-badge--danger";
     default:
-      return "text-bg-secondary";
+      return "cc-badge--neutral";
   }
 };
 

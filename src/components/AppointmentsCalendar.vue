@@ -100,33 +100,33 @@ const viewWeek = () => {
 </script>
 
 <template>
-  <div class="card border-0 shadow-sm">
-    <div class="card-body">
+  <div class="cc-card">
+    <div class="cc-card-body">
       <div
-        class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"
+        class="cc-row cc-row-between cc-row-wrap cc-section-header"
       >
         <div>
-          <div class="fw-semibold">Calendar View</div>
-          <div class="text-muted small">
+          <div class="cc-section-title">Calendar View</div>
+          <div class="cc-help-text">
             Click a date to focus on that day.
           </div>
         </div>
-        <div class="btn-group btn-group-sm" role="group">
-          <button type="button" class="btn btn-outline-secondary" @click="setToday">
+        <div class="cc-btn-group" role="group">
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" @click="setToday">
             Today
           </button>
           <button
             type="button"
-            class="btn btn-outline-secondary"
-            :class="{ active: viewType === 'week' }"
+            class="cc-btn cc-btn-outline cc-btn-sm"
+            :class="{ 'is-active': viewType === 'week' }"
             @click="viewWeek"
           >
             Week
           </button>
           <button
             type="button"
-            class="btn btn-outline-secondary"
-            :class="{ active: viewType === 'day' }"
+            class="cc-btn cc-btn-outline cc-btn-sm"
+            :class="{ 'is-active': viewType === 'day' }"
             @click="viewType = 'day'"
           >
             Day

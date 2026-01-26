@@ -7,28 +7,28 @@ export const dialogPt = {
 } as const;
 
 export const autoCompletePt = {
-  root: { class: "w-100 position-relative" },
-  pcInputText: { root: { class: "form-control" } },
+  root: { class: "cc-input-wrap" },
+  pcInputText: { root: { class: "cc-input" } },
   listContainer: { class: "cc-autocomplete-list" },
-  list: { class: "list-group list-group-flush" },
-  option: { class: "list-group-item list-group-item-action" },
-  emptyMessage: { class: "list-group-item text-muted small" },
+  list: { class: "cc-list" },
+  option: { class: "cc-list-item cc-list-item-action" },
+  emptyMessage: { class: "cc-list-item cc-list-item-muted" },
 } as const;
 
 export const datePickerPt = {
-  root: { class: "w-100 position-relative" },
-  pcInputText: { root: { class: "form-control" } },
+  root: { class: "cc-input-wrap" },
+  pcInputText: { root: { class: "cc-input" } },
   panel: { class: "cc-datepicker-panel" },
   header: { class: "cc-datepicker-header" },
   title: { class: "cc-datepicker-title" },
-  selectMonth: { class: "btn btn-link p-0 cc-datepicker-title-btn" },
-  selectYear: { class: "btn btn-link p-0 cc-datepicker-title-btn" },
+  selectMonth: { class: "cc-link-btn cc-datepicker-title-btn" },
+  selectYear: { class: "cc-link-btn cc-datepicker-title-btn" },
   pcPrevButton: {
-    root: { class: "btn btn-outline-secondary btn-sm cc-datepicker-nav" },
+    root: { class: "cc-icon-btn cc-icon-btn-outline cc-datepicker-nav" },
     icon: { class: "cc-datepicker-nav-icon" },
   },
   pcNextButton: {
-    root: { class: "btn btn-outline-secondary btn-sm cc-datepicker-nav" },
+    root: { class: "cc-icon-btn cc-icon-btn-outline cc-datepicker-nav" },
     icon: { class: "cc-datepicker-nav-icon" },
   },
   dayView: { class: "cc-datepicker-table" },
@@ -64,11 +64,11 @@ export const datePickerPt = {
   hour: { class: "cc-time-value" },
   minute: { class: "cc-time-value" },
   pcIncrementButton: {
-    root: { class: "btn btn-outline-secondary btn-sm cc-time-btn" },
+    root: { class: "cc-icon-btn cc-icon-btn-outline cc-time-btn" },
     icon: { class: "cc-time-btn-icon" },
   },
   pcDecrementButton: {
-    root: { class: "btn btn-outline-secondary btn-sm cc-time-btn" },
+    root: { class: "cc-icon-btn cc-icon-btn-outline cc-time-btn" },
     icon: { class: "cc-time-btn-icon" },
   },
 } as const;
@@ -82,22 +82,22 @@ export const toggleSwitchPt = {
 
 export const dataTablePt = {
   root: { class: "cc-datatable" },
-  tableContainer: { class: "table-responsive" },
-  table: { class: "table table-hover align-middle mb-0" },
-  thead: { class: "table-light" },
-  tbody: { class: "table-group-divider" },
+  tableContainer: { class: "cc-table-wrap" },
+  table: { class: "cc-table" },
+  thead: { class: "cc-table-head" },
+  tbody: { class: "cc-table-body" },
 } as const;
 
 export const tabViewPt = {
   root: { class: "cc-tabview" },
-  navContainer: { class: "cc-tabview-nav-container" },
-  nav: { class: "nav nav-tabs" },
-  inkbar: { class: "d-none" },
+  navContainer: { class: "cc-tabs-wrap" },
+  nav: { class: "cc-tabs" },
+  inkbar: { class: "cc-tab-inkbar" },
   tabpanel: {
-    header: { class: "nav-item" },
+    header: { class: "cc-tab" },
     headerAction: ({ context }: { context?: { active?: boolean } }) => ({
-      class: ["nav-link", context?.active ? "active" : ""],
+      class: ["cc-tab-link", context?.active ? "is-active" : ""],
     }),
-    content: { class: "pt-3" },
+    content: { class: "cc-tab-content" },
   },
 } as const;

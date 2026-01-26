@@ -24,3 +24,4 @@
 - Marked the social worker section task complete in plans/prd.json after confirming the dialog fields are present.
 - Marked the PrimeVue tabs toggle task complete in plans/prd.json after verifying the table and calendar views switch correctly.
 - Hardened calendar event mapping so appointments always render in Vuetify VCalendar, even if times are missing, and ran typecheck.
+- Removed Bootstrap styles/dependency and replaced UI styling with custom CSS + PrimeVue classes across the appointments page, dialog, table, and calendar.

@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      bootstrap:
-        specifier: ^5.3.8
-        version: 5.3.8(@popperjs/core@2.11.8)
       primevue:
         specifier: ^4.5.4
         version: 4.5.4(vue@3.5.27(typescript@5.9.3))
@@ -253,9 +250,6 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@popperjs/core@2.11.8':
-    resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
-
   '@primeuix/styled@0.7.4':
     resolution: {integrity: sha512-QSO/NpOQg8e9BONWRBx9y8VGMCMYz0J/uKfNJEya/RGEu7ARx0oYW0ugI1N3/KB1AAvyGxzKBzGImbwg0KUiOQ==}
     engines: {node: '>=12.11.0'}
@@ -497,11 +491,6 @@ packages:
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
-
-  bootstrap@5.3.8:
-    resolution: {integrity: sha512-HP1SZDqaLDPwsNiqRqi5NcP0SSXciX2s9E+RyqJIIqGo+vJeN5AJVM98CXmW/Wux0nQ5L7jeWUdplCEf0Ee+tg==}
-    peerDependencies:
-      '@popperjs/core': ^2.11.8
 
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
@@ -1020,8 +1009,6 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@popperjs/core@2.11.8': {}
-
   '@primeuix/styled@0.7.4':
     dependencies:
       '@primeuix/utils': 0.6.4
@@ -1238,10 +1225,6 @@ snapshots:
   baseline-browser-mapping@2.9.18: {}
 
   binary-extensions@2.3.0: {}
-
-  bootstrap@5.3.8(@popperjs/core@2.11.8):
-    dependencies:
-      '@popperjs/core': 2.11.8
 
   braces@3.0.3:
     dependencies:

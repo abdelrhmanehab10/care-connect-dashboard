@@ -124,7 +124,7 @@ const handleCellEditComplete = (
 </script>
 
 <template>
-  <div class="bg-white border rounded-2">
+  <div class="cc-card">
     <DataTable
       :value="appointments"
       dataKey="id"
@@ -137,37 +137,37 @@ const handleCellEditComplete = (
       :pt="dataTablePt"
     >
       <template #empty>
-        <div class="text-center text-muted py-4">No appointments yet.</div>
+        <div class="cc-empty">No appointments yet.</div>
       </template>
 
       <Column field="date" header="Date" />
 
       <Column field="patient" header="Patient">
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
-          <div class="d-flex align-items-center gap-2">
+          <div class="cc-row">
             <AutoComplete
               v-model="data.patient"
               :suggestions="filteredPatients"
               :completeOnFocus="true"
               appendTo="self"
               panelClass="cc-autocomplete-panel"
-              inputClass="form-control form-control-sm"
+              inputClass="cc-input cc-input-sm"
               :pt="autoCompletePt"
               placeholder="Search patient"
               @complete="searchPatients"
               @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
             />
-            <div class="btn-group btn-group-sm">
+            <div class="cc-btn-group">
               <button
                 type="button"
-                class="btn btn-outline-success"
+                class="cc-btn cc-btn-outline-success cc-btn-sm"
                 @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                class="cc-btn cc-btn-outline cc-btn-sm"
                 @click.stop="editorCancelCallback($event)"
               >
                 Cancel
@@ -179,35 +179,35 @@ const handleCellEditComplete = (
 
       <Column header="Time">
         <template #body="{ data }">
-          <span class="text-nowrap">{{ data.startTime }} - {{ data.endTime }}</span>
+          <span class="cc-text-nowrap">{{ data.startTime }} - {{ data.endTime }}</span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <div class="d-flex gap-2">
+          <div class="cc-row cc-row-wrap">
+            <div class="cc-row">
               <input
                 v-model="data.startTime"
                 type="time"
-                class="form-control form-control-sm"
+                class="cc-input cc-input-sm"
                 @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
               />
               <input
                 v-model="data.endTime"
                 type="time"
-                class="form-control form-control-sm"
+                class="cc-input cc-input-sm"
                 @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
               />
             </div>
-            <div class="btn-group btn-group-sm">
+            <div class="cc-btn-group">
               <button
                 type="button"
-                class="btn btn-outline-success"
+                class="cc-btn cc-btn-outline-success cc-btn-sm"
                 @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                class="cc-btn cc-btn-outline cc-btn-sm"
                 @click.stop="editorCancelCallback($event)"
               >
                 Cancel
@@ -219,32 +219,32 @@ const handleCellEditComplete = (
 
       <Column field="status" header="Status">
         <template #body="{ data }">
-          <span class="badge" :class="statusBadgeClass(data.status)">
+          <span class="cc-badge" :class="statusBadgeClass(data.status)">
             {{ data.status }}
           </span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
-          <div class="d-flex align-items-center gap-2">
+          <div class="cc-row">
             <select
               v-model="data.status"
-              class="form-select form-select-sm"
+              class="cc-select cc-select-sm"
               @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
             >
               <option v-for="status in statusOptions" :key="status" :value="status">
                 {{ status }}
               </option>
             </select>
-            <div class="btn-group btn-group-sm">
+            <div class="cc-btn-group">
               <button
                 type="button"
-                class="btn btn-outline-success"
+                class="cc-btn cc-btn-outline-success cc-btn-sm"
                 @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                class="cc-btn cc-btn-outline cc-btn-sm"
                 @click.stop="editorCancelCallback($event)"
               >
                 Cancel
@@ -256,30 +256,30 @@ const handleCellEditComplete = (
 
       <Column field="nurse" header="Nurse">
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
-          <div class="d-flex align-items-center gap-2">
+          <div class="cc-row">
             <AutoComplete
               v-model="data.nurse"
               :suggestions="filteredNurses"
               :completeOnFocus="true"
               appendTo="self"
               panelClass="cc-autocomplete-panel"
-              inputClass="form-control form-control-sm"
+              inputClass="cc-input cc-input-sm"
               :pt="autoCompletePt"
               placeholder="Search nurse"
               @complete="searchNurses"
               @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
             />
-            <div class="btn-group btn-group-sm">
+            <div class="cc-btn-group">
               <button
                 type="button"
-                class="btn btn-outline-success"
+                class="cc-btn cc-btn-outline-success cc-btn-sm"
                 @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                class="cc-btn cc-btn-outline cc-btn-sm"
                 @click.stop="editorCancelCallback($event)"
               >
                 Cancel
@@ -291,30 +291,30 @@ const handleCellEditComplete = (
 
       <Column field="doctor" header="Doctor">
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
-          <div class="d-flex align-items-center gap-2">
+          <div class="cc-row">
             <AutoComplete
               v-model="data.doctor"
               :suggestions="filteredDoctors"
               :completeOnFocus="true"
               appendTo="self"
               panelClass="cc-autocomplete-panel"
-              inputClass="form-control form-control-sm"
+              inputClass="cc-input cc-input-sm"
               :pt="autoCompletePt"
               placeholder="Search doctor"
               @complete="searchDoctors"
               @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
             />
-            <div class="btn-group btn-group-sm">
+            <div class="cc-btn-group">
               <button
                 type="button"
-                class="btn btn-outline-success"
+                class="cc-btn cc-btn-outline-success cc-btn-sm"
                 @click.stop="editorSaveCallback($event)"
               >
                 Save
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                class="cc-btn cc-btn-outline cc-btn-sm"
                 @click.stop="editorCancelCallback($event)"
               >
                 Cancel
