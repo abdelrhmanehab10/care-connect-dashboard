@@ -59,7 +59,7 @@
       "Click on the doctor cell to trigger the autocomplete dropdown.",
       "Verify that only doctor names appear in the dropdown."
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "UI",
