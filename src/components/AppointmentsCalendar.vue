@@ -16,7 +16,12 @@ const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
 }>();
 
-const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
+const toIsoDate = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const getInitialFocus = (appointments: ReadonlyArray<Appointment>) => {
   if (!appointments.length) {
@@ -76,7 +81,7 @@ const events = computed<AppointmentCalendarEvent[]>(() =>
         timed: hasTimes,
       },
     ];
-  })
+  }),
 );
 
 const setToday = () => {
@@ -97,22 +102,62 @@ const viewMore = (_event: Event, timestamp: { date: string }) => {
 const viewWeek = () => {
   viewType.value = "week";
 };
+
+const parseFocusDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+};
+
+const shiftFocus = (days: number) => {
+  const date = parseFocusDate(focus.value);
+  if (Number.isNaN(date.getTime())) {
+    focus.value = toIsoDate(new Date());
+    return;
+  }
+
+  date.setDate(date.getDate() + days);
+  focus.value = toIsoDate(date);
+};
+
+const goPrev = () => {
+  shiftFocus(viewType.value === "week" ? -7 : -1);
+};
+
+const goNext = () => {
+  shiftFocus(viewType.value === "week" ? 7 : 1);
+};
 </script>
 
 <template>
   <div class="cc-card">
     <div class="cc-card-body">
-      <div
-        class="cc-row cc-row-between cc-row-wrap cc-section-header"
-      >
+      <div class="cc-row cc-row-between cc-row-wrap cc-section-header">
         <div>
           <div class="cc-section-title">Calendar View</div>
-          <div class="cc-help-text">
-            Click a date to focus on that day.
-          </div>
+          <div class="cc-help-text">Click a date to focus on that day.</div>
+        </div>
+        <div class="cc-btn-group" role="group" aria-label="Calendar navigation">
+          <button
+            type="button"
+            class="cc-btn cc-btn-outline cc-btn-sm"
+            @click="goPrev"
+          >
+            &lt;
+          </button>
+          <button
+            type="button"
+            class="cc-btn cc-btn-outline cc-btn-sm"
+            @click="goNext"
+          >
+            &gt;
+          </button>
         </div>
         <div class="cc-btn-group" role="group">
-          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" @click="setToday">
+          <button
+            type="button"
+            class="cc-btn cc-btn-outline cc-btn-sm"
+            @click="setToday"
+          >
             Today
           </button>
           <button

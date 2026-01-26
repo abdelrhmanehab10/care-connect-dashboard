@@ -151,6 +151,7 @@ const handleCellEditComplete = (
                   v-model="data.patient"
                   :suggestions="filteredPatients"
                   :completeOnFocus="true"
+                  :autoOptionFocus="true"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -158,6 +159,8 @@ const handleCellEditComplete = (
                   placeholder="Search patient"
                   @complete="searchPatients"
                   @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown.down.stop
+                  @keydown.up.stop
                 />
               </div>
               <div class="cc-cell-edit-actions">
@@ -273,6 +276,7 @@ const handleCellEditComplete = (
                   v-model="data.nurse"
                   :suggestions="filteredNurses"
                   :completeOnFocus="true"
+                  :autoOptionFocus="true"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -280,6 +284,8 @@ const handleCellEditComplete = (
                   placeholder="Search nurse"
                   @complete="searchNurses"
                   @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown.down.stop
+                  @keydown.up.stop
                 />
               </div>
               <div class="cc-cell-edit-actions">
@@ -312,6 +318,7 @@ const handleCellEditComplete = (
                   v-model="data.doctor"
                   :suggestions="filteredDoctors"
                   :completeOnFocus="true"
+                  :autoOptionFocus="true"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -319,6 +326,8 @@ const handleCellEditComplete = (
                   placeholder="Search doctor"
                   @complete="searchDoctors"
                   @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown.down.stop
+                  @keydown.up.stop
                 />
               </div>
               <div class="cc-cell-edit-actions">
