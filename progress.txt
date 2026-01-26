@@ -21,3 +21,4 @@
 - Verified nurse section UI in appointment dialog and marked task complete in plans/prd.json.
 - Ensured appointment table cancel edits restore the original value and exit edit mode; marked task complete in plans/prd.json.
 - Persisted doctor start/end times from the appointment dialog in appointment storage; marked doctor section task complete in plans/prd.json.
+- Marked the social worker section task complete in plans/prd.json after confirming the dialog fields are present.
