@@ -504,6 +504,11 @@ body {
   color: var(--cc-surface) !important;
 }
 
+.cc-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 .cc-icon-btn-outline {
   background: transparent;
 }
@@ -545,6 +550,8 @@ body {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
+  width: 100%;
+  justify-content: center;
 }
 
 .cc-badge--success {

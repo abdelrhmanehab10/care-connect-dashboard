@@ -8,14 +8,15 @@ import TabPanel from "primevue/tabpanel";
 import TabView from "primevue/tabview";
 import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import AppointmentDialog from "./components/AppointmentDialog.vue";
+import AppointmentDetailsDialog from "./components/AppointmentDetailsDialog.vue";
 import AppointmentsCalendar from "./components/AppointmentsCalendar.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
 import AppointmentCards from "./components/AppointmentCards.vue";
 import {
   statusBadgeClass,
-  type AppointmentUi,
   useAppointmentsQuery,
 } from "./composables/useAppointmentsQuery";
+import type { Appointment } from "./types";
 import {
   doctorOptions,
   nurseOptions,
@@ -25,8 +26,10 @@ import {
 import { autoCompletePt, datePickerPt, tabViewPt } from "./ui/primevuePt";
 
 const isDialogOpen = ref(false);
+const isDetailsOpen = ref(false);
 const activeViewIndex = ref(0);
 const page = ref(1);
+const selectedAppointment = ref<Appointment | null>(null);
 
 const employeeFilter = ref<string | null>(null);
 const filteredEmployees = ref<string[]>([]);
@@ -52,9 +55,16 @@ const {
   start: apiStart,
   end: apiEnd,
 });
+const normalizeString = (value: string | null | undefined) =>
+  value?.toString().trim() ?? "";
+
 const patientNameOptions = computed(() =>
   Array.from(
-    new Set(appointments.value.map((appointment) => appointment.patient)),
+    new Set(
+      appointments.value
+        .map((appointment) => normalizeString(appointment.patient_name))
+        .filter((name) => name.length > 0),
+    ),
   ),
 );
 const quickPatientLabel = computed<string>(
@@ -141,19 +151,16 @@ const filteredAppointments = computed(() => {
     if (statusQuery && appointment.status !== statusQuery) {
       return false;
     }
+    const doctorName = normalizeString(appointment.doctor_name).toLowerCase();
+    const nurseName = normalizeString(appointment.nurse_name).toLowerCase();
+    const patientName = normalizeString(appointment.patient_name).toLowerCase();
     if (
       employeeQuery &&
-      !(
-        appointment.doctor.toLowerCase().includes(employeeQuery) ||
-        appointment.nurse.toLowerCase().includes(employeeQuery)
-      )
+      !(doctorName.includes(employeeQuery) || nurseName.includes(employeeQuery))
     ) {
       return false;
     }
-    if (
-      patientQuery &&
-      !appointment.patient.toLowerCase().includes(patientQuery)
-    ) {
+    if (patientQuery && !patientName.includes(patientQuery)) {
       return false;
     }
     return true;
@@ -212,9 +219,14 @@ const toggleQuickDoctor = () => {
 };
 
 const handleCellEditComplete = (
-  _event: DataTableCellEditCompleteEvent<AppointmentUi>,
+  _event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
   return;
+};
+
+const openDetails = (appointment: Appointment) => {
+  selectedAppointment.value = appointment;
+  isDetailsOpen.value = true;
 };
 
 const canGoPrev = computed(
@@ -277,10 +289,10 @@ watch([apiStart, apiEnd], () => {
             <button
               type="button"
               class="cc-quick-filter"
-              :class="{ 'is-active': statusTagFilter === 'Pending' }"
-              @click="toggleStatusTag('Pending')"
+              :class="{ 'is-active': statusTagFilter === 'New' }"
+              @click="toggleStatusTag('New')"
             >
-              Pending
+              New
             </button>
             <button
               type="button"
@@ -377,6 +389,7 @@ watch([apiStart, apiEnd], () => {
                 :status-options="statusOptions"
                 :status-badge-class="statusBadgeClass"
                 @cell-edit-complete="handleCellEditComplete"
+                @view-details="openDetails"
               />
               <div class="cc-table-footer">
                 <div class="cc-help-text">
@@ -412,5 +425,9 @@ watch([apiStart, apiEnd], () => {
     </div>
 
     <AppointmentDialog v-model="isDialogOpen" />
+    <AppointmentDetailsDialog
+      v-model="isDetailsOpen"
+      :appointment="selectedAppointment"
+    />
   </div>
 </template>

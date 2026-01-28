@@ -59,7 +59,7 @@ export const weekdayOptions = [
   "Sunday",
 ] as const;
 
-export const statusOptions = ["Confirmed", "Pending", "Cancelled"] as const;
+export const statusOptions = ["Confirmed", "Completed", "New"] as const;
 
 export type AppointmentStatus = (typeof statusOptions)[number];
 export type Weekday = (typeof weekdayOptions)[number];

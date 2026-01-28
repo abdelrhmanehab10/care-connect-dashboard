@@ -1,14 +1,25 @@
 export type Appointment = {
   id: number;
-  title: string;
-  start: string;
-  end: string;
+  patient_name: string;
   start_time: string;
   end_time: string;
+  status: string;
   date: string;
-  class: string;
-  backgroundColor: string;
-  borderColor: string;
-  machines_numbers: string;
-  confirmations: [];
+  nurse_name: string;
+  doctor_name: string;
+  visit_type: string;
+};
+
+type Confirmation = {
+  id: number;
+  appointment_id: number;
+  employee_id: number;
+  confirmed_by: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AppointmentDetails = Appointment & {
+  confirmation: Confirmation[];
+  care_team: [];
 };

@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { VCalendar } from "vuetify/components";
 import type { AppointmentStatus } from "../data/options";
-import type { AppointmentUi } from "../composables/useAppointmentsQuery";
+import type { Appointment } from "../types";
 
 type AppointmentCalendarEvent = {
   name: string;
@@ -10,11 +10,11 @@ type AppointmentCalendarEvent = {
   end: string;
   color: string;
   timed: boolean;
-  appointment: AppointmentUi;
+  appointment: Appointment;
 };
 
 const props = defineProps<{
-  appointments: ReadonlyArray<AppointmentUi>;
+  appointments: ReadonlyArray<Appointment>;
 }>();
 
 const toIsoDate = (value: Date) => {
@@ -24,7 +24,7 @@ const toIsoDate = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getInitialFocus = (appointments: ReadonlyArray<AppointmentUi>) => {
+const getInitialFocus = (appointments: ReadonlyArray<Appointment>) => {
   if (!appointments.length) {
     return toIsoDate(new Date());
   }
@@ -39,27 +39,30 @@ const getInitialFocus = (appointments: ReadonlyArray<AppointmentUi>) => {
   }, first.date);
 };
 
-const statusToColor = (status: AppointmentStatus) => {
-  switch (status) {
-    case "Confirmed":
+const normalizeStatus = (status: string | null | undefined) =>
+  status?.trim().toLowerCase() ?? "";
+
+const statusToColor = (status: AppointmentStatus | string) => {
+  switch (normalizeStatus(status)) {
+    case "confirmed":
       return "green";
-    case "Pending":
+    case "completed":
+      return "blue";
+    case "new":
       return "orange";
-    case "Cancelled":
-      return "red";
     default:
       return "blue";
   }
 };
 
-const statusBadgeClass = (status: AppointmentStatus) => {
-  switch (status) {
-    case "Confirmed":
+const statusBadgeClass = (status: AppointmentStatus | string) => {
+  switch (normalizeStatus(status)) {
+    case "confirmed":
       return "cc-badge--success";
-    case "Pending":
+    case "completed":
+      return "cc-badge--neutral";
+    case "new":
       return "cc-badge--warning";
-    case "Cancelled":
-      return "cc-badge--danger";
     default:
       return "cc-badge--neutral";
   }
@@ -67,10 +70,14 @@ const statusBadgeClass = (status: AppointmentStatus) => {
 
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
+const displayValue = (value: string | null | undefined) => value ?? "-";
 
-const formatTimeRange = (appointment: AppointmentUi) => {
-  if (isValidTime(appointment.startTime) && isValidTime(appointment.endTime)) {
-    return `${appointment.startTime} - ${appointment.endTime}`;
+const formatTimeRange = (appointment: Appointment) => {
+  if (
+    isValidTime(appointment.start_time) &&
+    isValidTime(appointment.end_time)
+  ) {
+    return `${appointment.start_time} - ${appointment.end_time}`;
   }
   return "All day";
 };
@@ -80,25 +87,28 @@ const viewType = ref<"week" | "day">("week");
 
 const events = computed<AppointmentCalendarEvent[]>(() =>
   props.appointments.flatMap((appointment) => {
-    if (!isValidDate(appointment.date)) {
+    if (!isValidDate(appointment.date ?? "")) {
       return [];
     }
 
     const hasTimes =
-      isValidTime(appointment.startTime) && isValidTime(appointment.endTime);
+      isValidTime(appointment.start_time) &&
+      isValidTime(appointment.end_time);
     const start = hasTimes
-      ? `${appointment.date} ${appointment.startTime}`
+      ? `${appointment.date} ${appointment.start_time}`
       : appointment.date;
     const end = hasTimes
-      ? `${appointment.date} ${appointment.endTime}`
+      ? `${appointment.date} ${appointment.end_time}`
       : appointment.date;
 
     return [
       {
-        name: `${appointment.patient} (${appointment.doctor || "TBD"})`,
+        name: `${displayValue(appointment.patient_name)} (${
+          appointment.doctor_name || "TBD"
+        })`,
         start,
         end,
-        color: statusToColor(appointment.status),
+        color: statusToColor(appointment.status as AppointmentStatus),
         timed: hasTimes,
         appointment,
       },
@@ -218,26 +228,28 @@ const goNext = () => {
         @click:more="viewMore"
       >
         <template #event="{ event }">
-          <div class="cc-calendar-event" :style="{ borderLeftColor: event.color }">
+            <div class="cc-calendar-event" :style="{ borderLeftColor: event.color }">
             <div class="cc-calendar-event-title">
-              {{ event.appointment.patient }}
+              {{ displayValue(event.appointment.patient_name) }}
             </div>
             <div class="cc-calendar-event-meta">
               <span class="cc-calendar-event-time">
                 {{ formatTimeRange(event.appointment) }}
               </span>
               <span class="cc-calendar-event-provider">
-                Dr: {{ event.appointment.doctor || "TBD" }}
+                Dr: {{ displayValue(event.appointment.doctor_name) }}
               </span>
               <span class="cc-calendar-event-provider">
-                Nurse: {{ event.appointment.nurse || "TBD" }}
+                Nurse: {{ displayValue(event.appointment.nurse_name) }}
               </span>
             </div>
             <span
               class="cc-calendar-event-status"
-              :class="statusBadgeClass(event.appointment.status)"
+              :class="
+                statusBadgeClass(event.appointment.status as AppointmentStatus)
+              "
             >
-              {{ event.appointment.status }}
+              {{ displayValue(event.appointment.status) }}
             </span>
           </div>
         </template>
