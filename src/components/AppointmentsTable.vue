@@ -39,7 +39,15 @@ const editSnapshots = new Map<string, Appointment[keyof Appointment]>();
 const loadingRows = computed(() =>
   Array.from({ length: 6 }, (_, index) => ({
     id: `loading-${index}`,
-  })) as Appointment[]
+    patient_name: "",
+    start_time: "",
+    end_time: "",
+    status: "",
+    date: "",
+    nurse_name: "",
+    doctor_name: "",
+    visit_type: "",
+  }))
 );
 const displayAppointments = computed(() =>
   isLoading.value ? loadingRows.value : props.appointments
