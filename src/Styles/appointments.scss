@@ -1,0 +1,48 @@
+.card-box.stat-card {
+    padding: 16px;
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-gray);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+}
+
+.card-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.numbers {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.icon-badge {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #f3f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-badge i {
+    font-size: 20px;
+}
+/* ✅ Themes */
+.theme-teal h6 { color: #1f7d82; }
+.theme-teal .icon-badge { background: rgba(31, 125, 130, 0.12); }
+.theme-teal .icon-badge i { color: #1f7d82; }
+
+.theme-blue h6 { color: #3b82f6; }
+.theme-blue .icon-badge { background: rgba(59, 130, 246, 0.12); }
+.theme-blue .icon-badge i { color: #3b82f6; }
+
+.theme-gold h6 { color: #d97706; }
+.theme-gold .icon-badge { background: rgba(217, 119, 6, 0.12); }
+.theme-gold .icon-badge i { color: #d97706; }
+
+.theme-purple h6 { color: #7c3aed; }
+.theme-purple .icon-badge { background: rgba(124, 58, 237, 0.12); }
+.theme-purple .icon-badge i { color: #7c3aed; }

@@ -712,12 +712,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
     <template #footer>
       <button
         type="button"
-        class="cc-btn cc-btn-outline"
+        class="cc-btn cc-btn-outline bg-danger text-light"
         @click="visible = false"
       >
         Cancel
       </button>
-      <button type="button" class="cc-btn cc-btn-primary" @click="handleSave">
+      <button type="button" class="cc-btn  save  text-light" @click="handleSave">
         Save
       </button>
     </template>

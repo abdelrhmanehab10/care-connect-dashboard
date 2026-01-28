@@ -10,6 +10,7 @@ import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import AppointmentDialog from "./components/AppointmentDialog.vue";
 import AppointmentsCalendar from "./components/AppointmentsCalendar.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
+import AppointmentCards from "./components/AppointmentCards.vue";
 import {
   statusBadgeClass,
   type AppointmentUi,
@@ -248,12 +249,13 @@ watch([apiStart, apiEnd], () => {
 <template>
   <div class="cc-page">
     <div class="cc-container cc-layout">
+      <AppointmentCards/>
       <section class="cc-main">
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointments</h2>
           <Button
             label="Add appointment"
-            class="cc-btn cc-btn-primary cc-toolbar-action"
+            class="cc-btn cc-btn-primary cc-toolbar-action text-light"
             @click="isDialogOpen = true"
           />
         </div>
@@ -358,7 +360,7 @@ watch([apiStart, apiEnd], () => {
           <div class="cc-filters-actions">
             <button
               type="button"
-              class="cc-btn cc-btn-outline cc-btn-sm cc-btn-input"
+              class="cc-btn  cc-btn-sm cc-btn-input bg-danger"
               @click="clearFilters"
             >
               Clear

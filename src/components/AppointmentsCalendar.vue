@@ -166,14 +166,14 @@ const goNext = () => {
         <div class="cc-btn-group" role="group" aria-label="Calendar navigation">
           <button
             type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm"
+            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
             @click="goPrev"
           >
             &lt;
           </button>
           <button
             type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm"
+            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
             @click="goNext"
           >
             &gt;
@@ -182,14 +182,14 @@ const goNext = () => {
         <div class="cc-btn-group" role="group">
           <button
             type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm"
+            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
             @click="setToday"
           >
             Today
           </button>
           <button
             type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm"
+            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
             :class="{ 'is-active': viewType === 'week' }"
             @click="viewWeek"
           >
@@ -197,7 +197,7 @@ const goNext = () => {
           </button>
           <button
             type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm"
+            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
             :class="{ 'is-active': viewType === 'day' }"
             @click="viewType = 'day'"
           >
