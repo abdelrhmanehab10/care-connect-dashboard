@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref, toRefs } from "vue";
 import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
@@ -9,7 +9,7 @@ import type {
   DataTableCellEditCompleteEvent,
   DataTableCellEditInitEvent,
 } from "primevue/datatable";
-import type { Appointment } from "../composables/useAppointments";
+import type { AppointmentUi } from "../composables/useAppointmentsQuery";
 import {
   doctorOptions,
   nurseOptions,
@@ -18,20 +18,31 @@ import {
 } from "../data/options";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 
-defineProps<{
-  appointments: ReadonlyArray<Appointment>;
+const props = defineProps<{
+  appointments: ReadonlyArray<AppointmentUi>;
+  isLoading: boolean;
   statusOptions: ReadonlyArray<AppointmentStatus>;
   statusBadgeClass: (status: AppointmentStatus) => string;
 }>();
+const { isLoading } = toRefs(props);
 
 const emit = defineEmits<{
-  (event: "cell-edit-complete", payload: DataTableCellEditCompleteEvent<Appointment>): void;
+  (event: "cell-edit-complete", payload: DataTableCellEditCompleteEvent<AppointmentUi>): void;
 }>();
 
 const filteredPatients = ref<string[]>([]);
 const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
-const editSnapshots = new Map<string, Appointment[keyof Appointment]>();
+const editSnapshots = new Map<string, AppointmentUi[keyof AppointmentUi]>();
+const loadingRows = computed(() =>
+  Array.from({ length: 6 }, (_, index) => ({
+    id: `loading-${index}`,
+  })) as AppointmentUi[]
+);
+const displayAppointments = computed(() =>
+  isLoading.value ? loadingRows.value : props.appointments
+);
+const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -86,28 +97,30 @@ const handleEditorKeydown = (
   }
 };
 
-const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
+const snapshotKey = (data: AppointmentUi, field: string) => `${data.id}:${field}`;
 
-const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
+const handleCellEditInit = (
+  event: DataTableCellEditInitEvent<AppointmentUi>,
+) => {
   const key = snapshotKey(event.data, event.field);
   if (editSnapshots.has(key)) {
     return;
   }
 
-  const field = event.field as keyof Appointment;
+  const field = event.field as keyof AppointmentUi;
   if (field in event.data) {
     editSnapshots.set(key, event.data[field]);
   }
 };
 
 const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
-  const data = event.data as Appointment;
+  const data = event.data as AppointmentUi;
   const key = snapshotKey(data, event.field);
   if (!editSnapshots.has(key)) {
     return;
   }
 
-  const field = event.field as keyof Appointment;
+  const field = event.field as keyof AppointmentUi;
   if (field in data) {
     data[field] = editSnapshots.get(key) as never;
   }
@@ -116,7 +129,7 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
 };
 
 const handleCellEditComplete = (
-  event: DataTableCellEditCompleteEvent<Appointment>
+  event: DataTableCellEditCompleteEvent<AppointmentUi>,
 ) => {
   editSnapshots.delete(snapshotKey(event.data, event.field));
   emit("cell-edit-complete", event);
@@ -126,23 +139,60 @@ const handleCellEditComplete = (
 <template>
   <div class="cc-card">
     <DataTable
-      :value="appointments"
+      :value="displayAppointments"
       dataKey="id"
-      rowGroupMode="rowspan"
-      groupRowsBy="date"
-      editMode="cell"
+      :editMode="editMode"
       @cell-edit-init="handleCellEditInit"
       @cell-edit-cancel="handleCellEditCancel"
       @cell-edit-complete="handleCellEditComplete"
       :pt="dataTablePt"
     >
       <template #empty>
-        <div class="cc-empty">No appointments yet.</div>
+        <div v-if="!isLoading" class="cc-empty">No appointments yet.</div>
       </template>
 
-      <Column field="date" header="Date" />
+      <Column field="date" header="Date">
+        <template #body="{ data }">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+          <span v-else>{{ data.date }}</span>
+        </template>
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <Transition name="cc-cell-edit" appear>
+            <div class="cc-cell-edit">
+              <div class="cc-cell-edit-fields">
+                <input
+                  v-model="data.date"
+                  type="date"
+                  class="cc-input cc-input-sm"
+                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                />
+              </div>
+              <div class="cc-cell-edit-actions">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </template>
+      </Column>
 
       <Column field="patient" header="Patient">
+        <template #body="{ data }">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-lg"></span>
+          <span v-else>{{ data.patient }}</span>
+        </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
@@ -186,7 +236,10 @@ const handleCellEditComplete = (
 
       <Column header="Time">
         <template #body="{ data }">
-          <span class="cc-text-nowrap">{{ data.startTime }} - {{ data.endTime }}</span>
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
+          <span v-else class="cc-text-nowrap">
+            {{ data.startTime }} - {{ data.endTime }}
+          </span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
@@ -228,7 +281,8 @@ const handleCellEditComplete = (
 
       <Column field="status" header="Status">
         <template #body="{ data }">
-          <span class="cc-badge" :class="statusBadgeClass(data.status)">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
+          <span v-else class="cc-badge" :class="statusBadgeClass(data.status)">
             {{ data.status }}
           </span>
         </template>
@@ -268,6 +322,10 @@ const handleCellEditComplete = (
       </Column>
 
       <Column field="nurse" header="Nurse">
+        <template #body="{ data }">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+          <span v-else>{{ data.nurse }}</span>
+        </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
@@ -310,6 +368,10 @@ const handleCellEditComplete = (
       </Column>
 
       <Column field="doctor" header="Doctor">
+        <template #body="{ data }">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+          <span v-else>{{ data.doctor }}</span>
+        </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
@@ -351,7 +413,11 @@ const handleCellEditComplete = (
         </template>
       </Column>
 
-      <Column header="Actions" style="width: 8.5rem" />
+      <Column header="Actions" style="width: 8.5rem">
+        <template #body>
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
+        </template>
+      </Column>
     </DataTable>
   </div>
 </template>

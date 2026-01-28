@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { VCalendar } from "vuetify/components";
 import type { AppointmentStatus } from "../data/options";
-import type { Appointment } from "../composables/useAppointments";
+import type { AppointmentUi } from "../composables/useAppointmentsQuery";
 
 type AppointmentCalendarEvent = {
   name: string;
@@ -10,11 +10,11 @@ type AppointmentCalendarEvent = {
   end: string;
   color: string;
   timed: boolean;
-  appointment: Appointment;
+  appointment: AppointmentUi;
 };
 
 const props = defineProps<{
-  appointments: ReadonlyArray<Appointment>;
+  appointments: ReadonlyArray<AppointmentUi>;
 }>();
 
 const toIsoDate = (value: Date) => {
@@ -24,7 +24,7 @@ const toIsoDate = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getInitialFocus = (appointments: ReadonlyArray<Appointment>) => {
+const getInitialFocus = (appointments: ReadonlyArray<AppointmentUi>) => {
   if (!appointments.length) {
     return toIsoDate(new Date());
   }
@@ -68,7 +68,7 @@ const statusBadgeClass = (status: AppointmentStatus) => {
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
 
-const formatTimeRange = (appointment: Appointment) => {
+const formatTimeRange = (appointment: AppointmentUi) => {
   if (isValidTime(appointment.startTime) && isValidTime(appointment.endTime)) {
     return `${appointment.startTime} - ${appointment.endTime}`;
   }

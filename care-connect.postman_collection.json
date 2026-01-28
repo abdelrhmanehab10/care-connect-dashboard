@@ -1,0 +1,734 @@
+{
+  "info": {
+    "_postman_id": "b4f0b85b-b7cb-4a61-a68a-4161533e146c",
+    "name": "care connect",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "50966840",
+    "_collection_link": "https://go.postman.co/collection/50966840-b4f0b85b-b7cb-4a61-a68a-4161533e146c?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "lab",
+      "item": [
+        {
+          "name": "companies",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/labs/companies",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "companies"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "tests",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\":\"WBC\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/labs/tests",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "tests"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "panels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/labs/panels",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "panels"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "profiles",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\":\"Baseline\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/labs/profiles",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "profiles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get orders based on patient or machine",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "3|qTFzDmBTh27MwMjJBe0Lj6wnBNcvvYcTDQQOb0qI2763dbdc",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n   \"patient_id\":3\n    // \"machine_id\":1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/labs/orders",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "orders"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth APIs",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+                  "value": "admin@backend.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Admin_123456",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/login",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Get All appointments & Filter By Date",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "start",
+                  "value": "",
+                  "description": "date Y-m-d",
+                  "type": "text"
+                },
+                {
+                  "key": "end",
+                  "value": "",
+                  "description": "date  Y-m-d",
+                  "type": "text"
+                },
+                {
+                  "key": "view_pagination",
+                  "value": "true",
+                  "description": "boolean",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{url}}/api/scheduler/appointments",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "scheduler",
+                "appointments"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Success request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"start\":\"2025-12-28\",\n    \"end\":\"2026-02-08\"\n\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{url}}/api/scheduler/appointments",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "scheduler",
+                    "appointments"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Host",
+                  "value": "127.0.0.1:8000"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/8.3.10"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 24 Jan 2026 16:52:47 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n    {\n        \"id\": 11,\n        \"title\": \"Ahmed yasser ,Ali\",\n        \"start\": \"2025-12-28T02:22:00\",\n        \"end\": \"2025-12-28T04:22:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": \"#000000\",\n        \"borderColor\": \"#000000\",\n        \"appointment\": {\n            \"id\": 11,\n            \"patient_id\": 3,\n            \"patient_address_id\": null,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": 1,\n            \"social_worker_id\": 5,\n            \"visit_type_id\": 1,\n            \"visit_id\": 12,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2025/12/28\",\n            \"start_time\": \"02:22:00\",\n            \"end_time\": \"04:22:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": null,\n            \"appointment_service_type\": null,\n            \"appointment_service_event_type\": null,\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2025-12-28T11:34:23.000000Z\",\n            \"updated_at\": \"2025-12-28T11:37:31.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": {\n                \"id\": 1,\n                \"name\": \"Ahmed Mohamed\",\n                \"email\": \"ahmed@doctor.com\",\n                \"username\": \"doctor\",\n                \"password\": \"$2y$12$.ASBmcQm3Jl8N/nWLbyLx.LGA6aCycryJLot8MR9ldz7Nq80SMtC6\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": \"so29R3FqgOYSYzSNL2ADH6FHzXhVK2dHd2vkDQR5mm6utwIAr7PNDVRs0ozo\",\n                \"mobile\": \"01000000000\",\n                \"mobile_code\": null,\n                \"role_id\": 2,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 1,\n                \"speciality_id\": 1,\n                \"created_at\": null,\n                \"updated_at\": \"2026-01-08T10:47:43.000000Z\",\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": \"center\",\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": \"2026-01-08T10:47:43.000000Z\",\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": 1\n            },\n            \"social_worker\": {\n                \"id\": 5,\n                \"name\": \"Fatma Ahmed\",\n                \"email\": \"fatma@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$Uyx5tYQ4eJ37CdBUDrbpuOeBXpiKl9vMNDAD8o4B7EXamMImYrIwa\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000004\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 6,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"visit_type\": {\n                \"id\": 1,\n                \"name\": \"Initial Visit\",\n                \"color\": \"#000000\",\n                \"duration\": 2,\n                \"providers\": [\n                    \"doctors\",\n                    \"nurses\",\n                    \"social_workers\"\n                ],\n                \"forms\": [\n                    \"demographics\",\n                    \"allergies\",\n                    \"dialysis_order\",\n                    \"medications\",\n                    \"progress-notes\",\n                    \"lab_orders\",\n                    \"chief-complaint\",\n                    \"physical-exam\",\n                    \"ros\",\n                    \"icd\",\n                    \"enrollments-checklist\",\n                    \"flowsheet\",\n                    \"main_flowsheet\",\n                    \"nutrition-assessment\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": \"2025-12-18T11:51:16.000000Z\"\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 3,\n                \"patient_id\": null,\n                \"first_name\": \"Ahmed\",\n                \"middle_name\": \"yasser\",\n                \"last_name\": \"Ali\",\n                \"first_name_ar\": \"أحمد\",\n                \"middle_name_ar\": \"ياسر\",\n                \"last_name_ar\": \"علي\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"123456789\",\n                \"secondary_mobile_code\": null,\n                \"secondary_mobile\": null,\n                \"email\": \"eng.yassr.ebid@gmail.com\",\n                \"mrn\": \"99018\",\n                \"blood_group\": \"B+\",\n                \"date_of_birth\": \"1992-01-01\",\n                \"gender\": \"Female\",\n                \"marital_status\": \"\",\n                \"occupation\": \"housewife\",\n                \"signature\": \"68cef7488d3f2.png\",\n                \"national_id\": \"02907080856598\",\n                \"id_expiration_date\": \"2032-10-22\",\n                \"id_type\": \"national_id\",\n                \"expiration_date\": \"2032-01-01\",\n                \"notes\": \"this is another test patient\",\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": \"droplet\",\n                \"referral_status\": null,\n                \"nationality_id\": 2,\n                \"religion_id\": 1,\n                \"language_id\": 2,\n                \"has_valid_insurance\": 1,\n                \"insurance_number\": \"asdasd\",\n                \"insurance_company_id\": 1,\n                \"insurance_card_number\": \"asdasd\",\n                \"policy_expiration_date\": \"2030-09-23\",\n                \"insurance_relation\": \"self\",\n                \"insurance_network\": \"Gold\",\n                \"insurance_status\": \"active\",\n                \"insurance_notes\": \"asdasdasd\",\n                \"emergency_contact_person\": \"yasser ebid\",\n                \"emergency_contact_code\": \"02\",\n                \"emergency_contact_no\": \"1285842009\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": \"1234546\",\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2025-05-11T08:14:12.000000Z\",\n                \"updated_at\": \"2025-11-23T11:40:58.000000Z\",\n                \"medical_acceptance_at\": \"2017-05-23\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2025-09-10\",\n                \"referral_at\": \"2025-09-17\",\n                \"first_hhd_treatment_at\": \"2025-09-06\",\n                \"referred_hospital_id\": 3,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": 5,\n                \"doctor_id\": 1,\n                \"is_self_referred\": 0,\n                \"nurse_id\": 4,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": \"13\",\n                \"policy_holder_name\": \"Policy Holder Organization\",\n                \"policy_holder_identifier\": \"5009\",\n                \"primary_team_leader_nurse_id\": 4,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    },\n    {\n        \"id\": 12,\n        \"title\": \"Ahmed yasser ,Ali\",\n        \"start\": \"2025-12-28T03:22:00\",\n        \"end\": \"2025-12-28T05:22:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": null,\n        \"borderColor\": null,\n        \"appointment\": {\n            \"id\": 12,\n            \"patient_id\": 3,\n            \"patient_address_id\": null,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": null,\n            \"social_worker_id\": null,\n            \"visit_type_id\": 3,\n            \"visit_id\": 13,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2025/12/28\",\n            \"start_time\": \"03:22:00\",\n            \"end_time\": \"05:22:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": null,\n            \"appointment_service_type\": null,\n            \"appointment_service_event_type\": null,\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2025-12-28T12:45:03.000000Z\",\n            \"updated_at\": \"2025-12-28T12:46:37.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": null,\n            \"social_worker\": null,\n            \"visit_type\": {\n                \"id\": 3,\n                \"name\": \"Home Visit\",\n                \"color\": null,\n                \"duration\": 1,\n                \"providers\": [\n                    \"nurses\"\n                ],\n                \"forms\": [\n                    \"appendix_b\",\n                    \"appendix_c\",\n                    \"over_all_feedback\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": null\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 3,\n                \"patient_id\": null,\n                \"first_name\": \"Ahmed\",\n                \"middle_name\": \"yasser\",\n                \"last_name\": \"Ali\",\n                \"first_name_ar\": \"أحمد\",\n                \"middle_name_ar\": \"ياسر\",\n                \"last_name_ar\": \"علي\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"123456789\",\n                \"secondary_mobile_code\": null,\n                \"secondary_mobile\": null,\n                \"email\": \"eng.yassr.ebid@gmail.com\",\n                \"mrn\": \"99018\",\n                \"blood_group\": \"B+\",\n                \"date_of_birth\": \"1992-01-01\",\n                \"gender\": \"Female\",\n                \"marital_status\": \"\",\n                \"occupation\": \"housewife\",\n                \"signature\": \"68cef7488d3f2.png\",\n                \"national_id\": \"02907080856598\",\n                \"id_expiration_date\": \"2032-10-22\",\n                \"id_type\": \"national_id\",\n                \"expiration_date\": \"2032-01-01\",\n                \"notes\": \"this is another test patient\",\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": \"droplet\",\n                \"referral_status\": null,\n                \"nationality_id\": 2,\n                \"religion_id\": 1,\n                \"language_id\": 2,\n                \"has_valid_insurance\": 1,\n                \"insurance_number\": \"asdasd\",\n                \"insurance_company_id\": 1,\n                \"insurance_card_number\": \"asdasd\",\n                \"policy_expiration_date\": \"2030-09-23\",\n                \"insurance_relation\": \"self\",\n                \"insurance_network\": \"Gold\",\n                \"insurance_status\": \"active\",\n                \"insurance_notes\": \"asdasdasd\",\n                \"emergency_contact_person\": \"yasser ebid\",\n                \"emergency_contact_code\": \"02\",\n                \"emergency_contact_no\": \"1285842009\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": \"1234546\",\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2025-05-11T08:14:12.000000Z\",\n                \"updated_at\": \"2025-11-23T11:40:58.000000Z\",\n                \"medical_acceptance_at\": \"2017-05-23\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2025-09-10\",\n                \"referral_at\": \"2025-09-17\",\n                \"first_hhd_treatment_at\": \"2025-09-06\",\n                \"referred_hospital_id\": 3,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": 5,\n                \"doctor_id\": 1,\n                \"is_self_referred\": 0,\n                \"nurse_id\": 4,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": \"13\",\n                \"policy_holder_name\": \"Policy Holder Organization\",\n                \"policy_holder_identifier\": \"5009\",\n                \"primary_team_leader_nurse_id\": 4,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    },\n    {\n        \"id\": 13,\n        \"title\": \"Ahmed yasser ,Ali\",\n        \"start\": \"2026-01-05T04:22:00\",\n        \"end\": \"2026-01-05T06:22:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": \"#000000\",\n        \"borderColor\": \"#000000\",\n        \"appointment\": {\n            \"id\": 13,\n            \"patient_id\": 3,\n            \"patient_address_id\": null,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": 1,\n            \"social_worker_id\": 5,\n            \"visit_type_id\": 1,\n            \"visit_id\": 14,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2026/01/05\",\n            \"start_time\": \"04:22:00\",\n            \"end_time\": \"06:22:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": \"AMB\",\n            \"appointment_service_type\": \"inpatient\",\n            \"appointment_service_event_type\": \"ICSE\",\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2026-01-05T13:59:11.000000Z\",\n            \"updated_at\": \"2026-01-05T14:00:15.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": {\n                \"id\": 1,\n                \"name\": \"Ahmed Mohamed\",\n                \"email\": \"ahmed@doctor.com\",\n                \"username\": \"doctor\",\n                \"password\": \"$2y$12$.ASBmcQm3Jl8N/nWLbyLx.LGA6aCycryJLot8MR9ldz7Nq80SMtC6\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": \"so29R3FqgOYSYzSNL2ADH6FHzXhVK2dHd2vkDQR5mm6utwIAr7PNDVRs0ozo\",\n                \"mobile\": \"01000000000\",\n                \"mobile_code\": null,\n                \"role_id\": 2,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 1,\n                \"speciality_id\": 1,\n                \"created_at\": null,\n                \"updated_at\": \"2026-01-08T10:47:43.000000Z\",\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": \"center\",\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": \"2026-01-08T10:47:43.000000Z\",\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": 1\n            },\n            \"social_worker\": {\n                \"id\": 5,\n                \"name\": \"Fatma Ahmed\",\n                \"email\": \"fatma@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$Uyx5tYQ4eJ37CdBUDrbpuOeBXpiKl9vMNDAD8o4B7EXamMImYrIwa\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000004\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 6,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"visit_type\": {\n                \"id\": 1,\n                \"name\": \"Initial Visit\",\n                \"color\": \"#000000\",\n                \"duration\": 2,\n                \"providers\": [\n                    \"doctors\",\n                    \"nurses\",\n                    \"social_workers\"\n                ],\n                \"forms\": [\n                    \"demographics\",\n                    \"allergies\",\n                    \"dialysis_order\",\n                    \"medications\",\n                    \"progress-notes\",\n                    \"lab_orders\",\n                    \"chief-complaint\",\n                    \"physical-exam\",\n                    \"ros\",\n                    \"icd\",\n                    \"enrollments-checklist\",\n                    \"flowsheet\",\n                    \"main_flowsheet\",\n                    \"nutrition-assessment\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": \"2025-12-18T11:51:16.000000Z\"\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 3,\n                \"patient_id\": null,\n                \"first_name\": \"Ahmed\",\n                \"middle_name\": \"yasser\",\n                \"last_name\": \"Ali\",\n                \"first_name_ar\": \"أحمد\",\n                \"middle_name_ar\": \"ياسر\",\n                \"last_name_ar\": \"علي\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"123456789\",\n                \"secondary_mobile_code\": null,\n                \"secondary_mobile\": null,\n                \"email\": \"eng.yassr.ebid@gmail.com\",\n                \"mrn\": \"99018\",\n                \"blood_group\": \"B+\",\n                \"date_of_birth\": \"1992-01-01\",\n                \"gender\": \"Female\",\n                \"marital_status\": \"\",\n                \"occupation\": \"housewife\",\n                \"signature\": \"68cef7488d3f2.png\",\n                \"national_id\": \"02907080856598\",\n                \"id_expiration_date\": \"2032-10-22\",\n                \"id_type\": \"national_id\",\n                \"expiration_date\": \"2032-01-01\",\n                \"notes\": \"this is another test patient\",\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": \"droplet\",\n                \"referral_status\": null,\n                \"nationality_id\": 2,\n                \"religion_id\": 1,\n                \"language_id\": 2,\n                \"has_valid_insurance\": 1,\n                \"insurance_number\": \"asdasd\",\n                \"insurance_company_id\": 1,\n                \"insurance_card_number\": \"asdasd\",\n                \"policy_expiration_date\": \"2030-09-23\",\n                \"insurance_relation\": \"self\",\n                \"insurance_network\": \"Gold\",\n                \"insurance_status\": \"active\",\n                \"insurance_notes\": \"asdasdasd\",\n                \"emergency_contact_person\": \"yasser ebid\",\n                \"emergency_contact_code\": \"02\",\n                \"emergency_contact_no\": \"1285842009\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": \"1234546\",\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2025-05-11T08:14:12.000000Z\",\n                \"updated_at\": \"2025-11-23T11:40:58.000000Z\",\n                \"medical_acceptance_at\": \"2017-05-23\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2025-09-10\",\n                \"referral_at\": \"2025-09-17\",\n                \"first_hhd_treatment_at\": \"2025-09-06\",\n                \"referred_hospital_id\": 3,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": 5,\n                \"doctor_id\": 1,\n                \"is_self_referred\": 0,\n                \"nurse_id\": 4,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": \"13\",\n                \"policy_holder_name\": \"Policy Holder Organization\",\n                \"policy_holder_identifier\": \"5009\",\n                \"primary_team_leader_nurse_id\": 4,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    },\n    {\n        \"id\": 14,\n        \"title\": \"Ahmed yasser ,Ali\",\n        \"start\": \"2026-01-13T02:02:00\",\n        \"end\": \"2026-01-13T04:02:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": null,\n        \"borderColor\": null,\n        \"appointment\": {\n            \"id\": 14,\n            \"patient_id\": 3,\n            \"patient_address_id\": 3,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": null,\n            \"social_worker_id\": null,\n            \"visit_type_id\": 3,\n            \"visit_id\": 15,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2026/01/13\",\n            \"start_time\": \"02:02:00\",\n            \"end_time\": \"04:02:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": null,\n            \"appointment_service_type\": null,\n            \"appointment_service_event_type\": null,\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2026-01-13T08:06:02.000000Z\",\n            \"updated_at\": \"2026-01-13T08:06:57.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": null,\n            \"social_worker\": null,\n            \"visit_type\": {\n                \"id\": 3,\n                \"name\": \"Home Visit\",\n                \"color\": null,\n                \"duration\": 1,\n                \"providers\": [\n                    \"nurses\"\n                ],\n                \"forms\": [\n                    \"appendix_b\",\n                    \"appendix_c\",\n                    \"over_all_feedback\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": null\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 3,\n                \"patient_id\": null,\n                \"first_name\": \"Ahmed\",\n                \"middle_name\": \"yasser\",\n                \"last_name\": \"Ali\",\n                \"first_name_ar\": \"أحمد\",\n                \"middle_name_ar\": \"ياسر\",\n                \"last_name_ar\": \"علي\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"123456789\",\n                \"secondary_mobile_code\": null,\n                \"secondary_mobile\": null,\n                \"email\": \"eng.yassr.ebid@gmail.com\",\n                \"mrn\": \"99018\",\n                \"blood_group\": \"B+\",\n                \"date_of_birth\": \"1992-01-01\",\n                \"gender\": \"Female\",\n                \"marital_status\": \"\",\n                \"occupation\": \"housewife\",\n                \"signature\": \"68cef7488d3f2.png\",\n                \"national_id\": \"02907080856598\",\n                \"id_expiration_date\": \"2032-10-22\",\n                \"id_type\": \"national_id\",\n                \"expiration_date\": \"2032-01-01\",\n                \"notes\": \"this is another test patient\",\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": \"droplet\",\n                \"referral_status\": null,\n                \"nationality_id\": 2,\n                \"religion_id\": 1,\n                \"language_id\": 2,\n                \"has_valid_insurance\": 1,\n                \"insurance_number\": \"asdasd\",\n                \"insurance_company_id\": 1,\n                \"insurance_card_number\": \"asdasd\",\n                \"policy_expiration_date\": \"2030-09-23\",\n                \"insurance_relation\": \"self\",\n                \"insurance_network\": \"Gold\",\n                \"insurance_status\": \"active\",\n                \"insurance_notes\": \"asdasdasd\",\n                \"emergency_contact_person\": \"yasser ebid\",\n                \"emergency_contact_code\": \"02\",\n                \"emergency_contact_no\": \"1285842009\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": \"1234546\",\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2025-05-11T08:14:12.000000Z\",\n                \"updated_at\": \"2025-11-23T11:40:58.000000Z\",\n                \"medical_acceptance_at\": \"2017-05-23\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2025-09-10\",\n                \"referral_at\": \"2025-09-17\",\n                \"first_hhd_treatment_at\": \"2025-09-06\",\n                \"referred_hospital_id\": 3,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": 5,\n                \"doctor_id\": 1,\n                \"is_self_referred\": 0,\n                \"nurse_id\": 4,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": \"13\",\n                \"policy_holder_name\": \"Policy Holder Organization\",\n                \"policy_holder_identifier\": \"5009\",\n                \"primary_team_leader_nurse_id\": 4,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    },\n    {\n        \"id\": 15,\n        \"title\": \"Ahmed yasser ,Ali\",\n        \"start\": \"2026-01-13T02:02:00\",\n        \"end\": \"2026-01-13T04:02:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": \"#000000\",\n        \"borderColor\": \"#000000\",\n        \"appointment\": {\n            \"id\": 15,\n            \"patient_id\": 3,\n            \"patient_address_id\": 3,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": 1,\n            \"social_worker_id\": 5,\n            \"visit_type_id\": 1,\n            \"visit_id\": 16,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2026/01/13\",\n            \"start_time\": \"02:02:00\",\n            \"end_time\": \"04:02:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": null,\n            \"appointment_service_type\": null,\n            \"appointment_service_event_type\": null,\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2026-01-13T08:08:52.000000Z\",\n            \"updated_at\": \"2026-01-13T08:09:31.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": {\n                \"id\": 1,\n                \"name\": \"Ahmed Mohamed\",\n                \"email\": \"ahmed@doctor.com\",\n                \"username\": \"doctor\",\n                \"password\": \"$2y$12$.ASBmcQm3Jl8N/nWLbyLx.LGA6aCycryJLot8MR9ldz7Nq80SMtC6\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": \"so29R3FqgOYSYzSNL2ADH6FHzXhVK2dHd2vkDQR5mm6utwIAr7PNDVRs0ozo\",\n                \"mobile\": \"01000000000\",\n                \"mobile_code\": null,\n                \"role_id\": 2,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 1,\n                \"speciality_id\": 1,\n                \"created_at\": null,\n                \"updated_at\": \"2026-01-08T10:47:43.000000Z\",\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": \"center\",\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": \"2026-01-08T10:47:43.000000Z\",\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": 1\n            },\n            \"social_worker\": {\n                \"id\": 5,\n                \"name\": \"Fatma Ahmed\",\n                \"email\": \"fatma@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$Uyx5tYQ4eJ37CdBUDrbpuOeBXpiKl9vMNDAD8o4B7EXamMImYrIwa\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000004\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 6,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"visit_type\": {\n                \"id\": 1,\n                \"name\": \"Initial Visit\",\n                \"color\": \"#000000\",\n                \"duration\": 2,\n                \"providers\": [\n                    \"doctors\",\n                    \"nurses\",\n                    \"social_workers\"\n                ],\n                \"forms\": [\n                    \"demographics\",\n                    \"allergies\",\n                    \"dialysis_order\",\n                    \"medications\",\n                    \"progress-notes\",\n                    \"lab_orders\",\n                    \"chief-complaint\",\n                    \"physical-exam\",\n                    \"ros\",\n                    \"icd\",\n                    \"enrollments-checklist\",\n                    \"flowsheet\",\n                    \"main_flowsheet\",\n                    \"nutrition-assessment\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": \"2025-12-18T11:51:16.000000Z\"\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 3,\n                \"patient_id\": null,\n                \"first_name\": \"Ahmed\",\n                \"middle_name\": \"yasser\",\n                \"last_name\": \"Ali\",\n                \"first_name_ar\": \"أحمد\",\n                \"middle_name_ar\": \"ياسر\",\n                \"last_name_ar\": \"علي\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"123456789\",\n                \"secondary_mobile_code\": null,\n                \"secondary_mobile\": null,\n                \"email\": \"eng.yassr.ebid@gmail.com\",\n                \"mrn\": \"99018\",\n                \"blood_group\": \"B+\",\n                \"date_of_birth\": \"1992-01-01\",\n                \"gender\": \"Female\",\n                \"marital_status\": \"\",\n                \"occupation\": \"housewife\",\n                \"signature\": \"68cef7488d3f2.png\",\n                \"national_id\": \"02907080856598\",\n                \"id_expiration_date\": \"2032-10-22\",\n                \"id_type\": \"national_id\",\n                \"expiration_date\": \"2032-01-01\",\n                \"notes\": \"this is another test patient\",\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": \"droplet\",\n                \"referral_status\": null,\n                \"nationality_id\": 2,\n                \"religion_id\": 1,\n                \"language_id\": 2,\n                \"has_valid_insurance\": 1,\n                \"insurance_number\": \"asdasd\",\n                \"insurance_company_id\": 1,\n                \"insurance_card_number\": \"asdasd\",\n                \"policy_expiration_date\": \"2030-09-23\",\n                \"insurance_relation\": \"self\",\n                \"insurance_network\": \"Gold\",\n                \"insurance_status\": \"active\",\n                \"insurance_notes\": \"asdasdasd\",\n                \"emergency_contact_person\": \"yasser ebid\",\n                \"emergency_contact_code\": \"02\",\n                \"emergency_contact_no\": \"1285842009\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": \"1234546\",\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2025-05-11T08:14:12.000000Z\",\n                \"updated_at\": \"2025-11-23T11:40:58.000000Z\",\n                \"medical_acceptance_at\": \"2017-05-23\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2025-09-10\",\n                \"referral_at\": \"2025-09-17\",\n                \"first_hhd_treatment_at\": \"2025-09-06\",\n                \"referred_hospital_id\": 3,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": 5,\n                \"doctor_id\": 1,\n                \"is_self_referred\": 0,\n                \"nurse_id\": 4,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": \"13\",\n                \"policy_holder_name\": \"Policy Holder Organization\",\n                \"policy_holder_identifier\": \"5009\",\n                \"primary_team_leader_nurse_id\": 4,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    },\n    {\n        \"id\": 16,\n        \"title\": \"Ahmed yasser ,Ali\",\n        \"start\": \"2026-01-13T02:04:00\",\n        \"end\": \"2026-01-13T04:04:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": \"#000000\",\n        \"borderColor\": \"#000000\",\n        \"appointment\": {\n            \"id\": 16,\n            \"patient_id\": 3,\n            \"patient_address_id\": 3,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": null,\n            \"social_worker_id\": null,\n            \"visit_type_id\": 2,\n            \"visit_id\": 17,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2026/01/13\",\n            \"start_time\": \"02:04:00\",\n            \"end_time\": \"04:04:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": null,\n            \"appointment_service_type\": null,\n            \"appointment_service_event_type\": null,\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2026-01-13T09:37:17.000000Z\",\n            \"updated_at\": \"2026-01-13T09:38:07.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": null,\n            \"social_worker\": null,\n            \"visit_type\": {\n                \"id\": 2,\n                \"name\": \"Follow up\",\n                \"color\": \"#000000\",\n                \"duration\": 1,\n                \"providers\": [\n                    \"nurses\"\n                ],\n                \"forms\": [\n                    \"medical-history\",\n                    \"patient-assessment\",\n                    \"enrollments-checklist\",\n                    \"icd\",\n                    \"ros\",\n                    \"physical-exam\",\n                    \"chief-complaint\",\n                    \"demographics\",\n                    \"nutrition-assessment\",\n                    \"patient-inventory\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": \"2026-01-13T09:14:01.000000Z\"\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 3,\n                \"patient_id\": null,\n                \"first_name\": \"Ahmed\",\n                \"middle_name\": \"yasser\",\n                \"last_name\": \"Ali\",\n                \"first_name_ar\": \"أحمد\",\n                \"middle_name_ar\": \"ياسر\",\n                \"last_name_ar\": \"علي\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"123456789\",\n                \"secondary_mobile_code\": null,\n                \"secondary_mobile\": null,\n                \"email\": \"eng.yassr.ebid@gmail.com\",\n                \"mrn\": \"99018\",\n                \"blood_group\": \"B+\",\n                \"date_of_birth\": \"1992-01-01\",\n                \"gender\": \"Female\",\n                \"marital_status\": \"\",\n                \"occupation\": \"housewife\",\n                \"signature\": \"68cef7488d3f2.png\",\n                \"national_id\": \"02907080856598\",\n                \"id_expiration_date\": \"2032-10-22\",\n                \"id_type\": \"national_id\",\n                \"expiration_date\": \"2032-01-01\",\n                \"notes\": \"this is another test patient\",\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": \"droplet\",\n                \"referral_status\": null,\n                \"nationality_id\": 2,\n                \"religion_id\": 1,\n                \"language_id\": 2,\n                \"has_valid_insurance\": 1,\n                \"insurance_number\": \"asdasd\",\n                \"insurance_company_id\": 1,\n                \"insurance_card_number\": \"asdasd\",\n                \"policy_expiration_date\": \"2030-09-23\",\n                \"insurance_relation\": \"self\",\n                \"insurance_network\": \"Gold\",\n                \"insurance_status\": \"active\",\n                \"insurance_notes\": \"asdasdasd\",\n                \"emergency_contact_person\": \"yasser ebid\",\n                \"emergency_contact_code\": \"02\",\n                \"emergency_contact_no\": \"1285842009\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": \"1234546\",\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2025-05-11T08:14:12.000000Z\",\n                \"updated_at\": \"2025-11-23T11:40:58.000000Z\",\n                \"medical_acceptance_at\": \"2017-05-23\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2025-09-10\",\n                \"referral_at\": \"2025-09-17\",\n                \"first_hhd_treatment_at\": \"2025-09-06\",\n                \"referred_hospital_id\": 3,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": 5,\n                \"doctor_id\": 1,\n                \"is_self_referred\": 0,\n                \"nurse_id\": 4,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": \"13\",\n                \"policy_holder_name\": \"Policy Holder Organization\",\n                \"policy_holder_identifier\": \"5009\",\n                \"primary_team_leader_nurse_id\": 4,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    },\n    {\n        \"id\": 17,\n        \"title\": \"testing sap ,patient\",\n        \"start\": \"2026-01-17T02:02:00\",\n        \"end\": \"2026-01-17T04:02:00\",\n        \"class\": \"event-completed\",\n        \"backgroundColor\": \"#000000\",\n        \"borderColor\": \"#000000\",\n        \"appointment\": {\n            \"id\": 17,\n            \"patient_id\": 7,\n            \"patient_address_id\": 3,\n            \"nurse_id\": 4,\n            \"driver_id\": null,\n            \"doctor_id\": null,\n            \"social_worker_id\": null,\n            \"visit_type_id\": 2,\n            \"visit_id\": 18,\n            \"machine_ids\": [],\n            \"branch_id\": 1,\n            \"recurring_appointment_id\": null,\n            \"date\": \"2026/01/17\",\n            \"start_time\": \"02:02:00\",\n            \"end_time\": \"04:02:00\",\n            \"status\": \"completed\",\n            \"appointment_class\": null,\n            \"appointment_service_type\": null,\n            \"appointment_service_event_type\": null,\n            \"is_confirmed\": true,\n            \"instructions\": null,\n            \"created_at\": \"2026-01-17T14:11:52.000000Z\",\n            \"updated_at\": \"2026-01-17T14:13:05.000000Z\",\n            \"system\": \"center\",\n            \"patient_confirmed\": false,\n            \"patient_confirmed_by\": null,\n            \"patient_confirmed_at\": null,\n            \"no_show_by\": null,\n            \"no_show_at\": null,\n            \"cancelled_by\": null,\n            \"cancelled_at\": null,\n            \"cancel_reason\": null,\n            \"cancel_notes\": null,\n            \"machines_numbers\": \"\",\n            \"nurse\": {\n                \"id\": 4,\n                \"name\": \"Sara Ali\",\n                \"email\": \"sara@nurse.com\",\n                \"username\": null,\n                \"password\": \"$2y$12$8qY3LzlmPL9srejCDfFvAOFFMs84rx4Xw./4NTHjfqH2vFC1jpebG\",\n                \"is_temp_password\": false,\n                \"temp_password_expires_at\": null,\n                \"password_expires_at\": null,\n                \"password_changed_at\": null,\n                \"remember_token\": null,\n                \"mobile\": \"01000000003\",\n                \"mobile_code\": null,\n                \"role_id\": 3,\n                \"session_timeout\": null,\n                \"branch_ids\": [\n                    \"1\"\n                ],\n                \"systems\": [\n                    \"center\"\n                ],\n                \"address\": null,\n                \"latitude\": null,\n                \"longitude\": null,\n                \"city\": null,\n                \"area_id\": null,\n                \"status\": \"active\",\n                \"login_from\": null,\n                \"login_to\": null,\n                \"title_id\": 2,\n                \"speciality_id\": 5,\n                \"created_at\": null,\n                \"updated_at\": null,\n                \"date_of_birth\": null,\n                \"gender\": null,\n                \"marital_status\": null,\n                \"national_id\": null,\n                \"id_type\": null,\n                \"signature\": null,\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"nationality_id\": null,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"scfhs_license_number\": null,\n                \"scfhs_license_expiry_date\": null,\n                \"scfhs_status_verification\": null,\n                \"nphies_provider_id\": null,\n                \"eligibility_for_insurance_billing\": 0,\n                \"authorized_for_pre_approvals\": 0,\n                \"special_authorizations_required\": 0,\n                \"selected_system\": null,\n                \"alfarabi_labs_doctor_id\": null,\n                \"prn_at\": null,\n                \"last_login_at\": null,\n                \"last_active_at\": null,\n                \"quick_select_drug_ids\": null,\n                \"selected_branch_id\": null\n            },\n            \"driver\": null,\n            \"doctor\": null,\n            \"social_worker\": null,\n            \"visit_type\": {\n                \"id\": 2,\n                \"name\": \"Follow up\",\n                \"color\": \"#000000\",\n                \"duration\": 1,\n                \"providers\": [\n                    \"nurses\"\n                ],\n                \"forms\": [\n                    \"medical-history\",\n                    \"patient-assessment\",\n                    \"enrollments-checklist\",\n                    \"icd\",\n                    \"ros\",\n                    \"physical-exam\",\n                    \"chief-complaint\",\n                    \"demographics\",\n                    \"nutrition-assessment\",\n                    \"patient-inventory\"\n                ],\n                \"created_at\": null,\n                \"updated_at\": \"2026-01-13T09:14:01.000000Z\"\n            },\n            \"machines\": [],\n            \"patient\": {\n                \"id\": 7,\n                \"patient_id\": null,\n                \"first_name\": \"testing\",\n                \"middle_name\": \"sap\",\n                \"last_name\": \"patient\",\n                \"first_name_ar\": \"testing\",\n                \"middle_name_ar\": \"sap\",\n                \"last_name_ar\": \"patient\",\n                \"mobile_code\": \"EG\",\n                \"mobile\": \"1285842009\",\n                \"secondary_mobile_code\": \"EG\",\n                \"secondary_mobile\": \"1258458455\",\n                \"email\": null,\n                \"mrn\": \"99017\",\n                \"blood_group\": \"A+\",\n                \"date_of_birth\": \"2000-01-14\",\n                \"gender\": \"Male\",\n                \"marital_status\": \"L\",\n                \"occupation\": \"education\",\n                \"signature\": null,\n                \"national_id\": \"6085236989\",\n                \"id_expiration_date\": null,\n                \"id_type\": \"BN\",\n                \"expiration_date\": null,\n                \"notes\": null,\n                \"status\": \"active\",\n                \"code_status\": \"full_code\",\n                \"isolation_type\": null,\n                \"referral_status\": \"new referral\",\n                \"nationality_id\": 8,\n                \"religion_id\": null,\n                \"language_id\": null,\n                \"has_valid_insurance\": 0,\n                \"insurance_number\": null,\n                \"insurance_company_id\": null,\n                \"insurance_card_number\": null,\n                \"policy_expiration_date\": null,\n                \"insurance_relation\": null,\n                \"insurance_network\": null,\n                \"insurance_status\": null,\n                \"insurance_notes\": null,\n                \"emergency_contact_person\": \"fsdf sdf sdf \",\n                \"emergency_contact_code\": \"EG\",\n                \"emergency_contact_no\": \"1125236252\",\n                \"unified_patient_number\": null,\n                \"nphies_patient_id\": null,\n                \"primary_healthcare_center_id\": null,\n                \"moh_file_number\": null,\n                \"ehr_emr_consent_signed\": 0,\n                \"created_at\": \"2026-01-17T13:38:34.000000Z\",\n                \"updated_at\": \"2026-01-17T13:38:34.000000Z\",\n                \"medical_acceptance_at\": \"2010-01-08\",\n                \"first_ever_hd\": null,\n                \"home_settings_acceptance_at\": \"2010-01-08\",\n                \"referral_at\": \"2010-01-08\",\n                \"first_hhd_treatment_at\": \"2010-01-08\",\n                \"referred_hospital_id\": 6,\n                \"nurse_manager_time\": null,\n                \"social_worker_id\": null,\n                \"doctor_id\": null,\n                \"is_self_referred\": 0,\n                \"nurse_id\": null,\n                \"system\": \"center\",\n                \"branch_id\": 1,\n                \"access_mobile_app\": 0,\n                \"otp_code\": null,\n                \"otp_code_expire_at\": null,\n                \"device_token\": null,\n                \"enable_notify\": 1,\n                \"device_type\": null,\n                \"app_language\": null,\n                \"face_token\": null,\n                \"is_employee\": 0,\n                \"is_visitor\": 0,\n                \"is_water_machine\": 0,\n                \"policy_holder_id\": null,\n                \"policy_holder_name\": null,\n                \"policy_holder_identifier\": null,\n                \"primary_team_leader_nurse_id\": null,\n                \"sap_customer_code\": null,\n                \"sap_warehouse_code\": null,\n                \"alfarabi_file_no\": null\n            }\n        }\n    }\n]"
+            }
+          ]
+        },
+        {
+          "name": "get Appointment Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/appointment/details/1",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointment",
+                "details",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add new Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"3\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"1\",\n  \"is_recurring\": \"0\",\n  \"date\": \"2026-02-31\",\n  \"start_time\": \"02:02\",\n  \"end_time\": \"04:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/appointments/add",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "add"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Autocomplete patient search",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/patients/autocomplete?q=yass",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "autocomplete"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "yass"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"4\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"1\",\n  \"is_recurring\": \"0\",\n  \"date\": \"2026-02-31\",\n  \"start_time\": \"02:02\",\n  \"end_time\": \"04:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/appointments/update/20",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "update",
+                "20"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/appointments/confirm/{{appointment_id}}/{{employee_id}}",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "confirm",
+                "{{appointment_id}}",
+                "{{employee_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Quick Confirm Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/appointments/quick-confirm/{{appointment_id}}",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "quick-confirm",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark No Show Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/appointments/quick-no-show/{{appointment_id}}",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "quick-no-show",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"reason\": \"Patient Request\",\n    \"notes\": \"dsfsdfsdfsdfsdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/appointments/quick-cancel/{{appointment_id}}",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "appointments",
+                "quick-cancel",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Search Employees",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/employees/search?name=sara",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "employees",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "sara"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Visit Types",
+      "item": [
+        {
+          "name": "List Visit Types",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/visit-types",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "visit-types"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Areas",
+      "item": [
+        {
+          "name": "List Areas",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/areas",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "areas"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "{{token}}",
+      "value": "qTFzDmBTh27MwMjJBe0Lj6wnBNcvvYcTDQQOb0qI2763dbdc"
+    },
+    {
+      "key": "token",
+      "value": "3|qTFzDmBTh27MwMjJBe0Lj6wnBNcvvYcTDQQOb0qI2763dbdc"
+    }
+  ]
+}

@@ -16,7 +16,6 @@ import {
   type PatientOption,
   type Weekday,
 } from "../data/options";
-import type { NewAppointment } from "../composables/useAppointments";
 import {
   autoCompletePt,
   datePickerPt,
@@ -26,7 +25,7 @@ import {
 
 const visible = defineModel<boolean>({ required: true });
 const emit = defineEmits<{
-  save: [payload: NewAppointment];
+  save: [payload: any];
 }>();
 
 const selectedPatient = ref<PatientOption | string | null>(null);
@@ -356,10 +355,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         <div v-if="!isPatientSelected" class="cc-help-text">
           Select a patient to enable address fields.
         </div>
-        <fieldset
-          :disabled="!isPatientSelected"
-          class="cc-stack"
-        >
+        <fieldset :disabled="!isPatientSelected" class="cc-stack">
           <div>
             <label for="area" class="cc-label">Area</label>
             <select id="area" v-model="address.area" class="cc-select">
@@ -393,7 +389,9 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       </div>
 
       <div>
-        <label for="visitType" class="cc-label cc-label-strong">Visit type</label>
+        <label for="visitType" class="cc-label cc-label-strong"
+          >Visit type</label
+        >
         <select id="visitType" v-model="visit.type" class="cc-select">
           <option value="" disabled>Select visit type</option>
           <option v-for="type in visitTypeOptions" :key="type" :value="type">
@@ -461,7 +459,9 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         <div v-else class="cc-stack">
           <div class="cc-grid cc-grid-2">
             <div>
-              <label for="recurringStartDate" class="cc-label">Start date</label>
+              <label for="recurringStartDate" class="cc-label"
+                >Start date</label
+              >
               <DatePicker
                 v-model="schedule.recurringStartDate"
                 inputId="recurringStartDate"
@@ -717,11 +717,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       >
         Cancel
       </button>
-      <button
-        type="button"
-        class="cc-btn cc-btn-primary"
-        @click="handleSave"
-      >
+      <button type="button" class="cc-btn cc-btn-primary" @click="handleSave">
         Save
       </button>
     </template>
