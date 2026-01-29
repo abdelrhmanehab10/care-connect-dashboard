@@ -30,8 +30,12 @@ const props = defineProps<{
 const { isLoading } = toRefs(props);
 
 const emit = defineEmits<{
-  (event: "cell-edit-complete", payload: DataTableCellEditCompleteEvent<Appointment>): void;
+  (
+    event: "cell-edit-complete",
+    payload: DataTableCellEditCompleteEvent<Appointment>,
+  ): void;
   (event: "view-details", payload: Appointment): void;
+  (event: "export-excel"): void;
 }>();
 
 const filteredPatients = ref<string[]>([]);
@@ -51,10 +55,10 @@ const loadingRows = computed(() =>
     doctor_name: "",
     visit_type: "",
     social_worker_name: "",
-  }))
+  })),
 );
 const displayAppointments = computed(() =>
-  isLoading.value ? loadingRows.value : props.appointments
+  isLoading.value ? loadingRows.value : props.appointments,
 );
 const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 
@@ -78,7 +82,7 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredNurses.value = nurseOptions.filter((name) =>
-    name.toLowerCase().includes(query)
+    name.toLowerCase().includes(query),
   );
 };
 
@@ -90,7 +94,7 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredDoctors.value = doctorOptions.filter((name) =>
-    name.toLowerCase().includes(query)
+    name.toLowerCase().includes(query),
   );
 };
 
@@ -102,14 +106,14 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredSocialWorkers.value = socialWorkerOptions.filter((name) =>
-    name.toLowerCase().includes(query)
+    name.toLowerCase().includes(query),
   );
 };
 
 const handleEditorKeydown = (
   event: KeyboardEvent,
   save: (event: Event) => void,
-  cancel: (event: Event) => void
+  cancel: (event: Event) => void,
 ) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -125,9 +129,7 @@ const handleEditorKeydown = (
 
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
 
-const handleCellEditInit = (
-  event: DataTableCellEditInitEvent<Appointment>,
-) => {
+const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   const key = snapshotKey(event.data, event.field);
   if (editSnapshots.has(key)) {
     return;
@@ -164,6 +166,15 @@ const handleCellEditComplete = (
 
 <template>
   <div class="cc-card">
+    <div class="cc-table-toolbar">
+      <button
+        type="button"
+        class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light"
+        @click="emit('export-excel')"
+      >
+        Export Excel
+      </button>
+    </div>
     <DataTable
       :value="displayAppointments"
       dataKey="id"
@@ -190,7 +201,13 @@ const handleCellEditComplete = (
                   v-model="data.date"
                   type="date"
                   class="cc-input cc-input-sm"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                 />
               </div>
               <div class="cc-cell-edit-actions">
@@ -234,7 +251,13 @@ const handleCellEditComplete = (
                   :pt="autoCompletePt"
                   placeholder="Search patient"
                   @complete="searchPatients"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                   @keydown.down.stop
                   @keydown.up.stop
                 />
@@ -275,13 +298,25 @@ const handleCellEditComplete = (
                   v-model="data.start_time"
                   type="time"
                   class="cc-input cc-input-sm"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                 />
                 <input
                   v-model="data.end_time"
                   type="time"
                   class="cc-input cc-input-sm"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                 />
               </div>
               <div class="cc-cell-edit-actions">
@@ -323,9 +358,19 @@ const handleCellEditComplete = (
                 <select
                   v-model="data.status"
                   class="cc-select cc-select-sm"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                 >
-                  <option v-for="status in statusOptions" :key="status" :value="status">
+                  <option
+                    v-for="status in statusOptions"
+                    :key="status"
+                    :value="status"
+                  >
                     {{ status }}
                   </option>
                 </select>
@@ -371,7 +416,13 @@ const handleCellEditComplete = (
                   :pt="autoCompletePt"
                   placeholder="Search nurse"
                   @complete="searchNurses"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                   @keydown.down.stop
                   @keydown.up.stop
                 />
@@ -417,7 +468,13 @@ const handleCellEditComplete = (
                   :pt="autoCompletePt"
                   placeholder="Search doctor"
                   @complete="searchDoctors"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                   @keydown.down.stop
                   @keydown.up.stop
                 />
@@ -463,7 +520,13 @@ const handleCellEditComplete = (
                   :pt="autoCompletePt"
                   placeholder="Search social worker"
                   @complete="searchSocialWorkers"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                   @keydown.down.stop
                   @keydown.up.stop
                 />
@@ -501,9 +564,19 @@ const handleCellEditComplete = (
                 <select
                   v-model="data.visit_type"
                   class="cc-select cc-select-sm"
-                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
                 >
-                  <option v-for="type in visitTypeOptions" :key="type" :value="type">
+                  <option
+                    v-for="type in visitTypeOptions"
+                    :key="type"
+                    :value="type"
+                  >
                     {{ type }}
                   </option>
                 </select>

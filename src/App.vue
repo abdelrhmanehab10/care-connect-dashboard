@@ -373,132 +373,127 @@ watch(isDialogOpen, (value) => {
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointments</h2>
           <Button
-            label="Add appointment"
+            label="Add Appointment"
             class="cc-btn cc-btn-primary cc-toolbar-action text-light"
             @click="openAddDialog"
           />
         </div>
-        <div class="cc-sidebar-header">
-          <div class="cc-section-title">Filters</div>
-          <div class="cc-help-text">Refine by staff member.</div>
-        </div>
-        <AppointmentCards
-          :is-this-week-active="isThisWeekActive"
-          :status-tag-filter="statusTagFilter"
-          :quick-patient-label="quickPatientLabel"
-          :quick-doctor-label="quickDoctorLabel"
-          :patient-filter="patientFilter"
-          :employee-filter="employeeFilter"
-          @toggle-week="toggleThisWeek"
-          @toggle-status="toggleStatusTag"
-          @toggle-patient="toggleQuickPatient"
-          @toggle-doctor="toggleQuickDoctor"
-        />
-        <div class="row">
-          <div class="col-md-2">
-            <label for="employeeFilter" class="cc-label">Employee</label>
-            <AutoComplete
-              v-model="employeeFilter"
-              inputId="employeeFilter"
-              :suggestions="filteredEmployees"
-              :completeOnFocus="true"
-              :autoOptionFocus="true"
-              appendTo="body"
-              panelClass="cc-autocomplete-panel"
-              inputClass="cc-input"
-              :pt="autoCompletePt"
-              placeholder="Search nurse or doctor"
-              @complete="searchEmployees"
-            />
+        <div class="border p-3 rounded mb-2">
+          <div class="cc-sidebar-header">
+            <div class="cc-section-title">Filters</div>
+            <div class="cc-help-text">Refine by staff member.</div>
           </div>
-          <div class="col-md-2">
-            <label for="patientFilter" class="cc-label">Patient</label>
-            <AutoComplete
-              v-model="patientFilter"
-              inputId="patientFilter"
-              :suggestions="filteredPatients"
-              :completeOnFocus="true"
-              :autoOptionFocus="true"
-              appendTo="body"
-              panelClass="cc-autocomplete-panel"
-              inputClass="cc-input"
-              :pt="autoCompletePt"
-              placeholder="Search patient"
-              @complete="searchPatients"
-            />
-          </div>
-          <div class="col-md-2">
-            <label for="filterStartDate" class="cc-label">Start date</label>
-            <DatePicker
-              v-model="startDate"
-              inputId="filterStartDate"
-              dateFormat="yy-mm-dd"
-              appendTo="body"
-              panelClass="cc-datepicker-panel"
-              :pt="datePickerPt"
-              placeholder="Start date"
-            />
-          </div>
-          <div class="col-md-2">
-            <label for="filterEndDate" class="cc-label">End date</label>
-            <DatePicker
-              v-model="endDate"
-              inputId="filterEndDate"
-              dateFormat="yy-mm-dd"
-              appendTo="body"
-              panelClass="cc-datepicker-panel"
-              :pt="datePickerPt"
-              placeholder="End date"
-            />
-          </div>
-          <div class="col-md-2">
-            <label for="visitTypeFilter" class="cc-label">Visit Type</label>
-            <AutoComplete
-              v-model="visitTypeFilter"
-              inputId="visitTypeFilter"
-              :suggestions="filteredVisitTypes"
-              :completeOnFocus="true"
-              :autoOptionFocus="true"
-              appendTo="body"
-              panelClass="cc-autocomplete-panel"
-              inputClass="cc-input"
-              :pt="autoCompletePt"
-              placeholder="Select visit type"
-              @complete="searchVisitTypes"
-            />
-          </div>
+          <AppointmentCards
+            :is-this-week-active="isThisWeekActive"
+            :status-tag-filter="statusTagFilter"
+            :quick-patient-label="quickPatientLabel"
+            :quick-doctor-label="quickDoctorLabel"
+            :patient-filter="patientFilter"
+            :employee-filter="employeeFilter"
+            @toggle-week="toggleThisWeek"
+            @toggle-status="toggleStatusTag"
+            @toggle-patient="toggleQuickPatient"
+            @toggle-doctor="toggleQuickDoctor"
+          />
+          <div class="row">
+            <div class="col-md-2">
+              <label for="employeeFilter" class="cc-label">Employee</label>
+              <AutoComplete
+                v-model="employeeFilter"
+                inputId="employeeFilter"
+                :suggestions="filteredEmployees"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Search nurse or doctor"
+                @complete="searchEmployees"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="patientFilter" class="cc-label">Patient</label>
+              <AutoComplete
+                v-model="patientFilter"
+                inputId="patientFilter"
+                :suggestions="filteredPatients"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Search patient"
+                @complete="searchPatients"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="filterStartDate" class="cc-label">Start date</label>
+              <DatePicker
+                v-model="startDate"
+                inputId="filterStartDate"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                panelClass="cc-datepicker-panel"
+                :pt="datePickerPt"
+                placeholder="Start date"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="filterEndDate" class="cc-label">End date</label>
+              <DatePicker
+                v-model="endDate"
+                inputId="filterEndDate"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                panelClass="cc-datepicker-panel"
+                :pt="datePickerPt"
+                placeholder="End date"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="visitTypeFilter" class="cc-label">Visit Type</label>
+              <AutoComplete
+                v-model="visitTypeFilter"
+                inputId="visitTypeFilter"
+                :suggestions="filteredVisitTypes"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Select visit type"
+                @complete="searchVisitTypes"
+              />
+            </div>
 
-          <div class="col-md-2">
-            <label for="stateFilter" class="cc-label">States</label>
-            <AutoComplete
-              v-model="stateFilter"
-              inputId="stateFilter"
-              :suggestions="filteredStates"
-              :completeOnFocus="true"
-              :autoOptionFocus="true"
-              appendTo="body"
-              panelClass="cc-autocomplete-panel"
-              inputClass="cc-input"
-              :pt="autoCompletePt"
-              placeholder="Select state"
-              @complete="searchStates"
-            />
-          </div>
-          <div class="cc-filters-actions">
-            <button
-              type="button"
-              class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2"
-              @click="clearFilters"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light mt-3 mb-2 me-2"
-              @click="exportExcel"
-            >
-              Export Excel
-            </button>
+            <div class="col-md-2">
+              <label for="stateFilter" class="cc-label">States</label>
+              <AutoComplete
+                v-model="stateFilter"
+                inputId="stateFilter"
+                :suggestions="filteredStates"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Select state"
+                @complete="searchStates"
+              />
+            </div>
+            <div class="cc-filters-actions">
+              <button
+                type="button"
+                class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2 cc-btn-full"
+                @click="clearFilters"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
         </div>
 
@@ -512,6 +507,7 @@ watch(isDialogOpen, (value) => {
                 :status-badge-class="statusBadgeClass"
                 @cell-edit-complete="handleCellEditComplete"
                 @view-details="openDetails"
+                @export-excel="exportExcel"
               />
               <div class="cc-table-footer">
                 <div class="cc-help-text">
