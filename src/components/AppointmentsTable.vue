@@ -37,7 +37,7 @@ const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
 const editSnapshots = new Map<string, Appointment[keyof Appointment]>();
 const loadingRows = computed(() =>
-  Array.from({ length: 6 }, (_, index) => ({
+  Array.from({ length: 7 }, (_, index) => ({
     id: `loading-${index}`,
     patient_name: "",
     start_time: "",

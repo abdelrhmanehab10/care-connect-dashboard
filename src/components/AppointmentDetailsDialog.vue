@@ -45,6 +45,7 @@ const displayValue = (value: string | null | undefined) => value ?? "-";
           <div class="cc-label">Date</div>
           <div>{{ displayValue(props.appointment?.date) }}</div>
         </div>
+       
         <div>
           <div class="cc-label">Time</div>
           <div>
