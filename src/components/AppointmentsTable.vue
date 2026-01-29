@@ -15,6 +15,8 @@ import {
   doctorOptions,
   nurseOptions,
   patientOptions,
+  socialWorkerOptions,
+  visitTypeOptions,
   type AppointmentStatus,
 } from "../data/options";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
@@ -35,6 +37,7 @@ const emit = defineEmits<{
 const filteredPatients = ref<string[]>([]);
 const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
+const filteredSocialWorkers = ref<string[]>([]);
 const editSnapshots = new Map<string, Appointment[keyof Appointment]>();
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
@@ -47,6 +50,7 @@ const loadingRows = computed(() =>
     nurse_name: "",
     doctor_name: "",
     visit_type: "",
+    social_worker_name: "",
   }))
 );
 const displayAppointments = computed(() =>
@@ -86,6 +90,18 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   }
 
   filteredDoctors.value = doctorOptions.filter((name) =>
+    name.toLowerCase().includes(query)
+  );
+};
+
+const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredSocialWorkers.value = [...socialWorkerOptions];
+    return;
+  }
+
+  filteredSocialWorkers.value = socialWorkerOptions.filter((name) =>
     name.toLowerCase().includes(query)
   );
 };
@@ -405,6 +421,92 @@ const handleCellEditComplete = (
                   @keydown.down.stop
                   @keydown.up.stop
                 />
+              </div>
+              <div class="cc-cell-edit-actions">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </template>
+      </Column>
+
+      <Column field="social_worker_name" header="Social worker">
+        <template #body="{ data }">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+          <span v-else>{{ data.social_worker_name ?? "-" }}</span>
+        </template>
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <Transition name="cc-cell-edit" appear>
+            <div class="cc-cell-edit">
+              <div class="cc-cell-edit-fields">
+                <AutoComplete
+                  v-model="data.social_worker_name"
+                  :suggestions="filteredSocialWorkers"
+                  :completeOnFocus="true"
+                  :autoOptionFocus="true"
+                  appendTo="self"
+                  panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm"
+                  :pt="autoCompletePt"
+                  placeholder="Search social worker"
+                  @complete="searchSocialWorkers"
+                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                  @keydown.down.stop
+                  @keydown.up.stop
+                />
+              </div>
+              <div class="cc-cell-edit-actions">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </template>
+      </Column>
+
+      <Column field="visit_type" header="Visit type">
+        <template #body="{ data }">
+          <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
+          <span v-else>{{ data.visit_type ?? "-" }}</span>
+        </template>
+        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
+          <Transition name="cc-cell-edit" appear>
+            <div class="cc-cell-edit">
+              <div class="cc-cell-edit-fields">
+                <select
+                  v-model="data.visit_type"
+                  class="cc-select cc-select-sm"
+                  @keydown="handleEditorKeydown($event, editorSaveCallback, editorCancelCallback)"
+                >
+                  <option v-for="type in visitTypeOptions" :key="type" :value="type">
+                    {{ type }}
+                  </option>
+                </select>
               </div>
               <div class="cc-cell-edit-actions">
                 <button

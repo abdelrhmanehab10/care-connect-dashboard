@@ -7,6 +7,7 @@ export type Appointment = {
   date: string;
   nurse_name: string;
   doctor_name: string;
+  social_worker_name?: string;
   visit_type: string;
 };
 
