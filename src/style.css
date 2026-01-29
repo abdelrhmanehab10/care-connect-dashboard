@@ -925,6 +925,40 @@ body {
   box-sizing: content-box;
 }
 
+.cc-calendar-event-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: auto;
+}
+
+.cc-calendar-event-actions .cc-icon-btn {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.5rem;
+}
+
+.cc-calendar-event-actions .cc-icon-btn--confirm:hover,
+.cc-calendar-event-actions .cc-icon-btn--confirm:focus-visible {
+  border-color: var(--cc-success);
+  color: var(--cc-success);
+  background: rgba(26, 127, 90, 0.12);
+}
+
+.cc-calendar-event-actions .cc-icon-btn--no-show:hover,
+.cc-calendar-event-actions .cc-icon-btn--no-show:focus-visible {
+  border-color: var(--cc-warning);
+  color: var(--cc-warning);
+  background: rgba(217, 138, 16, 0.12);
+}
+
+.cc-calendar-event-actions .cc-icon-btn--cancel:hover,
+.cc-calendar-event-actions .cc-icon-btn--cancel:focus-visible {
+  border-color: var(--cc-danger);
+  color: var(--cc-danger);
+  background: rgba(204, 63, 63, 0.12);
+}
+
 .cc-calendar-event-title {
   font-weight: 600;
   font-size: 0.78rem;

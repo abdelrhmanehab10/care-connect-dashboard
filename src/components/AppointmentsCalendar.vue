@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { VCalendar } from "vuetify/components";
+import { CheckCircle, XCircle, Ban } from "lucide-vue-next";
 import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
 
@@ -16,6 +17,9 @@ type AppointmentCalendarEvent = {
 const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
 }>();
+const emit = defineEmits<{
+  (event: "edit", appointment: Appointment): void;
+}>();
 
 const toIsoDate = (value: Date) => {
   const year = value.getFullYear();
@@ -24,19 +28,94 @@ const toIsoDate = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getInitialFocus = (appointments: ReadonlyArray<Appointment>) => {
-  if (!appointments.length) {
-    return toIsoDate(new Date());
+const dummyAppointments: Appointment[] = [
+  {
+    id: 1001,
+    patient_name: "Amelia Rivera",
+    start_time: "09:30",
+    end_time: "10:15",
+    status: "Confirmed",
+    date: toIsoDate(new Date()),
+    nurse_name: "Nora King",
+    doctor_name: "Dr. Patel",
+    visit_type: "Initial Visit",
+  },
+  {
+    id: 1002,
+    patient_name: "Noah Patel",
+    start_time: "11:00",
+    end_time: "11:45",
+    status: "New",
+    date: toIsoDate(new Date()),
+    nurse_name: "Maya Reed",
+    doctor_name: "Dr. Chen",
+    visit_type: "Follow Up",
+  },
+  {
+    id: 1003,
+    patient_name: "Sophia Nguyen",
+    start_time: "14:00",
+    end_time: "14:30",
+    status: "Completed",
+    date: toIsoDate(new Date()),
+    nurse_name: "Jordan Lee",
+    doctor_name: "Dr. Diaz",
+    visit_type: "Home Visit",
+  },
+];
+
+const sourceAppointments = computed(() =>
+  props.appointments.length ? props.appointments : dummyAppointments,
+);
+
+const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
+
+const normalizeDate = (value: string | null | undefined) => {
+  if (!value) {
+    return "";
   }
 
-  const [first] = appointments;
+  const trimmed = value.trim();
+  if (isValidDate(trimmed)) {
+    return trimmed;
+  }
+
+  const splitByT = trimmed.split("T")[0] ?? "";
+  if (isValidDate(splitByT)) {
+    return splitByT;
+  }
+
+  const splitBySpace = trimmed.split(" ")[0] ?? "";
+  if (isValidDate(splitBySpace)) {
+    return splitBySpace;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return toIsoDate(parsed);
+  }
+
+  return "";
+};
+
+const getInitialFocus = (appointments: ReadonlyArray<Appointment>): string => {
+  const dates = appointments
+    .map((appointment) => normalizeDate(appointment.date))
+    .filter((date) => date.length > 0);
+
+  const [first, ...rest] = dates;
   if (!first) {
     return toIsoDate(new Date());
   }
 
-  return appointments.reduce((earliest, appointment) => {
-    return appointment.date < earliest ? appointment.date : earliest;
-  }, first.date);
+  let earliest = first;
+  for (const date of rest) {
+    if (date < earliest) {
+      earliest = date;
+    }
+  }
+  return earliest;
 };
 
 const normalizeStatus = (status: string | null | undefined) =>
@@ -68,8 +147,6 @@ const statusBadgeClass = (status: AppointmentStatus | string) => {
   }
 };
 
-const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
 const displayValue = (value: string | null | undefined) => value ?? "-";
 
 const formatTimeRange = (appointment: Appointment) => {
@@ -82,12 +159,13 @@ const formatTimeRange = (appointment: Appointment) => {
   return "All day";
 };
 
-const focus = ref<string>(getInitialFocus(props.appointments));
+const focus = ref<string>(getInitialFocus(sourceAppointments.value));
 const viewType = ref<"week" | "day">("week");
 
 const events = computed<AppointmentCalendarEvent[]>(() =>
-  props.appointments.flatMap((appointment) => {
-    if (!isValidDate(appointment.date ?? "")) {
+  sourceAppointments.value.flatMap((appointment) => {
+    const normalizedDate = normalizeDate(appointment.date);
+    if (!normalizedDate) {
       return [];
     }
 
@@ -95,11 +173,11 @@ const events = computed<AppointmentCalendarEvent[]>(() =>
       isValidTime(appointment.start_time) &&
       isValidTime(appointment.end_time);
     const start = hasTimes
-      ? `${appointment.date} ${appointment.start_time}`
-      : appointment.date;
+      ? `${normalizedDate} ${appointment.start_time}`
+      : normalizedDate;
     const end = hasTimes
-      ? `${appointment.date} ${appointment.end_time}`
-      : appointment.date;
+      ? `${normalizedDate} ${appointment.end_time}`
+      : normalizedDate;
 
     return [
       {
@@ -228,7 +306,13 @@ const goNext = () => {
         @click:more="viewMore"
       >
         <template #event="{ event }">
-            <div class="cc-calendar-event" :style="{ borderLeftColor: event.color }">
+          <div
+            class="cc-calendar-event"
+            :style="{ borderLeftColor: event.color }"
+            role="button"
+            tabindex="0"
+            @click="emit('edit', event.appointment)"
+          >
             <div class="cc-calendar-event-title">
               {{ displayValue(event.appointment.patient_name) }}
             </div>
@@ -251,6 +335,35 @@ const goNext = () => {
             >
               {{ displayValue(event.appointment.status) }}
             </span>
+            <div class="cc-calendar-event-actions">
+              <button
+                type="button"
+                class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--confirm"
+                aria-label="Confirm appointment"
+                title="Confirm"
+                @click.stop
+              >
+                <CheckCircle class="cc-icon" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--no-show"
+                aria-label="Mark as no show"
+                title="No show"
+                @click.stop
+              >
+                <XCircle class="cc-icon" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--cancel"
+                aria-label="Cancel appointment"
+                title="Cancel"
+                @click.stop
+              >
+                <Ban class="cc-icon" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </template>
       </VCalendar>
