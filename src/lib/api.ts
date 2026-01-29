@@ -5,7 +5,8 @@ export const http = axios.create({
 });
 
 http.interceptors.request.use((config) => {
-  const token = import.meta.env.VITE_TOKEN;
+  const token =
+    localStorage.getItem("cc_token") ?? sessionStorage.getItem("cc_token");
   if (token) {
     const headers = AxiosHeaders.from(config.headers);
     headers.set("Authorization", `Bearer ${token}`);
