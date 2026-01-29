@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, isRef, reactive, ref, watch, type Ref } from "vue";
+import { useForm } from "vee-validate";
+import { toTypedSchema } from "@vee-validate/zod";
+import { z } from "zod";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import AutoComplete from "primevue/autocomplete";
 import DatePicker from "primevue/datepicker";
@@ -37,6 +40,12 @@ const doctorName = ref<string | null>(null);
 const filteredDoctors = ref<string[]>([]);
 const socialWorkerName = ref<string | null>(null);
 const filteredSocialWorkers = ref<string[]>([]);
+const nurseAssignmentMode = ref<"primary" | "custom">("primary");
+const doctorAssignmentMode = ref<"primary" | "custom">("primary");
+const socialWorkerAssignmentMode = ref<"primary" | "custom">("primary");
+const { handleSubmit } = useForm({
+  validationSchema: toTypedSchema(z.object({})),
+});
 
 const address = reactive({
   area: "",
@@ -79,6 +88,15 @@ const socialWorkerSchedule = reactive({
   endTime: null as Date | null,
 });
 
+type EmployeeRecurrenceRow = {
+  id: string;
+  day: Weekday;
+  startTime: Date | null;
+  endTime: Date | null;
+};
+
+type EmployeeRowsLike = EmployeeRecurrenceRow[] | Ref<EmployeeRecurrenceRow[]>;
+
 const schedule = reactive({
   isRecurring: false,
   appointmentDate: null as Date | null,
@@ -100,6 +118,31 @@ let recurrenceRowId = 1;
 const recurrenceRows = ref<RecurrenceRow[]>([
   {
     id: `row-${recurrenceRowId++}`,
+    day: defaultWeekday,
+    startTime: null,
+    endTime: null,
+  },
+]);
+let employeeRecurrenceRowId = 1;
+const nurseRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
+  {
+    id: `nurse-row-${employeeRecurrenceRowId++}`,
+    day: defaultWeekday,
+    startTime: null,
+    endTime: null,
+  },
+]);
+const doctorRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
+  {
+    id: `doctor-row-${employeeRecurrenceRowId++}`,
+    day: defaultWeekday,
+    startTime: null,
+    endTime: null,
+  },
+]);
+const socialWorkerRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
+  {
+    id: `social-row-${employeeRecurrenceRowId++}`,
     day: defaultWeekday,
     startTime: null,
     endTime: null,
@@ -149,6 +192,12 @@ const resetForm = () => {
   filteredDoctors.value = [];
   socialWorkerName.value = null;
   filteredSocialWorkers.value = [];
+  nurseAssignmentMode.value = "primary";
+  doctorAssignmentMode.value = "primary";
+  socialWorkerAssignmentMode.value = "primary";
+  nurseName.value = null;
+  doctorName.value = null;
+  socialWorkerName.value = null;
   address.area = "";
   address.city = "";
   address.street = "";
@@ -159,6 +208,30 @@ const resetForm = () => {
   doctorSchedule.endTime = null;
   socialWorkerSchedule.startTime = null;
   socialWorkerSchedule.endTime = null;
+  nurseRecurrenceRows.value = [
+    {
+      id: `nurse-row-${employeeRecurrenceRowId++}`,
+      day: defaultWeekday,
+      startTime: null,
+      endTime: null,
+    },
+  ];
+  doctorRecurrenceRows.value = [
+    {
+      id: `doctor-row-${employeeRecurrenceRowId++}`,
+      day: defaultWeekday,
+      startTime: null,
+      endTime: null,
+    },
+  ];
+  socialWorkerRecurrenceRows.value = [
+    {
+      id: `social-row-${employeeRecurrenceRowId++}`,
+      day: defaultWeekday,
+      startTime: null,
+      endTime: null,
+    },
+  ];
   schedule.isRecurring = false;
   schedule.appointmentDate = null;
   schedule.appointmentStartTime = null;
@@ -176,6 +249,57 @@ const resetForm = () => {
     },
   ];
 };
+
+watch(nurseAssignmentMode, (value) => {
+  if (value === "primary") {
+    nurseName.value = null;
+    filteredNurses.value = [];
+    nurseSchedule.startTime = null;
+    nurseSchedule.endTime = null;
+    nurseRecurrenceRows.value = [
+      {
+        id: `nurse-row-${employeeRecurrenceRowId++}`,
+        day: defaultWeekday,
+        startTime: null,
+        endTime: null,
+      },
+    ];
+  }
+});
+
+watch(doctorAssignmentMode, (value) => {
+  if (value === "primary") {
+    doctorName.value = null;
+    filteredDoctors.value = [];
+    doctorSchedule.startTime = null;
+    doctorSchedule.endTime = null;
+    doctorRecurrenceRows.value = [
+      {
+        id: `doctor-row-${employeeRecurrenceRowId++}`,
+        day: defaultWeekday,
+        startTime: null,
+        endTime: null,
+      },
+    ];
+  }
+});
+
+watch(socialWorkerAssignmentMode, (value) => {
+  if (value === "primary") {
+    socialWorkerName.value = null;
+    filteredSocialWorkers.value = [];
+    socialWorkerSchedule.startTime = null;
+    socialWorkerSchedule.endTime = null;
+    socialWorkerRecurrenceRows.value = [
+      {
+        id: `social-row-${employeeRecurrenceRowId++}`,
+        day: defaultWeekday,
+        startTime: null,
+        endTime: null,
+      },
+    ];
+  }
+});
 
 const handleSave = () => {
   if (!isPatientOption(selectedPatient.value)) {
@@ -246,12 +370,45 @@ const addRecurrenceRow = () => {
   });
 };
 
+const submitForm = handleSubmit(() => {
+  handleSave();
+});
+
 const removeRecurrenceRow = (rowId: string) => {
   if (recurrenceRows.value.length === 1) {
     return;
   }
 
   recurrenceRows.value = recurrenceRows.value.filter((row) => row.id !== rowId);
+};
+
+const resolveEmployeeRows = (rows: EmployeeRowsLike) => {
+  return isRef(rows) ? rows.value : rows;
+};
+
+const addEmployeeRecurrenceRow = (rows: EmployeeRowsLike) => {
+  const target = resolveEmployeeRows(rows);
+  target.push({
+    id: `emp-row-${employeeRecurrenceRowId++}`,
+    day: defaultWeekday,
+    startTime: null,
+    endTime: null,
+  });
+};
+
+const removeEmployeeRecurrenceRow = (
+  rows: EmployeeRowsLike,
+  rowId: string,
+) => {
+  const target = resolveEmployeeRows(rows);
+  if (target.length === 1) {
+    return;
+  }
+
+  const index = target.findIndex((row) => row.id === rowId);
+  if (index >= 0) {
+    target.splice(index, 1);
+  }
 };
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
@@ -326,7 +483,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       </div>
     </template>
 
-    <form class="cc-stack">
+    <form class="cc-stack" @submit.prevent="submitForm">
       <div>
         <label for="patient" class="cc-label cc-label-strong">Patient</label>
         <AutoComplete
@@ -553,6 +710,27 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       <div v-if="showNurseSection" class="cc-panel">
         <div class="cc-section-title">Nurse</div>
         <div class="cc-stack">
+          <div class="cc-row cc-row-wrap">
+            <label class="cc-row cc-stack-sm">
+              <input
+                v-model="nurseAssignmentMode"
+                type="radio"
+                name="nurseAssignmentMode"
+                value="primary"
+              />
+              <span class="cc-label-inline">Primary nurse</span>
+            </label>
+            <label class="cc-row cc-stack-sm">
+              <input
+                v-model="nurseAssignmentMode"
+                type="radio"
+                name="nurseAssignmentMode"
+                value="custom"
+              />
+              <span class="cc-label-inline">Custom nurse</span>
+            </label>
+          </div>
+          <div v-if="nurseAssignmentMode === 'custom'" class="cc-stack">
           <div class="cc-grid">
             <label for="nurseName" class="cc-label">Nurse name</label>
             <AutoComplete
@@ -568,7 +746,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               @complete="searchNurses"
             />
           </div>
-          <div class="cc-grid cc-grid-2">
+          <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
             <div>
               <label for="nurseStartTime" class="cc-label">Start time</label>
               <DatePicker
@@ -594,12 +772,97 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               />
             </div>
           </div>
+          <div v-else class="cc-stack cc-stack-sm">
+            <div
+              v-for="row in nurseRecurrenceRows"
+              :key="row.id"
+              class="cc-grid cc-grid-4 cc-grid-align-end"
+            >
+              <div>
+                <label :for="`nurse-day-${row.id}`" class="cc-label">Day</label>
+                <select
+                  :id="`nurse-day-${row.id}`"
+                  v-model="row.day"
+                  class="cc-select"
+                >
+                  <option v-for="day in weekdayOptions" :key="day" :value="day">
+                    {{ day }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label :for="`nurse-start-${row.id}`" class="cc-label">
+                  Start time
+                </label>
+                <DatePicker
+                  v-model="row.startTime"
+                  :inputId="`nurse-start-${row.id}`"
+                  timeOnly
+                  hourFormat="24"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
+                  :pt="datePickerPt"
+                />
+              </div>
+              <div>
+                <label :for="`nurse-end-${row.id}`" class="cc-label">End time</label>
+                <DatePicker
+                  v-model="row.endTime"
+                  :inputId="`nurse-end-${row.id}`"
+                  timeOnly
+                  hourFormat="24"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
+                  :pt="datePickerPt"
+                />
+              </div>
+              <div class="cc-row cc-row-stretch">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                  @click="addEmployeeRecurrenceRow(nurseRecurrenceRows)"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                  :disabled="nurseRecurrenceRows.length === 1"
+                  @click="removeEmployeeRecurrenceRow(nurseRecurrenceRows, row.id)"
+                >
+                  -
+                </button>
+              </div>
+            </div>
+          </div>
+          </div>
         </div>
       </div>
 
       <div v-if="showDoctorSection" class="cc-panel">
         <div class="cc-section-title">Doctor</div>
         <div class="cc-stack">
+          <div class="cc-row cc-row-wrap">
+            <label class="cc-row cc-stack-sm">
+              <input
+                v-model="doctorAssignmentMode"
+                type="radio"
+                name="doctorAssignmentMode"
+                value="primary"
+              />
+              <span class="cc-label-inline">Primary doctor</span>
+            </label>
+            <label class="cc-row cc-stack-sm">
+              <input
+                v-model="doctorAssignmentMode"
+                type="radio"
+                name="doctorAssignmentMode"
+                value="custom"
+              />
+              <span class="cc-label-inline">Custom doctor</span>
+            </label>
+          </div>
+          <div v-if="doctorAssignmentMode === 'custom'" class="cc-stack">
           <div class="cc-grid">
             <label for="doctorName" class="cc-label">Doctor name</label>
             <AutoComplete
@@ -615,7 +878,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               @complete="searchDoctors"
             />
           </div>
-          <div class="cc-grid cc-grid-2">
+          <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
             <div>
               <label for="doctorStartTime" class="cc-label">Start time</label>
               <DatePicker
@@ -641,12 +904,97 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               />
             </div>
           </div>
+          <div v-else class="cc-stack cc-stack-sm">
+            <div
+              v-for="row in doctorRecurrenceRows"
+              :key="row.id"
+              class="cc-grid cc-grid-4 cc-grid-align-end"
+            >
+              <div>
+                <label :for="`doctor-day-${row.id}`" class="cc-label">Day</label>
+                <select
+                  :id="`doctor-day-${row.id}`"
+                  v-model="row.day"
+                  class="cc-select"
+                >
+                  <option v-for="day in weekdayOptions" :key="day" :value="day">
+                    {{ day }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label :for="`doctor-start-${row.id}`" class="cc-label">
+                  Start time
+                </label>
+                <DatePicker
+                  v-model="row.startTime"
+                  :inputId="`doctor-start-${row.id}`"
+                  timeOnly
+                  hourFormat="24"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
+                  :pt="datePickerPt"
+                />
+              </div>
+              <div>
+                <label :for="`doctor-end-${row.id}`" class="cc-label">End time</label>
+                <DatePicker
+                  v-model="row.endTime"
+                  :inputId="`doctor-end-${row.id}`"
+                  timeOnly
+                  hourFormat="24"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
+                  :pt="datePickerPt"
+                />
+              </div>
+              <div class="cc-row cc-row-stretch">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                  @click="addEmployeeRecurrenceRow(doctorRecurrenceRows)"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                  :disabled="doctorRecurrenceRows.length === 1"
+                  @click="removeEmployeeRecurrenceRow(doctorRecurrenceRows, row.id)"
+                >
+                  -
+                </button>
+              </div>
+            </div>
+          </div>
+          </div>
         </div>
       </div>
 
       <div v-if="showSocialWorkerSection" class="cc-panel">
         <div class="cc-section-title">Social worker</div>
         <div class="cc-stack">
+          <div class="cc-row cc-row-wrap">
+            <label class="cc-row cc-stack-sm">
+              <input
+                v-model="socialWorkerAssignmentMode"
+                type="radio"
+                name="socialWorkerAssignmentMode"
+                value="primary"
+              />
+              <span class="cc-label-inline">Primary social worker</span>
+            </label>
+            <label class="cc-row cc-stack-sm">
+              <input
+                v-model="socialWorkerAssignmentMode"
+                type="radio"
+                name="socialWorkerAssignmentMode"
+                value="custom"
+              />
+              <span class="cc-label-inline">Custom social worker</span>
+            </label>
+          </div>
+          <div v-if="socialWorkerAssignmentMode === 'custom'" class="cc-stack">
           <div class="cc-grid">
             <label for="socialWorkerName" class="cc-label">
               Social worker name
@@ -664,7 +1012,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               @complete="searchSocialWorkers"
             />
           </div>
-          <div class="cc-grid cc-grid-2">
+          <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
             <div>
               <label for="socialWorkerStartTime" class="cc-label">
                 Start time
@@ -692,6 +1040,70 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               />
             </div>
           </div>
+          <div v-else class="cc-stack cc-stack-sm">
+            <div
+              v-for="row in socialWorkerRecurrenceRows"
+              :key="row.id"
+              class="cc-grid cc-grid-4 cc-grid-align-end"
+            >
+              <div>
+                <label :for="`social-day-${row.id}`" class="cc-label">Day</label>
+                <select
+                  :id="`social-day-${row.id}`"
+                  v-model="row.day"
+                  class="cc-select"
+                >
+                  <option v-for="day in weekdayOptions" :key="day" :value="day">
+                    {{ day }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label :for="`social-start-${row.id}`" class="cc-label">
+                  Start time
+                </label>
+                <DatePicker
+                  v-model="row.startTime"
+                  :inputId="`social-start-${row.id}`"
+                  timeOnly
+                  hourFormat="24"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
+                  :pt="datePickerPt"
+                />
+              </div>
+              <div>
+                <label :for="`social-end-${row.id}`" class="cc-label">End time</label>
+                <DatePicker
+                  v-model="row.endTime"
+                  :inputId="`social-end-${row.id}`"
+                  timeOnly
+                  hourFormat="24"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel cc-time-panel"
+                  :pt="datePickerPt"
+                />
+              </div>
+              <div class="cc-row cc-row-stretch">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                  @click="addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                  :disabled="socialWorkerRecurrenceRows.length === 1"
+                  @click="removeEmployeeRecurrenceRow(socialWorkerRecurrenceRows, row.id)"
+                >
+                  -
+                </button>
+              </div>
+            </div>
+          </div>
+          </div>
         </div>
       </div>
 
@@ -717,7 +1129,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       >
         Cancel
       </button>
-      <button type="button" class="cc-btn  save  text-light" @click="handleSave">
+      <button type="submit" class="cc-btn  save  text-light">
         Save
       </button>
     </template>

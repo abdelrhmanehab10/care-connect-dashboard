@@ -70,9 +70,7 @@ const patientNameOptions = computed(() =>
 const quickPatientLabel = computed<string>(
   () => patientNameOptions.value[0] ?? patientOptionsData[0]?.name ?? "Patient",
 );
-const quickDoctorLabel = computed<string>(
-  () => doctorOptions[0] ?? "Doctor",
-);
+const quickDoctorLabel = computed<string>(() => doctorOptions[0] ?? "Doctor");
 
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -261,7 +259,6 @@ watch([apiStart, apiEnd], () => {
 <template>
   <div class="cc-page">
     <div class="cc-container cc-layout">
-      <AppointmentCards/>
       <section class="cc-main">
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointments</h2>
@@ -275,43 +272,18 @@ watch([apiStart, apiEnd], () => {
           <div class="cc-section-title">Filters</div>
           <div class="cc-help-text">Refine by staff member.</div>
         </div>
-        <div class="cc-quick-filters">
-          <span class="cc-label cc-label-inline">Quick filters</span>
-          <div class="cc-quick-filter-row">
-            <button
-              type="button"
-              class="cc-quick-filter"
-              :class="{ 'is-active': isThisWeekActive }"
-              @click="toggleThisWeek"
-            >
-              This week
-            </button>
-            <button
-              type="button"
-              class="cc-quick-filter"
-              :class="{ 'is-active': statusTagFilter === 'New' }"
-              @click="toggleStatusTag('New')"
-            >
-              New
-            </button>
-            <button
-              type="button"
-              class="cc-quick-filter"
-              :class="{ 'is-active': patientFilter === quickPatientLabel }"
-              @click="toggleQuickPatient"
-            >
-              {{ quickPatientLabel }}
-            </button>
-            <button
-              type="button"
-              class="cc-quick-filter"
-              :class="{ 'is-active': employeeFilter === quickDoctorLabel }"
-              @click="toggleQuickDoctor"
-            >
-              {{ quickDoctorLabel }}
-            </button>
-          </div>
-        </div>
+        <AppointmentCards
+          :is-this-week-active="isThisWeekActive"
+          :status-tag-filter="statusTagFilter"
+          :quick-patient-label="quickPatientLabel"
+          :quick-doctor-label="quickDoctorLabel"
+          :patient-filter="patientFilter"
+          :employee-filter="employeeFilter"
+          @toggle-week="toggleThisWeek"
+          @toggle-status="toggleStatusTag"
+          @toggle-patient="toggleQuickPatient"
+          @toggle-doctor="toggleQuickDoctor"
+        />
         <div class="cc-filters-grid">
           <div>
             <label for="employeeFilter" class="cc-label">Employee</label>
@@ -372,7 +344,7 @@ watch([apiStart, apiEnd], () => {
           <div class="cc-filters-actions">
             <button
               type="button"
-              class="cc-btn  cc-btn-sm cc-btn-input bg-danger"
+              class="cc-btn cc-btn-sm cc-btn-input bg-danger"
               @click="clearFilters"
             >
               Clear

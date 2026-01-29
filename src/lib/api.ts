@@ -7,17 +7,9 @@ export const http = axios.create({
 http.interceptors.request.use((config) => {
   const token = import.meta.env.VITE_TOKEN;
   if (token) {
-    if (!config.headers) {
-      config.headers = new AxiosHeaders();
-    }
-    if (config.headers instanceof AxiosHeaders) {
-      config.headers.set("Authorization", `Bearer ${token}`);
-    } else {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      } as AxiosHeaders;
-    }
+    const headers = AxiosHeaders.from(config.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    config.headers = headers;
   }
   return config;
 });
