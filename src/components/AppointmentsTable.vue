@@ -222,23 +222,12 @@ const handleCellEditComplete = (
 <template>
   <div class="cc-card">
     <div class="cc-table-toolbar">
-      <button
-        type="button"
-        class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light"
-        @click="emit('export-excel')"
-      >
+      <button type="button" class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light" @click="emit('export-excel')">
         Export Excel
       </button>
     </div>
-    <DataTable
-      :value="displayAppointments"
-      dataKey="id"
-      :editMode="editMode"
-      @cell-edit-init="handleCellEditInit"
-      @cell-edit-cancel="handleCellEditCancel"
-      @cell-edit-complete="handleCellEditComplete"
-      :pt="dataTablePt"
-    >
+    <DataTable :value="displayAppointments" dataKey="id" :editMode="editMode" @cell-edit-init="handleCellEditInit"
+      @cell-edit-cancel="handleCellEditCancel" @cell-edit-complete="handleCellEditComplete" :pt="dataTablePt">
       <template #empty>
         <div v-if="!isLoading" class="cc-empty">No appointments yet.</div>
       </template>
@@ -252,18 +241,13 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <input
-                  v-model="data.date"
-                  type="date"
-                  class="cc-input cc-input-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                />
+                <input v-model="data.date" type="date" class="cc-input cc-input-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback,
+                  )
+                  " />
               </div>
               <div class="cc-cell-edit-actions">
                 <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
@@ -289,30 +273,18 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.patient?.name ?? ''"
-                  :suggestions="filteredPatients"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search patient"
+                <AutoComplete :modelValue="data.patient?.name ?? ''" :suggestions="filteredPatients"
+                  :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search patient"
                   @update:modelValue="
                     setFieldValue(data, 'patient.name', $event)
-                  "
-                  @complete="searchPatients"
-                  @keydown="
+                    " @complete="searchPatients" @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
               <div class="cc-cell-edit-actions">
                 <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
@@ -340,30 +312,20 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields cc-cell-edit-fields-row">
-                <input
-                  v-model="data.start_time"
-                  type="time"
-                  class="cc-input cc-input-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                />
-                <input
-                  v-model="data.end_time"
-                  type="time"
-                  class="cc-input cc-input-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                />
+                <input v-model="data.start_time" type="time" class="cc-input cc-input-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback,
+                  )
+                  " />
+                <input v-model="data.end_time" type="time" class="cc-input cc-input-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback,
+                  )
+                  " />
               </div>
               <div class="cc-cell-edit-actions">
                 <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
@@ -391,22 +353,14 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <select
-                  v-model="data.status"
-                  class="cc-select cc-select-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                >
-                  <option
-                    v-for="status in statusOptions"
-                    :key="status"
-                    :value="status"
-                  >
+                <select v-model="data.status" class="cc-select cc-select-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback,
+                  )
+                  ">
+                  <option v-for="status in statusOptions" :key="status" :value="status">
                     {{ status }}
                   </option>
                 </select>
@@ -435,28 +389,16 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.nurse?.name ?? ''"
-                  :suggestions="filteredNurses"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search nurse"
-                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
-                  @complete="searchNurses"
-                  @keydown="
+                <AutoComplete :modelValue="data.nurse?.name ?? ''" :suggestions="filteredNurses" :completeOnFocus="true"
+                  :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search nurse"
+                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)" @complete="searchNurses" @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
               <div class="cc-cell-edit-actions">
                 <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
@@ -482,28 +424,16 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.doctor?.name ?? ''"
-                  :suggestions="filteredDoctors"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search doctor"
-                  @update:modelValue="setFieldValue(data, 'doctor.name', $event)"
-                  @complete="searchDoctors"
-                  @keydown="
+                <AutoComplete :modelValue="data.doctor?.name ?? ''" :suggestions="filteredDoctors"
+                  :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search doctor"
+                  @update:modelValue="setFieldValue(data, 'doctor.name', $event)" @complete="searchDoctors" @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
               <div class="cc-cell-edit-actions">
                 <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
@@ -529,44 +459,26 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.social_worker?.name ?? ''"
-                  :suggestions="filteredSocialWorkers"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search social worker"
+                <AutoComplete :modelValue="data.social_worker?.name ?? ''" :suggestions="filteredSocialWorkers"
+                  :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search social worker"
                   @update:modelValue="
                     setFieldValue(data, 'social_worker.name', $event)
-                  "
-                  @complete="searchSocialWorkers"
-                  @keydown="
+                    " @complete="searchSocialWorkers" @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -584,39 +496,25 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <select
-                  v-model="data.visit_type"
-                  class="cc-select cc-select-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                >
-                  <option
-                    v-for="type in visitTypeOptions"
-                    :key="type"
-                    :value="type"
-                  >
+                <select v-model="data.visit_type" class="cc-select cc-select-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback,
+                  )
+                  ">
+                  <option v-for="type in visitTypeOptions" :key="type" :value="type">
                     {{ type }}
                   </option>
                 </select>
               </div>
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>

@@ -1,4 +1,41 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { ref } from "vue";
+
+interface Card {
+  title: string;
+  value: number;
+  icon: string;
+  theme: string;
+}
+
+const cards = ref<Card[]>([
+  {
+    title: "Total Visits Today",
+    value:  0,
+    icon: "fa-solid fa-notes-medical",
+    theme: "theme-teal",
+  },
+  {
+    title: "Total This Week",
+    value: 19,
+    icon: "fa-solid fa-circle-check",
+    theme: "theme-blue",
+  },
+  {
+    title: "Canceled Appointments",
+    value: 2,
+    icon: "fa-solid fa-clock",
+    theme: "theme-gold",
+  },
+  {
+    title: "Confirmed Appointments",
+    value: 29,
+    icon: "fa-solid fa-calendar-xmark",
+    theme: "theme-purple",
+  },
+]);
+</script>
+
 <template>
   <div class="row g-3 mb-3">
     <div class="col-12 col-md-3" v-for="(card, i) in cards" :key="i">
@@ -16,7 +53,7 @@
     </div>
   </div>
 </template>
-<script>
+<!-- <script>
 export default {
   name: "AppointmentCards",
   data() {
@@ -50,4 +87,4 @@ export default {
     };
   },
 };
-</script>
+</script> -->
