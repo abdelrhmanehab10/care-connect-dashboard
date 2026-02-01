@@ -12,15 +12,19 @@ import AppointmentDetailsDialog from "./components/AppointmentDetailsDialog.vue"
 import AppointmentsCalendar from "./components/AppointmentsCalendar.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
 import AppointmentCards from "./components/AppointmentCards.vue";
+import { fetchAppointmentDetails } from "./services/appointments";
 import {
   statusBadgeClass,
   useAppointmentsQuery,
 } from "./composables/useAppointmentsQuery";
 import type { Appointment } from "./types";
 import {
+  areaOptions,
   doctorOptions,
   nurseOptions,
   patientOptions as patientOptionsData,
+  socialWorkerOptions,
+  weekdayOptions,
   type AppointmentStatus,
 } from "./data/options";
 import { autoCompletePt, datePickerPt, tabViewPt } from "./ui/primevuePt";
@@ -30,10 +34,14 @@ const isDetailsOpen = ref(false);
 const activeViewIndex = ref(0);
 const page = ref(1);
 const selectedAppointment = ref<Appointment | null>(null);
+const editingAppointment = ref<Appointment | null>(null);
+const isEditLoading = ref(false);
 
 const employeeFilter = ref<string | null>(null);
 const filteredEmployees = ref<string[]>([]);
-const employeeOptions = Array.from(new Set([...doctorOptions, ...nurseOptions]));
+const employeeOptions = Array.from(
+  new Set([...doctorOptions, ...nurseOptions]),
+);
 
 const patientFilter = ref<string | null>(null);
 const filteredPatients = ref<string[]>([]);
@@ -42,7 +50,13 @@ const statusTagFilter = ref<AppointmentStatus | null>(null);
 
 // ✅ ADD: options lists (كانت ناقصة وبتعمل error)
 const visitTypeOptions = ["Routine", "Urgent", "Home Visit", "Clinic Visit"];
-const stateOptions = ["Scheduled", "In-Progress", "Completed", "Cancelled", "No Show"];
+const stateOptions = [
+  "Scheduled",
+  "In-Progress",
+  "Completed",
+  "Cancelled",
+  "No Show",
+];
 
 const visitTypeFilter = ref<string | null>(null);
 const filteredVisitTypes = ref<string[]>([]);
@@ -60,7 +74,60 @@ const formatDate = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const apiStart = computed(() => (startDate.value ? formatDate(startDate.value) : ""));
+const isValidIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const normalizeAppointmentDate = (value: string | null | undefined) => {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim().replace(/\//g, "-");
+  const dateOnly = (trimmed.split("T")[0] ?? "").split(" ")[0] ?? "";
+  if (isValidIsoDate(dateOnly)) {
+    return dateOnly;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return formatDate(parsed);
+  }
+
+  return "";
+};
+
+const parseIsoDate = (value: string) => {
+  const [yearRaw = Number.NaN, monthRaw = Number.NaN, dayRaw = Number.NaN] =
+    value.split("-").map(Number);
+  if (
+    !Number.isFinite(yearRaw) ||
+    !Number.isFinite(monthRaw) ||
+    !Number.isFinite(dayRaw)
+  ) {
+    return null;
+  }
+  return new Date(yearRaw, monthRaw - 1, dayRaw);
+};
+
+const mergeAppointmentDetails = (
+  details: Partial<Appointment>,
+  fallback: Appointment,
+): Appointment => ({
+  ...fallback,
+  ...details,
+  date:
+    normalizeAppointmentDate(details.date) ||
+    details.date ||
+    fallback.date,
+  start_time: details.start_time ?? fallback.start_time,
+  end_time: details.end_time ?? fallback.end_time,
+  patient: details.patient ?? fallback.patient,
+  doctor: details.doctor ?? fallback.doctor,
+  nurse: details.nurse ?? fallback.nurse,
+});
+
+const apiStart = computed(() =>
+  startDate.value ? formatDate(startDate.value) : "",
+);
 const apiEnd = computed(() => (endDate.value ? formatDate(endDate.value) : ""));
 
 const {
@@ -68,21 +135,25 @@ const {
   data: appointmentsResponse,
   isLoading,
   statusOptions,
+  refetch,
 } = useAppointmentsQuery({
   page,
   start: apiStart,
   end: apiEnd,
 });
 
-const normalizeString = (value: string | null | undefined) => value?.toString().trim() ?? "";
+const normalizeString = (value: string | null | undefined) =>
+  value?.toString().trim() ?? "";
 
 const patientNameOptions = computed(() =>
   Array.from(
     new Set(
-      appointments.value
-        .map((appointment) => normalizeString(appointment.patient_name))
-        .filter((name) => name.length > 0),
-    ),
+        appointments.value
+          .map((appointment) =>
+            normalizeString(appointment.patient?.name ?? ""),
+          )
+          .filter((name) => name.length > 0),
+      ),
   ),
 );
 
@@ -97,7 +168,9 @@ const searchEmployees = (event: AutoCompleteCompleteEvent) => {
     filteredEmployees.value = [...employeeOptions];
     return;
   }
-  filteredEmployees.value = employeeOptions.filter((name) => name.toLowerCase().includes(query));
+  filteredEmployees.value = employeeOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
 };
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
@@ -106,7 +179,9 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
     filteredPatients.value = [...patientNameOptions.value];
     return;
   }
-  filteredPatients.value = patientNameOptions.value.filter((name) => name.toLowerCase().includes(query));
+  filteredPatients.value = patientNameOptions.value.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
 };
 
 const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
@@ -115,7 +190,9 @@ const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
     filteredVisitTypes.value = [...visitTypeOptions];
     return;
   }
-  filteredVisitTypes.value = visitTypeOptions.filter((name) => name.toLowerCase().includes(query));
+  filteredVisitTypes.value = visitTypeOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
 };
 
 const searchStates = (event: AutoCompleteCompleteEvent) => {
@@ -124,7 +201,9 @@ const searchStates = (event: AutoCompleteCompleteEvent) => {
     filteredStates.value = [...stateOptions];
     return;
   }
-  filteredStates.value = stateOptions.filter((name) => name.toLowerCase().includes(query));
+  filteredStates.value = stateOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
 };
 
 const startOfWeek = (value: Date) => {
@@ -150,7 +229,9 @@ const isThisWeekActive = computed(() => {
   const now = new Date();
   const weekStart = startOfWeek(now);
   const weekEnd = endOfWeek(now);
-  return isSameDay(startDate.value, weekStart) && isSameDay(endDate.value, weekEnd);
+  return (
+    isSameDay(startDate.value, weekStart) && isSameDay(endDate.value, weekEnd)
+  );
 });
 const exportExcel = () => {
   const rows = filteredAppointments.value;
@@ -167,16 +248,16 @@ const exportExcel = () => {
     "End Time",
   ];
 
-  const data = rows.map((a: any) => [
-    a.date ?? "",
-    a.patient_name ?? "",
-    a.doctor_name ?? "",
-    a.nurse_name ?? "",
-    a.status ?? "",
-    a.visit_type ?? "",
-    a.state ?? "",
-    a.start_time ?? "",
-    a.end_time ?? "",
+  const data = rows.map((appointment) => [
+    appointment.date ?? "",
+    appointment.patient?.name ?? "",
+    appointment.doctor?.name ?? "",
+    appointment.nurse?.name ?? "",
+    appointment.status ?? "",
+    appointment.visit_type ?? "",
+    appointment.state ?? "",
+    appointment.start_time ?? "",
+    appointment.end_time ?? "",
   ]);
 
   const csv = [headers, ...data]
@@ -208,19 +289,27 @@ const filteredAppointments = computed(() => {
   const end = apiEnd.value;
 
   return appointments.value.filter((appointment) => {
-    if (start && appointment.date < start) return false;
-    if (end && appointment.date > end) return false;
+    if (start || end) {
+      const appointmentDate = normalizeAppointmentDate(appointment.date);
+      if (!appointmentDate) return false;
+      if (start && appointmentDate < start) return false;
+      if (end && appointmentDate > end) return false;
+    }
     if (statusQuery && appointment.status !== statusQuery) return false;
 
-    const doctorName = normalizeString(appointment.doctor_name).toLowerCase();
-    const nurseName = normalizeString(appointment.nurse_name).toLowerCase();
-    const patientName = normalizeString(appointment.patient_name).toLowerCase();
+    const doctorName = normalizeString(appointment.doctor?.name ?? "").toLowerCase();
+    const nurseName = normalizeString(appointment.nurse?.name ?? "").toLowerCase();
+    const patientName = normalizeString(appointment.patient?.name ?? "").toLowerCase();
 
-    if (employeeQuery && !(doctorName.includes(employeeQuery) || nurseName.includes(employeeQuery))) return false;
+    if (
+      employeeQuery &&
+      !(doctorName.includes(employeeQuery) || nurseName.includes(employeeQuery))
+    )
+      return false;
     if (patientQuery && !patientName.includes(patientQuery)) return false;
 
-    const visitType = normalizeString((appointment as any).visit_type).toLowerCase();
-    const state = normalizeString((appointment as any).state).toLowerCase();
+    const visitType = normalizeString(appointment.visit_type ?? "").toLowerCase();
+    const state = normalizeString(appointment.state ?? "").toLowerCase();
 
     if (visitTypeQuery && !visitType.includes(visitTypeQuery)) return false;
     if (stateQuery && !state.includes(stateQuery)) return false;
@@ -273,16 +362,30 @@ const toggleThisWeek = () => {
 const toggleQuickPatient = () => {
   const patientName = quickPatientLabel.value;
   if (!patientName || patientName === "Patient") return;
-  patientFilter.value = patientFilter.value === patientName ? null : patientName;
+  patientFilter.value =
+    patientFilter.value === patientName ? null : patientName;
 };
 
 const toggleQuickDoctor = () => {
   const doctorName = quickDoctorLabel.value;
   if (!doctorName || doctorName === "Doctor") return;
-  employeeFilter.value = employeeFilter.value === doctorName ? null : doctorName;
+  employeeFilter.value =
+    employeeFilter.value === doctorName ? null : doctorName;
 };
 
-const handleCellEditComplete = (_event: DataTableCellEditCompleteEvent<Appointment>) => {
+const syncCalendarRange = (payload: { start: string; end: string }) => {
+  const nextStart = parseIsoDate(payload.start);
+  const nextEnd = parseIsoDate(payload.end);
+  if (!nextStart || !nextEnd) {
+    return;
+  }
+  startDate.value = nextStart;
+  endDate.value = nextEnd;
+};
+
+const handleCellEditComplete = (
+  _event: DataTableCellEditCompleteEvent<Appointment>,
+) => {
   return;
 };
 
@@ -291,8 +394,12 @@ const openDetails = (appointment: Appointment) => {
   isDetailsOpen.value = true;
 };
 
-const canGoPrev = computed(() => (appointmentsResponse.value?.currentPage ?? 1) > 1);
-const canGoNext = computed(() => appointmentsResponse.value?.hasMorePages ?? false);
+const canGoPrev = computed(
+  () => (appointmentsResponse.value?.currentPage ?? 1) > 1,
+);
+const canGoNext = computed(
+  () => appointmentsResponse.value?.hasMorePages ?? false,
+);
 
 const totalPages = computed(() => {
   const total = appointmentsResponse.value?.total ?? 0;
@@ -308,8 +415,46 @@ const goNext = () => {
   if (canGoNext.value) page.value += 1;
 };
 
+const openAddDialog = () => {
+  editingAppointment.value = null;
+  isDialogOpen.value = true;
+};
+
+const openEditDialog = (appointment: Appointment) => {
+  const fallback = appointment;
+  isDetailsOpen.value = false;
+  isDialogOpen.value = true;
+  isEditLoading.value = true;
+  editingAppointment.value = null;
+  fetchAppointmentDetails(appointment.id)
+    .then((details) => {
+      editingAppointment.value = mergeAppointmentDetails(
+        details as Partial<Appointment>,
+        fallback,
+      );
+    })
+    .catch((error) => {
+      console.error("Failed to load appointment details.", error);
+      editingAppointment.value = fallback;
+    })
+    .finally(() => {
+      isEditLoading.value = false;
+    });
+};
+
+const refreshAppointments = () => {
+  void refetch();
+};
+
 watch([apiStart, apiEnd], () => {
   page.value = 1;
+});
+
+watch(isDialogOpen, (value) => {
+  if (!value) {
+    editingAppointment.value = null;
+    isEditLoading.value = false;
+  }
 });
 </script>
 
@@ -319,85 +464,163 @@ watch([apiStart, apiEnd], () => {
       <section class="cc-main">
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointments</h2>
-          <Button label="Add appointment" class="cc-btn cc-btn-primary cc-toolbar-action text-light"
-            @click="isDialogOpen = true" />
+          <Button
+            label="Add Appointment"
+            class="cc-btn cc-btn-primary cc-toolbar-action text-light"
+            @click="openAddDialog"
+          />
         </div>
-        <div class="cc-sidebar-header">
-          <div class="cc-section-title">Filters</div>
-          <div class="cc-help-text">Refine by staff member.</div>
-        </div>
-        <AppointmentCards :is-this-week-active="isThisWeekActive" :status-tag-filter="statusTagFilter"
-          :quick-patient-label="quickPatientLabel" :quick-doctor-label="quickDoctorLabel"
-          :patient-filter="patientFilter" :employee-filter="employeeFilter" @toggle-week="toggleThisWeek"
-          @toggle-status="toggleStatusTag" @toggle-patient="toggleQuickPatient" @toggle-doctor="toggleQuickDoctor" />
-        <div class="row">
-          <div class="col-md-2">
-            <label for="employeeFilter" class="cc-label">Employee</label>
-            <AutoComplete v-model="employeeFilter" inputId="employeeFilter" :suggestions="filteredEmployees"
-              :completeOnFocus="true" :autoOptionFocus="true" appendTo="body" panelClass="cc-autocomplete-panel"
-              inputClass="cc-input" :pt="autoCompletePt" placeholder="Search nurse or doctor"
-              @complete="searchEmployees" />
+        <div class="border p-3 rounded mb-2">
+          <div class="cc-sidebar-header">
+            <div class="cc-section-title">Filters</div>
+            <div class="cc-help-text">Refine by staff member.</div>
           </div>
-          <div class="col-md-2">
-            <label for="patientFilter" class="cc-label">Patient</label>
-            <AutoComplete v-model="patientFilter" inputId="patientFilter" :suggestions="filteredPatients"
-              :completeOnFocus="true" :autoOptionFocus="true" appendTo="body" panelClass="cc-autocomplete-panel"
-              inputClass="cc-input" :pt="autoCompletePt" placeholder="Search patient" @complete="searchPatients" />
-          </div>
-          <div class="col-md-2">
-            <label for="filterStartDate" class="cc-label">Start date</label>
-            <DatePicker v-model="startDate" inputId="filterStartDate" dateFormat="yy-mm-dd" appendTo="body"
-              panelClass="cc-datepicker-panel" :pt="datePickerPt" placeholder="Start date" />
-          </div>
-          <div class="col-md-2">
-            <label for="filterEndDate" class="cc-label">End date</label>
-            <DatePicker v-model="endDate" inputId="filterEndDate" dateFormat="yy-mm-dd" appendTo="body"
-              panelClass="cc-datepicker-panel" :pt="datePickerPt" placeholder="End date" />
-          </div>
-          <div class="col-md-2">
-            <label for="visitTypeFilter" class="cc-label">Visit Type</label>
-            <AutoComplete v-model="visitTypeFilter" inputId="visitTypeFilter" :suggestions="filteredVisitTypes"
-              :completeOnFocus="true" :autoOptionFocus="true" appendTo="body" panelClass="cc-autocomplete-panel"
-              inputClass="cc-input" :pt="autoCompletePt" placeholder="Select visit type" @complete="searchVisitTypes" />
-          </div>
+          <AppointmentCards
+            :is-this-week-active="isThisWeekActive"
+            :status-tag-filter="statusTagFilter"
+            :quick-patient-label="quickPatientLabel"
+            :quick-doctor-label="quickDoctorLabel"
+            :patient-filter="patientFilter"
+            :employee-filter="employeeFilter"
+            @toggle-week="toggleThisWeek"
+            @toggle-status="toggleStatusTag"
+            @toggle-patient="toggleQuickPatient"
+            @toggle-doctor="toggleQuickDoctor"
+          />
+          <div class="row">
+            <div class="col-md-2">
+              <label for="employeeFilter" class="cc-label">Employee</label>
+              <AutoComplete
+                v-model="employeeFilter"
+                inputId="employeeFilter"
+                :suggestions="filteredEmployees"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Search nurse or doctor"
+                @complete="searchEmployees"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="patientFilter" class="cc-label">Patient</label>
+              <AutoComplete
+                v-model="patientFilter"
+                inputId="patientFilter"
+                :suggestions="filteredPatients"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Search patient"
+                @complete="searchPatients"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="filterStartDate" class="cc-label">Start date</label>
+              <DatePicker
+                v-model="startDate"
+                inputId="filterStartDate"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                panelClass="cc-datepicker-panel"
+                :pt="datePickerPt"
+                placeholder="Start date"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="filterEndDate" class="cc-label">End date</label>
+              <DatePicker
+                v-model="endDate"
+                inputId="filterEndDate"
+                dateFormat="yy-mm-dd"
+                appendTo="body"
+                panelClass="cc-datepicker-panel"
+                :pt="datePickerPt"
+                placeholder="End date"
+              />
+            </div>
+            <div class="col-md-2">
+              <label for="visitTypeFilter" class="cc-label">Visit Type</label>
+              <AutoComplete
+                v-model="visitTypeFilter"
+                inputId="visitTypeFilter"
+                :suggestions="filteredVisitTypes"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Select visit type"
+                @complete="searchVisitTypes"
+              />
+            </div>
 
-          <div class="col-md-2">
-            <label for="stateFilter" class="cc-label">States</label>
-            <AutoComplete v-model="stateFilter" inputId="stateFilter" :suggestions="filteredStates"
-              :completeOnFocus="true" :autoOptionFocus="true" appendTo="body" panelClass="cc-autocomplete-panel"
-              inputClass="cc-input" :pt="autoCompletePt" placeholder="Select state" @complete="searchStates" />
+            <div class="col-md-2">
+              <label for="stateFilter" class="cc-label">States</label>
+              <AutoComplete
+                v-model="stateFilter"
+                inputId="stateFilter"
+                :suggestions="filteredStates"
+                :completeOnFocus="true"
+                :autoOptionFocus="true"
+                appendTo="body"
+                panelClass="cc-autocomplete-panel"
+                inputClass="cc-input"
+                :pt="autoCompletePt"
+                placeholder="Select state"
+                @complete="searchStates"
+              />
+            </div>
+            <div class="cc-filters-actions">
+              <button
+                type="button"
+                class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2 cc-btn-full"
+                @click="clearFilters"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
-          <div class="cc-filters-actions">
-          
-            <button type="button" class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2"
-              @click="clearFilters">
-              Clear
-            </button>
-              <button type="button" class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light mt-3 mb-2 me-2"
-              @click="exportExcel">
-              Export Excel
-            </button>
-
-          </div>
-
         </div>
 
         <TabView v-model:activeIndex="activeViewIndex" :pt="tabViewPt">
           <TabPanel header="Table View" value="table">
             <div class="cc-table-card">
-              <AppointmentsTable :appointments="filteredAppointments" :is-loading="isLoading"
-                :status-options="statusOptions" :status-badge-class="statusBadgeClass"
-                @cell-edit-complete="handleCellEditComplete" @view-details="openDetails" />
+              <AppointmentsTable
+                :appointments="filteredAppointments"
+                :is-loading="isLoading"
+                :status-options="statusOptions"
+                :status-badge-class="statusBadgeClass"
+                @cell-edit-complete="handleCellEditComplete"
+                @view-details="openDetails"
+                @export-excel="exportExcel"
+              />
               <div class="cc-table-footer">
                 <div class="cc-help-text">
                   Page {{ appointmentsResponse?.currentPage ?? 1 }} of
                   {{ totalPages }}
                 </div>
                 <div class="cc-row cc-stack-sm">
-                  <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" :disabled="!canGoPrev" @click="goPrev">
+                  <button
+                    type="button"
+                    class="cc-btn cc-btn-outline cc-btn-sm"
+                    :disabled="!canGoPrev"
+                    @click="goPrev"
+                  >
                     Prev
                   </button>
-                  <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" :disabled="!canGoNext" @click="goNext">
+                  <button
+                    type="button"
+                    class="cc-btn cc-btn-outline cc-btn-sm"
+                    :disabled="!canGoNext"
+                    @click="goNext"
+                  >
                     Next
                   </button>
                 </div>
@@ -405,13 +628,34 @@ watch([apiStart, apiEnd], () => {
             </div>
           </TabPanel>
           <TabPanel header="Calendar View" value="calendar">
-            <AppointmentsCalendar :appointments="filteredAppointments" />
+            <AppointmentsCalendar
+              :appointments="filteredAppointments"
+              :is-loading="isLoading"
+              @range-change="syncCalendarRange"
+              @edit="openEditDialog"
+              @confirm-all="refreshAppointments"
+              @no-show="refreshAppointments"
+            />
           </TabPanel>
         </TabView>
       </section>
     </div>
 
-    <AppointmentDialog v-model="isDialogOpen" />
-    <AppointmentDetailsDialog v-model="isDetailsOpen" :appointment="selectedAppointment" />
+    <AppointmentDialog
+      v-model="isDialogOpen"
+      :appointment="editingAppointment"
+      :is-loading="isEditLoading"
+      :patient-options="patientOptionsData"
+      :nurse-options="nurseOptions"
+      :doctor-options="doctorOptions"
+      :social-worker-options="socialWorkerOptions"
+      :area-options="areaOptions"
+      :visit-type-options="visitTypeOptions"
+      :weekday-options="weekdayOptions"
+    />
+    <AppointmentDetailsDialog
+      v-model="isDetailsOpen"
+      :appointment="selectedAppointment"
+    />
   </div>
 </template>

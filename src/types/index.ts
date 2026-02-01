@@ -1,13 +1,28 @@
 export type Appointment = {
   id: number;
-  patient_name: string;
+  patient: {
+    id: number;
+    name: string;
+    date_of_birth: string;
+  };
   start_time: string;
   end_time: string;
-  status: string;
   date: string;
-  nurse_name: string;
-  doctor_name: string;
+  status: string;
+  nurse: {
+    id: number;
+    name: string;
+  };
+  doctor: {
+    id: number;
+    name: string;
+  };
+  social_worker?: {
+    id: number;
+    name: string;
+  } | null;
   visit_type: string;
+  state?: string | null;
 };
 
 type Confirmation = {
