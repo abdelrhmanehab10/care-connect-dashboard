@@ -223,10 +223,7 @@
       "name": "Appointments",
       "item": [
         {
-          "name": "Get All appointments & Filter By Date",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
+          "name": "Appointments List",
           "request": {
             "auth": {
               "type": "bearer",
@@ -238,40 +235,27 @@
                 }
               ]
             },
-            "method": "GET",
+            "method": "POST",
             "header": [],
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "date Y-m-d",
-                  "type": "text"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "date  Y-m-d",
-                  "type": "text"
-                },
-                {
-                  "key": "view_pagination",
-                  "value": "true",
-                  "description": "boolean",
-                  "type": "text"
+              "mode": "raw",
+              "raw": "{\n    \"start\":\"\",\n    \"end\":\"\",\n    \"view_pagination\":true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": {
-              "raw": "{{url}}/api/scheduler/appointments",
+              "raw": "{{url}}/api/vue/appointments/list",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
-                "scheduler",
-                "appointments"
+                "vue",
+                "appointments",
+                "list"
               ]
             }
           },
@@ -341,7 +325,7 @@
           ]
         },
         {
-          "name": "get Appointment Details",
+          "name": "Appointment Details",
           "request": {
             "auth": {
               "type": "bearer",
@@ -356,15 +340,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/appointment/details/1",
+              "raw": "{{url}}/api/vue/appointments/details/20",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
-                "appointment",
+                "vue",
+                "appointments",
                 "details",
-                "1"
+                "20"
               ]
             }
           },
@@ -378,7 +363,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "value": "{{token}}",
                   "type": "string"
                 }
               ]
@@ -387,7 +372,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"3\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"1\",\n  \"is_recurring\": \"0\",\n  \"date\": \"2026-02-31\",\n  \"start_time\": \"02:02\",\n  \"end_time\": \"04:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "raw": "{\n  \"patient_id\": \"3\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"2\",\n  \"is_recurring\": \"1\",\n  \"date\": \"2026-01-31\",\n  \"start_time\": \"04:02\",\n  \"end_time\": \"06:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"04:00\",\n      \"end_time\": \"05:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"05:00\",\n      \"end_time\": \"05:30\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"05:30\",\n      \"end_time\": \"06:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -395,49 +380,15 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/appointments/add",
+              "raw": "{{url}}/api/vue/appointments/create",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
+                "vue",
                 "appointments",
-                "add"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Autocomplete patient search",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{url}}/api/patients/autocomplete?q=yass",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "patients",
-                "autocomplete"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "yass"
-                }
+                "create"
               ]
             }
           },
@@ -451,7 +402,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "value": "{{token}}",
                   "type": "string"
                 }
               ]
@@ -460,7 +411,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"4\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"1\",\n  \"is_recurring\": \"0\",\n  \"date\": \"2026-02-31\",\n  \"start_time\": \"02:02\",\n  \"end_time\": \"04:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "raw": "{\n  \"patient_id\": \"4\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"1\",\n  \"is_recurring\": \"1\",\n  \"date\": \"2026-02-31\",\n  \"start_time\": \"02:02\",\n  \"end_time\": \"04:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -468,22 +419,23 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/appointments/update/20",
+              "raw": "{{url}}/api/vue/appointments/update/1",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
+                "vue",
                 "appointments",
                 "update",
-                "20"
+                "1"
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Confirm Appointment",
+          "name": "Employee Confirm Appointment",
           "request": {
             "auth": {
               "type": "bearer",
@@ -498,12 +450,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/appointments/confirm/{{appointment_id}}/{{employee_id}}",
+              "raw": "{{url}}/api/vue/appointments/confirm/{{appointment_id}}/{{employee_id}}",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
+                "vue",
                 "appointments",
                 "confirm",
                 "{{appointment_id}}",
@@ -514,7 +467,7 @@
           "response": []
         },
         {
-          "name": "Quick Confirm Appointment",
+          "name": "Confirm Appointment All At Once",
           "request": {
             "auth": {
               "type": "bearer",
@@ -526,17 +479,18 @@
                 }
               ]
             },
-            "method": "POST",
+            "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/appointments/quick-confirm/{{appointment_id}}",
+              "raw": "{{url}}/api/vue/appointments/confirm-all/{{appointment_id}}",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
+                "vue",
                 "appointments",
-                "quick-confirm",
+                "confirm-all",
                 "{{appointment_id}}"
               ]
             }
@@ -559,12 +513,13 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/appointments/quick-no-show/{{appointment_id}}",
+              "raw": "{{url}}/api/vue/appointments/quick-no-show/{{appointment_id}}",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
+                "vue",
                 "appointments",
                 "quick-no-show",
                 "{{appointment_id}}"
@@ -575,6 +530,9 @@
         },
         {
           "name": "Cancel Appointment",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
           "request": {
             "auth": {
               "type": "bearer",
@@ -586,7 +544,7 @@
                 }
               ]
             },
-            "method": "POST",
+            "method": "GET",
             "header": [],
             "body": {
               "mode": "raw",
@@ -598,14 +556,15 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/appointments/quick-cancel/{{appointment_id}}",
+              "raw": "{{url}}/api/vue/appointments/cancel/{{appointment_id}}",
               "host": [
                 "{{url}}"
               ],
               "path": [
                 "api",
+                "vue",
                 "appointments",
-                "quick-cancel",
+                "cancel",
                 "{{appointment_id}}"
               ]
             }
@@ -713,6 +672,122 @@
               "path": [
                 "api",
                 "areas"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Deleted APIs",
+      "item": [
+        {
+          "name": "Quick Confirm Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/vue/appointments/quick-confirm/{{appointment_id}}",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "vue",
+                "appointments",
+                "quick-confirm",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Quick Cancel Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"reason\": \"Patient Request\",\n    \"notes\": \"dsfsdfsdfsdfsdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/vue/appointments/quick-cancel/{{appointment_id}}",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "vue",
+                "appointments",
+                "quick-cancel",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Autocomplete patient search",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/api/patients/autocomplete?q=yass",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "autocomplete"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "yass"
+                }
               ]
             }
           },

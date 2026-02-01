@@ -21,13 +21,16 @@ export type AppointmentsResponse = {
 export const fetchAppointments = async (
   params: AppointmentsQueryParams,
 ): Promise<AppointmentsResponse> => {
-  const response = await http.get<AppointmentsResponse>(
-    "/api/scheduler/appointments",
+  const response = await http.post(
+    "/api/vue/appointments/list",
+    {
+      start: params.start ?? "",
+      end: params.end ?? "",
+      view_pagination: true,
+    },
     {
       params: {
         page: params.page ?? 1,
-        start: params.start,
-        end: params.end,
       },
     },
   );

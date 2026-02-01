@@ -43,9 +43,7 @@ export const useAppointmentsQuery = (params: UseAppointmentsQueryParams) => {
     staleTime: 30_000,
   });
 
-  const appointments = computed(() =>
-    query.data.value?.data ?? [],
-  );
+  const appointments = computed(() => query.data.value?.data ?? []);
 
   return {
     ...query,

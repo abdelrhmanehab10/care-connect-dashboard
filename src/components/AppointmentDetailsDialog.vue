@@ -35,7 +35,7 @@ const displayValue = (value: string | null | undefined) => value ?? "-";
       <div class="cc-grid cc-grid-2">
         <div>
           <div class="cc-label">Patient</div>
-          <div>{{ displayValue(props.appointment?.patient_name) }}</div>
+          <div>{{ displayValue(props.appointment?.patient?.name) }}</div>
         </div>
         <div>
           <div class="cc-label">Status</div>
@@ -55,11 +55,11 @@ const displayValue = (value: string | null | undefined) => value ?? "-";
         </div>
         <div>
           <div class="cc-label">Doctor</div>
-          <div>{{ displayValue(props.appointment?.doctor_name) }}</div>
+          <div>{{ displayValue(props.appointment?.doctor?.name) }}</div>
         </div>
         <div>
           <div class="cc-label">Nurse</div>
-          <div>{{ displayValue(props.appointment?.nurse_name) }}</div>
+          <div>{{ displayValue(props.appointment?.nurse?.name) }}</div>
         </div>
         <div>
           <div class="cc-label">Visit type</div>

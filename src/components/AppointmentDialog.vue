@@ -37,7 +37,7 @@ const props = withDefaults(
   },
 );
 const dialogTitle = computed(() =>
-  props.appointment ? "Edit appointment" : "Add appointment",
+  props.appointment ? "Edit Appointment" : "Add Appointment",
 );
 const emit = defineEmits<{
   save: [payload: any];
@@ -317,7 +317,8 @@ const applyAppointment = (appointment: Appointment) => {
 
   const patientMatch = patientOptions.find(
     (patient) =>
-      patient.name.toLowerCase() === appointment.patient_name.toLowerCase(),
+      patient.name.toLowerCase() ===
+      (appointment.patient?.name ?? "").toLowerCase(),
   );
   selectedPatient.value = patientMatch ?? null;
 
@@ -333,11 +334,11 @@ const applyAppointment = (appointment: Appointment) => {
     appointment.end_time,
   );
 
-  const nurseNameValue = appointment.nurse_name?.trim() ?? "";
+  const nurseNameValue = appointment.nurse?.name?.trim() ?? "";
   nurseAssignmentMode.value = nurseNameValue ? "custom" : "primary";
   nurseName.value = nurseNameValue || null;
 
-  const doctorNameValue = appointment.doctor_name?.trim() ?? "";
+  const doctorNameValue = appointment.doctor?.name?.trim() ?? "";
   doctorAssignmentMode.value = doctorNameValue ? "custom" : "primary";
   doctorName.value = doctorNameValue || null;
 };

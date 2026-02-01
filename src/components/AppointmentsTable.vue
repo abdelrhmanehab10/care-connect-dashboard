@@ -21,6 +21,55 @@ import {
 } from "../data/options";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 
+type StaffMember = Appointment["doctor"];
+type Patient = Appointment["patient"];
+
+const ensurePatient = (value: Patient | null | undefined): Patient =>
+  value ?? { id: 0, name: "", date_of_birth: "" };
+
+const ensureStaffMember = (
+  value: StaffMember | null | undefined,
+): StaffMember => value ?? { id: 0, name: "" };
+
+const getFieldValue = (data: Appointment, field: string) => {
+  switch (field) {
+    case "patient.name":
+      return data.patient?.name ?? "";
+    case "nurse.name":
+      return data.nurse?.name ?? "";
+    case "doctor.name":
+      return data.doctor?.name ?? "";
+    case "social_worker.name":
+      return data.social_worker?.name ?? "";
+    default:
+      return (data as Record<string, unknown>)[field];
+  }
+};
+
+const setFieldValue = (data: Appointment, field: string, value: unknown) => {
+  const nextValue = typeof value === "string" ? value : String(value ?? "");
+  switch (field) {
+    case "patient.name":
+      data.patient = ensurePatient(data.patient);
+      data.patient.name = nextValue;
+      return;
+    case "nurse.name":
+      data.nurse = ensureStaffMember(data.nurse);
+      data.nurse.name = nextValue;
+      return;
+    case "doctor.name":
+      data.doctor = ensureStaffMember(data.doctor);
+      data.doctor.name = nextValue;
+      return;
+    case "social_worker.name":
+      data.social_worker = ensureStaffMember(data.social_worker ?? null);
+      data.social_worker.name = nextValue;
+      return;
+    default:
+      (data as Record<string, unknown>)[field] = value;
+  }
+};
+
 const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
   isLoading: boolean;
@@ -42,19 +91,32 @@ const filteredPatients = ref<string[]>([]);
 const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
 const filteredSocialWorkers = ref<string[]>([]);
-const editSnapshots = new Map<string, Appointment[keyof Appointment]>();
+const editSnapshots = new Map<string, unknown>();
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
-    id: `loading-${index}`,
-    patient_name: "",
+    id: -(index + 1),
+    patient: {
+      id: 0,
+      name: "",
+      date_of_birth: "",
+    },
     start_time: "",
     end_time: "",
     status: "",
     date: "",
-    nurse_name: "",
-    doctor_name: "",
+    nurse: {
+      id: 0,
+      name: "",
+    },
+    doctor: {
+      id: 0,
+      name: "",
+    },
     visit_type: "",
-    social_worker_name: "",
+    social_worker: {
+      id: 0,
+      name: "",
+    },
   })),
 );
 const displayAppointments = computed(() =>
@@ -135,10 +197,7 @@ const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
     return;
   }
 
-  const field = event.field as keyof Appointment;
-  if (field in event.data) {
-    editSnapshots.set(key, event.data[field]);
-  }
+  editSnapshots.set(key, getFieldValue(event.data, event.field));
 };
 
 const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
@@ -148,11 +207,7 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
     return;
   }
 
-  const field = event.field as keyof Appointment;
-  if (field in data) {
-    data[field] = editSnapshots.get(key) as never;
-  }
-
+  setFieldValue(data, event.field, editSnapshots.get(key));
   editSnapshots.delete(key);
 };
 
@@ -231,17 +286,17 @@ const handleCellEditComplete = (
         </template>
       </Column>
 
-      <Column field="patient_name" header="Patient">
+      <Column field="patient.name" header="Patient">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-lg"></span>
-          <span v-else>{{ data.patient_name ?? "-" }}</span>
+          <span v-else>{{ data.patient?.name ?? "-" }}</span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
-                  v-model="data.patient_name"
+                  :modelValue="data.patient?.name ?? ''"
                   :suggestions="filteredPatients"
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
@@ -250,6 +305,9 @@ const handleCellEditComplete = (
                   inputClass="cc-input cc-input-sm"
                   :pt="autoCompletePt"
                   placeholder="Search patient"
+                  @update:modelValue="
+                    setFieldValue(data, 'patient.name', $event)
+                  "
                   @complete="searchPatients"
                   @keydown="
                     handleEditorKeydown(
@@ -396,17 +454,17 @@ const handleCellEditComplete = (
         </template>
       </Column>
 
-      <Column field="nurse_name" header="Nurse">
+      <Column field="nurse.name" header="Nurse">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.nurse_name ?? "-" }}</span>
+          <span v-else>{{ data.nurse?.name ?? "-" }}</span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
-                  v-model="data.nurse_name"
+                  :modelValue="data.nurse?.name ?? ''"
                   :suggestions="filteredNurses"
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
@@ -415,6 +473,7 @@ const handleCellEditComplete = (
                   inputClass="cc-input cc-input-sm"
                   :pt="autoCompletePt"
                   placeholder="Search nurse"
+                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
                   @complete="searchNurses"
                   @keydown="
                     handleEditorKeydown(
@@ -448,17 +507,17 @@ const handleCellEditComplete = (
         </template>
       </Column>
 
-      <Column field="doctor_name" header="Doctor">
+      <Column field="doctor.name" header="Doctor">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.doctor_name ?? "-" }}</span>
+          <span v-else>{{ data.doctor?.name ?? "-" }}</span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
-                  v-model="data.doctor_name"
+                  :modelValue="data.doctor?.name ?? ''"
                   :suggestions="filteredDoctors"
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
@@ -467,6 +526,7 @@ const handleCellEditComplete = (
                   inputClass="cc-input cc-input-sm"
                   :pt="autoCompletePt"
                   placeholder="Search doctor"
+                  @update:modelValue="setFieldValue(data, 'doctor.name', $event)"
                   @complete="searchDoctors"
                   @keydown="
                     handleEditorKeydown(
@@ -500,17 +560,17 @@ const handleCellEditComplete = (
         </template>
       </Column>
 
-      <Column field="social_worker_name" header="Social worker">
+      <Column field="social_worker.name" header="Social worker">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.social_worker_name ?? "-" }}</span>
+          <span v-else>{{ data.social_worker?.name ?? "-" }}</span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
-                  v-model="data.social_worker_name"
+                  :modelValue="data.social_worker?.name ?? ''"
                   :suggestions="filteredSocialWorkers"
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
@@ -519,6 +579,9 @@ const handleCellEditComplete = (
                   inputClass="cc-input cc-input-sm"
                   :pt="autoCompletePt"
                   placeholder="Search social worker"
+                  @update:modelValue="
+                    setFieldValue(data, 'social_worker.name', $event)
+                  "
                   @complete="searchSocialWorkers"
                   @keydown="
                     handleEditorKeydown(
