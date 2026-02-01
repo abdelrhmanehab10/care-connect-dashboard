@@ -462,7 +462,6 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   );
 };
 </script>
-
 <template>
   <Dialog v-model:visible="visible" :modal="true" :draggable="false" :closable="false" :pt="dialogPt">
     <template #header>
