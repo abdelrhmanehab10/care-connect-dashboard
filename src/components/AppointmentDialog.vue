@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, isRef, reactive, ref, watch, type Ref } from "vue";
+import { computed, isRef, reactive, ref, toRefs, watch, type Ref } from "vue";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
@@ -9,13 +9,6 @@ import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
 import {
-  areaOptions,
-  doctorOptions,
-  nurseOptions,
-  patientOptions,
-  socialWorkerOptions,
-  visitTypeOptions,
-  weekdayOptions,
   type PatientOption,
   type Weekday,
 } from "../data/options";
@@ -31,11 +24,27 @@ const visible = defineModel<boolean>({ required: true });
 const props = withDefaults(
   defineProps<{
     appointment?: Appointment | null;
+    patientOptions: PatientOption[];
+    nurseOptions: readonly string[];
+    doctorOptions: readonly string[];
+    socialWorkerOptions: readonly string[];
+    areaOptions: readonly string[];
+    visitTypeOptions: readonly string[];
+    weekdayOptions: readonly Weekday[];
   }>(),
   {
     appointment: null,
   },
 );
+const {
+  patientOptions,
+  nurseOptions,
+  doctorOptions,
+  socialWorkerOptions,
+  areaOptions,
+  visitTypeOptions,
+  weekdayOptions,
+} = toRefs(props);
 const dialogTitle = computed(() =>
   props.appointment ? "Edit Appointment" : "Add Appointment",
 );
@@ -125,12 +134,12 @@ type RecurrenceRow = {
   endTime: Date | null;
 };
 
-const defaultWeekday = weekdayOptions[0];
+const getDefaultWeekday = () => weekdayOptions.value[0] ?? "Monday";
 let recurrenceRowId = 1;
 const recurrenceRows = ref<RecurrenceRow[]>([
   {
     id: `row-${recurrenceRowId++}`,
-    day: defaultWeekday,
+    day: getDefaultWeekday(),
     startTime: null,
     endTime: null,
   },
@@ -139,7 +148,7 @@ let employeeRecurrenceRowId = 1;
 const nurseRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
   {
     id: `nurse-row-${employeeRecurrenceRowId++}`,
-    day: defaultWeekday,
+    day: getDefaultWeekday(),
     startTime: null,
     endTime: null,
   },
@@ -147,7 +156,7 @@ const nurseRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
 const doctorRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
   {
     id: `doctor-row-${employeeRecurrenceRowId++}`,
-    day: defaultWeekday,
+    day: getDefaultWeekday(),
     startTime: null,
     endTime: null,
   },
@@ -155,7 +164,7 @@ const doctorRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
 const socialWorkerRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
   {
     id: `social-row-${employeeRecurrenceRowId++}`,
-    day: defaultWeekday,
+    day: getDefaultWeekday(),
     startTime: null,
     endTime: null,
   },
@@ -205,7 +214,8 @@ const normalizeDateValue = (value: string | null | undefined) => {
     return "";
   }
 
-  const splitByT = trimmed.split("T")[0] ?? "";
+  const normalizedSeparators = trimmed.replace(/\//g, "-");
+  const splitByT = normalizedSeparators.split("T")[0] ?? "";
   const splitBySpace = splitByT.split(" ")[0] ?? "";
   return splitBySpace;
 };
@@ -273,7 +283,7 @@ const resetForm = () => {
   nurseRecurrenceRows.value = [
     {
       id: `nurse-row-${employeeRecurrenceRowId++}`,
-      day: defaultWeekday,
+      day: getDefaultWeekday(),
       startTime: null,
       endTime: null,
     },
@@ -281,7 +291,7 @@ const resetForm = () => {
   doctorRecurrenceRows.value = [
     {
       id: `doctor-row-${employeeRecurrenceRowId++}`,
-      day: defaultWeekday,
+      day: getDefaultWeekday(),
       startTime: null,
       endTime: null,
     },
@@ -289,7 +299,7 @@ const resetForm = () => {
   socialWorkerRecurrenceRows.value = [
     {
       id: `social-row-${employeeRecurrenceRowId++}`,
-      day: defaultWeekday,
+      day: getDefaultWeekday(),
       startTime: null,
       endTime: null,
     },
@@ -305,7 +315,7 @@ const resetForm = () => {
   recurrenceRows.value = [
     {
       id: `row-${recurrenceRowId++}`,
-      day: defaultWeekday,
+      day: getDefaultWeekday(),
       startTime: null,
       endTime: null,
     },
@@ -315,7 +325,7 @@ const resetForm = () => {
 const applyAppointment = (appointment: Appointment) => {
   resetForm();
 
-  const patientMatch = patientOptions.find(
+  const patientMatch = patientOptions.value.find(
     (patient) =>
       patient.name.toLowerCase() ===
       (appointment.patient?.name ?? "").toLowerCase(),
@@ -352,7 +362,7 @@ watch(nurseAssignmentMode, (value) => {
     nurseRecurrenceRows.value = [
       {
         id: `nurse-row-${employeeRecurrenceRowId++}`,
-        day: defaultWeekday,
+        day: getDefaultWeekday(),
         startTime: null,
         endTime: null,
       },
@@ -369,7 +379,7 @@ watch(doctorAssignmentMode, (value) => {
     doctorRecurrenceRows.value = [
       {
         id: `doctor-row-${employeeRecurrenceRowId++}`,
-        day: defaultWeekday,
+        day: getDefaultWeekday(),
         startTime: null,
         endTime: null,
       },
@@ -386,7 +396,7 @@ watch(socialWorkerAssignmentMode, (value) => {
     socialWorkerRecurrenceRows.value = [
       {
         id: `social-row-${employeeRecurrenceRowId++}`,
-        day: defaultWeekday,
+        day: getDefaultWeekday(),
         startTime: null,
         endTime: null,
       },
@@ -472,7 +482,7 @@ const handleSave = () => {
 const addRecurrenceRow = () => {
   recurrenceRows.value.push({
     id: `row-${recurrenceRowId++}`,
-    day: defaultWeekday,
+    day: getDefaultWeekday(),
     startTime: null,
     endTime: null,
   });
@@ -498,7 +508,7 @@ const addEmployeeRecurrenceRow = (rows: EmployeeRowsLike) => {
   const target = resolveEmployeeRows(rows);
   target.push({
     id: `emp-row-${employeeRecurrenceRowId++}`,
-    day: defaultWeekday,
+    day: getDefaultWeekday(),
     startTime: null,
     endTime: null,
   });
@@ -519,11 +529,11 @@ const removeEmployeeRecurrenceRow = (rows: EmployeeRowsLike, rowId: string) => {
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
-    filteredPatients.value = [...patientOptions];
+    filteredPatients.value = [...patientOptions.value];
     return;
   }
 
-  filteredPatients.value = patientOptions.filter((patient) => {
+  filteredPatients.value = patientOptions.value.filter((patient) => {
     return (
       patient.name.toLowerCase().includes(query) ||
       patient.id.toLowerCase().includes(query)
@@ -534,11 +544,11 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
 const searchNurses = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
-    filteredNurses.value = [...nurseOptions];
+    filteredNurses.value = [...nurseOptions.value];
     return;
   }
 
-  filteredNurses.value = nurseOptions.filter((name) =>
+  filteredNurses.value = nurseOptions.value.filter((name) =>
     name.toLowerCase().includes(query),
   );
 };
@@ -546,11 +556,11 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
 const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
-    filteredDoctors.value = [...doctorOptions];
+    filteredDoctors.value = [...doctorOptions.value];
     return;
   }
 
-  filteredDoctors.value = doctorOptions.filter((name) =>
+  filteredDoctors.value = doctorOptions.value.filter((name) =>
     name.toLowerCase().includes(query),
   );
 };
@@ -558,11 +568,11 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
 const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
-    filteredSocialWorkers.value = [...socialWorkerOptions];
+    filteredSocialWorkers.value = [...socialWorkerOptions.value];
     return;
   }
 
-  filteredSocialWorkers.value = socialWorkerOptions.filter((name) =>
+  filteredSocialWorkers.value = socialWorkerOptions.value.filter((name) =>
     name.toLowerCase().includes(query),
   );
 };

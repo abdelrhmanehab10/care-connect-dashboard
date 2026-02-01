@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
 import { CheckCircle, XCircle, Ban } from "lucide-vue-next";
+import { confirmAppointmentAll } from "../services/appointments";
 import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
 
@@ -20,6 +21,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   (event: "edit", appointment: Appointment): void;
+  (event: "confirm-all", appointment: Appointment): void;
   (
     event: "range-change",
     payload: {
@@ -155,6 +157,37 @@ const formatTimeRange = (appointment: Appointment) => {
 
 const focus = ref<string>(getInitialFocus(sourceAppointments.value));
 const viewType = ref<"week" | "day">("week");
+const confirmingIds = ref<number[]>([]);
+const neutralEventColor = () => "";
+
+const isConfirming = (appointmentId: number) =>
+  confirmingIds.value.includes(appointmentId);
+
+const setConfirming = (appointmentId: number, value: boolean) => {
+  if (value) {
+    if (!confirmingIds.value.includes(appointmentId)) {
+      confirmingIds.value = [...confirmingIds.value, appointmentId];
+    }
+    return;
+  }
+  confirmingIds.value = confirmingIds.value.filter((id) => id !== appointmentId);
+};
+
+const confirmAll = async (appointment: Appointment) => {
+  if (!appointment?.id || isConfirming(appointment.id)) {
+    return;
+  }
+
+  setConfirming(appointment.id, true);
+  try {
+    await confirmAppointmentAll(appointment.id);
+    emit("confirm-all", appointment);
+  } catch (error) {
+    console.error("Failed to confirm appointment.", error);
+  } finally {
+    setConfirming(appointment.id, false);
+  }
+};
 
 const syncRange = () => {
   const focusedDate = parseFocusDate(focus.value);
@@ -319,6 +352,7 @@ watch([focus, viewType], () => {
         :height="640"
         :showWeek="false"
         :eventHeight="52"
+        :event-color="neutralEventColor"
         class="cc-calendar"
         @click:date="viewDay"
         @click:more="viewMore"
@@ -359,7 +393,8 @@ watch([focus, viewType], () => {
                 class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--confirm"
                 aria-label="Confirm appointment"
                 title="Confirm"
-                @click.stop
+                :disabled="isConfirming(event.appointment.id)"
+                @click.stop="confirmAll(event.appointment)"
               >
                 <CheckCircle class="cc-icon" aria-hidden="true" />
               </button>

@@ -1,5 +1,5 @@
 import { http } from "../lib/api";
-import type { Appointment } from "../types";
+import type { Appointment, AppointmentDetails } from "../types";
 
 export type AppointmentsQueryParams = {
   page?: number;
@@ -16,6 +16,12 @@ export type AppointmentsResponse = {
   total: number;
   perPage: number;
   currentPage: number;
+};
+
+export type AppointmentDetailsResponse = {
+  data: AppointmentDetails;
+  status: string;
+  message: string;
 };
 
 export const fetchAppointments = async (
@@ -35,5 +41,24 @@ export const fetchAppointments = async (
     },
   );
 
+  return response.data;
+};
+
+export const fetchAppointmentDetails = async (
+  appointmentId: number,
+): Promise<AppointmentDetails> => {
+  const response = await http.get(
+    `/api/vue/appointments/details/${appointmentId}`,
+  );
+  const payload = response.data?.data ?? response.data;
+  return payload as AppointmentDetails;
+};
+
+export const confirmAppointmentAll = async (
+  appointmentId: number,
+): Promise<unknown> => {
+  const response = await http.get(
+    `/api/vue/appointments/confirm-all/${appointmentId}`,
+  );
   return response.data;
 };

@@ -12,15 +12,20 @@ import AppointmentDetailsDialog from "./components/AppointmentDetailsDialog.vue"
 import AppointmentsCalendar from "./components/AppointmentsCalendar.vue";
 import AppointmentsTable from "./components/AppointmentsTable.vue";
 import AppointmentCards from "./components/AppointmentCards.vue";
+import { fetchAppointmentDetails } from "./services/appointments";
 import {
   statusBadgeClass,
   useAppointmentsQuery,
 } from "./composables/useAppointmentsQuery";
 import type { Appointment } from "./types";
 import {
+  areaOptions,
   doctorOptions,
   nurseOptions,
   patientOptions as patientOptionsData,
+  socialWorkerOptions,
+  visitTypeOptions,
+  weekdayOptions,
   type AppointmentStatus,
 } from "./data/options";
 import { autoCompletePt, datePickerPt, tabViewPt } from "./ui/primevuePt";
@@ -102,6 +107,23 @@ const parseIsoDate = (value: string) => {
   return new Date(year, month - 1, day);
 };
 
+const mergeAppointmentDetails = (
+  details: Partial<Appointment>,
+  fallback: Appointment,
+): Appointment => ({
+  ...fallback,
+  ...details,
+  date:
+    normalizeAppointmentDate(details.date) ||
+    details.date ||
+    fallback.date,
+  start_time: details.start_time ?? fallback.start_time,
+  end_time: details.end_time ?? fallback.end_time,
+  patient: details.patient ?? fallback.patient,
+  doctor: details.doctor ?? fallback.doctor,
+  nurse: details.nurse ?? fallback.nurse,
+});
+
 const apiStart = computed(() =>
   startDate.value ? formatDate(startDate.value) : "",
 );
@@ -112,6 +134,7 @@ const {
   data: appointmentsResponse,
   isLoading,
   statusOptions,
+  refetch,
 } = useAppointmentsQuery({
   page,
   start: apiStart,
@@ -397,9 +420,26 @@ const openAddDialog = () => {
 };
 
 const openEditDialog = (appointment: Appointment) => {
-  editingAppointment.value = appointment;
+  const fallback = appointment;
   isDetailsOpen.value = false;
-  isDialogOpen.value = true;
+  fetchAppointmentDetails(appointment.id)
+    .then((details) => {
+      editingAppointment.value = mergeAppointmentDetails(
+        details as Partial<Appointment>,
+        fallback,
+      );
+    })
+    .catch((error) => {
+      console.error("Failed to load appointment details.", error);
+      editingAppointment.value = fallback;
+    })
+    .finally(() => {
+      isDialogOpen.value = true;
+    });
+};
+
+const refreshAppointments = () => {
+  void refetch();
 };
 
 watch([apiStart, apiEnd], () => {
@@ -588,6 +628,7 @@ watch(isDialogOpen, (value) => {
               :is-loading="isLoading"
               @range-change="syncCalendarRange"
               @edit="openEditDialog"
+              @confirm-all="refreshAppointments"
             />
           </TabPanel>
         </TabView>
@@ -597,6 +638,13 @@ watch(isDialogOpen, (value) => {
     <AppointmentDialog
       v-model="isDialogOpen"
       :appointment="editingAppointment"
+      :patient-options="patientOptionsData"
+      :nurse-options="nurseOptions"
+      :doctor-options="doctorOptions"
+      :social-worker-options="socialWorkerOptions"
+      :area-options="areaOptions"
+      :visit-type-options="visitTypeOptions"
+      :weekday-options="weekdayOptions"
     />
     <AppointmentDetailsDialog
       v-model="isDetailsOpen"
