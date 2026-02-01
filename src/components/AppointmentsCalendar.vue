@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
 import { CheckCircle, XCircle, Ban } from "lucide-vue-next";
 import type { AppointmentStatus } from "../data/options";
@@ -16,9 +16,19 @@ type AppointmentCalendarEvent = {
 
 const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
+  isLoading: boolean;
 }>();
 const emit = defineEmits<{
   (event: "edit", appointment: Appointment): void;
+  (
+    event: "range-change",
+    payload: {
+      start: string;
+      end: string;
+      viewType: "week" | "day";
+      focus: string;
+    },
+  ): void;
 }>();
 
 const toIsoDate = (value: Date) => {
@@ -28,48 +38,32 @@ const toIsoDate = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const dummyAppointments: Appointment[] = [
-  {
-    id: 1001,
-    patient_name: "Amelia Rivera",
-    start_time: "09:30",
-    end_time: "10:15",
-    status: "Confirmed",
-    date: toIsoDate(new Date()),
-    nurse_name: "Nora King",
-    doctor_name: "Dr. Patel",
-    visit_type: "Initial Visit",
-  },
-  {
-    id: 1002,
-    patient_name: "Noah Patel",
-    start_time: "11:00",
-    end_time: "11:45",
-    status: "New",
-    date: toIsoDate(new Date()),
-    nurse_name: "Maya Reed",
-    doctor_name: "Dr. Chen",
-    visit_type: "Follow Up",
-  },
-  {
-    id: 1003,
-    patient_name: "Sophia Nguyen",
-    start_time: "14:00",
-    end_time: "14:30",
-    status: "Completed",
-    date: toIsoDate(new Date()),
-    nurse_name: "Jordan Lee",
-    doctor_name: "Dr. Diaz",
-    visit_type: "Home Visit",
-  },
-];
+const startOfWeek = (value: Date) => {
+  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day);
+  return date;
+};
 
-const sourceAppointments = computed(() =>
-  props.appointments.length ? props.appointments : dummyAppointments,
-);
+const endOfWeek = (value: Date) => {
+  const date = startOfWeek(value);
+  date.setDate(date.getDate() + 6);
+  return date;
+};
+
+const sourceAppointments = computed(() => props.appointments);
 
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-const isValidTime = (value: string) => /^\d{1,2}:\d{2}$/.test(value);
+
+const normalizeTime = (value: string | null | undefined): string => {
+  if (!value) {
+    return "";
+  }
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2}:\d{2})(?::\d{2})?$/);
+  return match?.[1] ?? "";
+};
+
 
 const normalizeDate = (value: string | null | undefined) => {
   if (!value) {
@@ -77,21 +71,22 @@ const normalizeDate = (value: string | null | undefined) => {
   }
 
   const trimmed = value.trim();
-  if (isValidDate(trimmed)) {
-    return trimmed;
+  const normalizedSeparators = trimmed.replace(/\//g, "-");
+  if (isValidDate(normalizedSeparators)) {
+    return normalizedSeparators;
   }
 
-  const splitByT = trimmed.split("T")[0] ?? "";
+  const splitByT = normalizedSeparators.split("T")[0] ?? "";
   if (isValidDate(splitByT)) {
     return splitByT;
   }
 
-  const splitBySpace = trimmed.split(" ")[0] ?? "";
+  const splitBySpace = normalizedSeparators.split(" ")[0] ?? "";
   if (isValidDate(splitBySpace)) {
     return splitBySpace;
   }
 
-  const parsed = new Date(trimmed);
+  const parsed = new Date(normalizedSeparators);
   if (!Number.isNaN(parsed.getTime())) {
     return toIsoDate(parsed);
   }
@@ -150,11 +145,10 @@ const statusBadgeClass = (status: AppointmentStatus | string) => {
 const displayValue = (value: string | null | undefined) => value ?? "-";
 
 const formatTimeRange = (appointment: Appointment) => {
-  if (
-    isValidTime(appointment.start_time) &&
-    isValidTime(appointment.end_time)
-  ) {
-    return `${appointment.start_time} - ${appointment.end_time}`;
+  const start = normalizeTime(appointment.start_time);
+  const end = normalizeTime(appointment.end_time);
+  if (start && end) {
+    return `${start} - ${end}`;
   }
   return "All day";
 };
@@ -162,27 +156,42 @@ const formatTimeRange = (appointment: Appointment) => {
 const focus = ref<string>(getInitialFocus(sourceAppointments.value));
 const viewType = ref<"week" | "day">("week");
 
-const events = computed<AppointmentCalendarEvent[]>(() =>
-  sourceAppointments.value.flatMap((appointment) => {
+const syncRange = () => {
+  const focusedDate = parseFocusDate(focus.value);
+  const rangeStart =
+    viewType.value === "week" ? startOfWeek(focusedDate) : focusedDate;
+  const rangeEnd =
+    viewType.value === "week" ? endOfWeek(focusedDate) : focusedDate;
+  emit("range-change", {
+    start: toIsoDate(rangeStart),
+    end: toIsoDate(rangeEnd),
+    viewType: viewType.value,
+    focus: focus.value,
+  });
+};
+
+const events = computed<AppointmentCalendarEvent[]>(() => {
+  if (props.isLoading) {
+    return [];
+  }
+  return sourceAppointments.value.flatMap((appointment) => {
     const normalizedDate = normalizeDate(appointment.date);
     if (!normalizedDate) {
       return [];
     }
 
-    const hasTimes =
-      isValidTime(appointment.start_time) &&
-      isValidTime(appointment.end_time);
+    const startTime = normalizeTime(appointment.start_time);
+    const endTime = normalizeTime(appointment.end_time);
+    const hasTimes = startTime.length > 0 && endTime.length > 0;
     const start = hasTimes
-      ? `${normalizedDate} ${appointment.start_time}`
+      ? `${normalizedDate} ${startTime}`
       : normalizedDate;
-    const end = hasTimes
-      ? `${normalizedDate} ${appointment.end_time}`
-      : normalizedDate;
+    const end = hasTimes ? `${normalizedDate} ${endTime}` : normalizedDate;
 
     return [
       {
-        name: `${displayValue(appointment.patient_name)} (${
-          appointment.doctor_name || "TBD"
+        name: `${displayValue(appointment.patient?.name)} (${
+          appointment.doctor?.name || "TBD"
         })`,
         start,
         end,
@@ -191,8 +200,8 @@ const events = computed<AppointmentCalendarEvent[]>(() =>
         appointment,
       },
     ];
-  }),
-);
+  });
+});
 
 const setToday = () => {
   focus.value = toIsoDate(new Date());
@@ -241,6 +250,10 @@ const goPrev = () => {
 const goNext = () => {
   shiftFocus(viewType.value === "week" ? 7 : 1);
 };
+
+watch([focus, viewType], () => {
+  syncRange();
+});
 </script>
 
 <template>
@@ -294,6 +307,11 @@ const goNext = () => {
         </div>
       </div>
 
+      <div v-if="isLoading" class="cc-empty">Loading appointments...</div>
+      <div v-else-if="!sourceAppointments.length" class="cc-empty">
+        No appointments for this range.
+      </div>
+
       <VCalendar
         v-model="focus"
         :type="viewType"
@@ -314,17 +332,17 @@ const goNext = () => {
             @click="emit('edit', event.appointment)"
           >
             <div class="cc-calendar-event-title">
-              {{ displayValue(event.appointment.patient_name) }}
+              {{ displayValue(event.appointment.patient?.name) }}
             </div>
             <div class="cc-calendar-event-meta">
               <span class="cc-calendar-event-time">
                 {{ formatTimeRange(event.appointment) }}
               </span>
               <span class="cc-calendar-event-provider">
-                Dr: {{ displayValue(event.appointment.doctor_name) }}
+                Dr: {{ displayValue(event.appointment.doctor?.name) }}
               </span>
               <span class="cc-calendar-event-provider">
-                Nurse: {{ displayValue(event.appointment.nurse_name) }}
+                Nurse: {{ displayValue(event.appointment.nurse?.name) }}
               </span>
             </div>
             <span

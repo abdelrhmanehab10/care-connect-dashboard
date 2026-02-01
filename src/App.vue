@@ -69,6 +69,39 @@ const formatDate = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const isValidIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const normalizeAppointmentDate = (value: string | null | undefined) => {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim().replace(/\//g, "-");
+  const dateOnly = (trimmed.split("T")[0] ?? "").split(" ")[0] ?? "";
+  if (isValidIsoDate(dateOnly)) {
+    return dateOnly;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return formatDate(parsed);
+  }
+
+  return "";
+};
+
+const parseIsoDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+};
+
 const apiStart = computed(() =>
   startDate.value ? formatDate(startDate.value) : "",
 );
@@ -91,10 +124,12 @@ const normalizeString = (value: string | null | undefined) =>
 const patientNameOptions = computed(() =>
   Array.from(
     new Set(
-      appointments.value
-        .map((appointment) => normalizeString(appointment.patient_name))
-        .filter((name) => name.length > 0),
-    ),
+        appointments.value
+          .map((appointment) =>
+            normalizeString(appointment.patient?.name ?? ""),
+          )
+          .filter((name) => name.length > 0),
+      ),
   ),
 );
 
@@ -189,16 +224,16 @@ const exportExcel = () => {
     "End Time",
   ];
 
-  const data = rows.map((a: any) => [
-    a.date ?? "",
-    a.patient_name ?? "",
-    a.doctor_name ?? "",
-    a.nurse_name ?? "",
-    a.status ?? "",
-    a.visit_type ?? "",
-    a.state ?? "",
-    a.start_time ?? "",
-    a.end_time ?? "",
+  const data = rows.map((appointment) => [
+    appointment.date ?? "",
+    appointment.patient?.name ?? "",
+    appointment.doctor?.name ?? "",
+    appointment.nurse?.name ?? "",
+    appointment.status ?? "",
+    appointment.visit_type ?? "",
+    appointment.state ?? "",
+    appointment.start_time ?? "",
+    appointment.end_time ?? "",
   ]);
 
   const csv = [headers, ...data]
@@ -230,13 +265,17 @@ const filteredAppointments = computed(() => {
   const end = apiEnd.value;
 
   return appointments.value.filter((appointment) => {
-    if (start && appointment.date < start) return false;
-    if (end && appointment.date > end) return false;
+    if (start || end) {
+      const appointmentDate = normalizeAppointmentDate(appointment.date);
+      if (!appointmentDate) return false;
+      if (start && appointmentDate < start) return false;
+      if (end && appointmentDate > end) return false;
+    }
     if (statusQuery && appointment.status !== statusQuery) return false;
 
-    const doctorName = normalizeString(appointment.doctor_name).toLowerCase();
-    const nurseName = normalizeString(appointment.nurse_name).toLowerCase();
-    const patientName = normalizeString(appointment.patient_name).toLowerCase();
+    const doctorName = normalizeString(appointment.doctor?.name ?? "").toLowerCase();
+    const nurseName = normalizeString(appointment.nurse?.name ?? "").toLowerCase();
+    const patientName = normalizeString(appointment.patient?.name ?? "").toLowerCase();
 
     if (
       employeeQuery &&
@@ -245,10 +284,8 @@ const filteredAppointments = computed(() => {
       return false;
     if (patientQuery && !patientName.includes(patientQuery)) return false;
 
-    const visitType = normalizeString(
-      (appointment as any).visit_type,
-    ).toLowerCase();
-    const state = normalizeString((appointment as any).state).toLowerCase();
+    const visitType = normalizeString(appointment.visit_type ?? "").toLowerCase();
+    const state = normalizeString(appointment.state ?? "").toLowerCase();
 
     if (visitTypeQuery && !visitType.includes(visitTypeQuery)) return false;
     if (stateQuery && !state.includes(stateQuery)) return false;
@@ -310,6 +347,16 @@ const toggleQuickDoctor = () => {
   if (!doctorName || doctorName === "Doctor") return;
   employeeFilter.value =
     employeeFilter.value === doctorName ? null : doctorName;
+};
+
+const syncCalendarRange = (payload: { start: string; end: string }) => {
+  const nextStart = parseIsoDate(payload.start);
+  const nextEnd = parseIsoDate(payload.end);
+  if (!nextStart || !nextEnd) {
+    return;
+  }
+  startDate.value = nextStart;
+  endDate.value = nextEnd;
 };
 
 const handleCellEditComplete = (
@@ -538,6 +585,8 @@ watch(isDialogOpen, (value) => {
           <TabPanel header="Calendar View" value="calendar">
             <AppointmentsCalendar
               :appointments="filteredAppointments"
+              :is-loading="isLoading"
+              @range-change="syncCalendarRange"
               @edit="openEditDialog"
             />
           </TabPanel>
