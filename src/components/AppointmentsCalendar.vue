@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
-import { CheckCircle, XCircle, Ban, Loader2 } from "lucide-vue-next";
+import CalendarAppointmentCard from "./CalendarAppointmentCard.vue";
 import {
   confirmAppointmentAll,
   quickNoShowAppointment,
+  cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
 import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
@@ -26,6 +27,7 @@ const emit = defineEmits<{
   (event: "edit", appointment: Appointment): void;
   (event: "confirm-all", appointment: Appointment): void;
   (event: "no-show", appointment: Appointment): void;
+  (event: "cancel", appointment: Appointment): void;
   (
     event: "range-change",
     payload: {
@@ -163,7 +165,10 @@ const focus = ref<string>(getInitialFocus(sourceAppointments.value));
 const viewType = ref<"week" | "day">("week");
 const confirmingIds = ref<number[]>([]);
 const noShowIds = ref<number[]>([]);
+const cancelIds = ref<number[]>([]);
 const neutralEventColor = () => "";
+const asAppointmentEvent = (event: unknown) =>
+  event as AppointmentCalendarEvent;
 
 const isConfirming = (appointmentId: number) =>
   confirmingIds.value.includes(appointmentId);
@@ -189,6 +194,19 @@ const setNoShowLoading = (appointmentId: number, value: boolean) => {
     return;
   }
   noShowIds.value = noShowIds.value.filter((id) => id !== appointmentId);
+};
+
+const isCancelLoading = (appointmentId: number) =>
+  cancelIds.value.includes(appointmentId);
+
+const setCancelLoading = (appointmentId: number, value: boolean) => {
+  if (value) {
+    if (!cancelIds.value.includes(appointmentId)) {
+      cancelIds.value = [...cancelIds.value, appointmentId];
+    }
+    return;
+  }
+  cancelIds.value = cancelIds.value.filter((id) => id !== appointmentId);
 };
 
 const confirmAll = async (appointment: Appointment) => {
@@ -220,6 +238,22 @@ const markNoShow = async (appointment: Appointment) => {
     console.error("Failed to mark appointment as no show.", error);
   } finally {
     setNoShowLoading(appointment.id, false);
+  }
+};
+
+const handleCancelAppointment = async (appointment: Appointment) => {
+  if (!appointment?.id || isCancelLoading(appointment.id)) {
+    return;
+  }
+
+  setCancelLoading(appointment.id, true);
+  try {
+    await cancelAppointmentApi(appointment.id);
+    emit("cancel", appointment);
+  } catch (error) {
+    console.error("Failed to cancel appointment.", error);
+  } finally {
+    setCancelLoading(appointment.id, false);
   }
 };
 
@@ -392,77 +426,18 @@ watch([focus, viewType], () => {
         @click:more="viewMore"
       >
         <template #event="{ event }">
-          <div
-            class="cc-calendar-event"
-            :style="{ borderLeftColor: event.color }"
-            role="button"
-            tabindex="0"
-            @click="emit('edit', event.appointment)"
-          >
-            <div class="cc-calendar-event-title">
-              {{ displayValue(event.appointment.patient?.name) }}
-            </div>
-            <div class="cc-calendar-event-meta">
-              <span class="cc-calendar-event-time">
-                {{ formatTimeRange(event.appointment) }}
-              </span>
-              <span class="cc-calendar-event-provider">
-                Dr: {{ displayValue(event.appointment.doctor?.name) }}
-              </span>
-              <span class="cc-calendar-event-provider">
-                Nurse: {{ displayValue(event.appointment.nurse?.name) }}
-              </span>
-            </div>
-            <span
-              class="cc-calendar-event-status"
-              :class="
-                statusBadgeClass(event.appointment.status as AppointmentStatus)
-              "
-            >
-              {{ displayValue(event.appointment.status) }}
-            </span>
-            <div class="cc-calendar-event-actions">
-              <button
-                type="button"
-                class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--confirm"
-                aria-label="Confirm appointment"
-                title="Confirm"
-                :disabled="isConfirming(event.appointment.id)"
-                @click.stop="confirmAll(event.appointment)"
-              >
-                <Loader2
-                  v-if="isConfirming(event.appointment.id)"
-                  class="cc-icon cc-icon-spinner"
-                  aria-hidden="true"
-                />
-                <CheckCircle v-else class="cc-icon" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--no-show"
-                aria-label="Mark as no show"
-                title="No show"
-                :disabled="isNoShowLoading(event.appointment.id)"
-                @click.stop="markNoShow(event.appointment)"
-              >
-                <Loader2
-                  v-if="isNoShowLoading(event.appointment.id)"
-                  class="cc-icon cc-icon-spinner"
-                  aria-hidden="true"
-                />
-                <XCircle v-else class="cc-icon" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--cancel"
-                aria-label="Cancel appointment"
-                title="Cancel"
-                @click.stop
-              >
-                <Ban class="cc-icon" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
+          <CalendarAppointmentCard
+            :event="asAppointmentEvent(event)"
+            :format-time-range="formatTimeRange"
+            :status-badge-class="statusBadgeClass"
+            :is-confirming="isConfirming(event.appointment.id)"
+            :is-no-show-loading="isNoShowLoading(event.appointment.id)"
+            :is-cancel-loading="isCancelLoading(event.appointment.id)"
+            @edit="emit('edit', $event)"
+            @confirm="confirmAll"
+            @no-show="markNoShow"
+            @cancel="handleCancelAppointment"
+          />
         </template>
       </VCalendar>
     </div>

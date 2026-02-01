@@ -1,0 +1,280 @@
+<script setup lang="ts">
+import { computed, ref } from "vue";
+import AutoComplete from "primevue/autocomplete";
+import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
+import DatePicker from "primevue/datepicker";
+import AppointmentCards from "./AppointmentCards.vue";
+import type { AppointmentStatus } from "../data/options";
+import { autoCompletePt, datePickerPt } from "../ui/primevuePt";
+
+const props = defineProps<{
+  employeeOptions: string[];
+  patientOptions: string[];
+  visitTypeOptions: string[];
+  stateOptions: string[];
+  quickPatientLabel: string;
+  quickDoctorLabel: string;
+}>();
+
+const employeeFilter = defineModel<string | null>("employeeFilter", {
+  default: null,
+});
+const patientFilter = defineModel<string | null>("patientFilter", {
+  default: null,
+});
+const visitTypeFilter = defineModel<string | null>("visitTypeFilter", {
+  default: null,
+});
+const stateFilter = defineModel<string | null>("stateFilter", {
+  default: null,
+});
+const statusTagFilter = defineModel<AppointmentStatus | null>(
+  "statusTagFilter",
+  {
+    default: null,
+  },
+);
+const startDate = defineModel<Date | null>("startDate", { default: null });
+const endDate = defineModel<Date | null>("endDate", { default: null });
+
+const filteredEmployees = ref<string[]>([]);
+const filteredPatients = ref<string[]>([]);
+const filteredVisitTypes = ref<string[]>([]);
+const filteredStates = ref<string[]>([]);
+
+const searchEmployees = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredEmployees.value = [...props.employeeOptions];
+    return;
+  }
+  filteredEmployees.value = props.employeeOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
+};
+
+const searchPatients = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredPatients.value = [...props.patientOptions];
+    return;
+  }
+  filteredPatients.value = props.patientOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
+};
+
+const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredVisitTypes.value = [...props.visitTypeOptions];
+    return;
+  }
+  filteredVisitTypes.value = props.visitTypeOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
+};
+
+const searchStates = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (!query) {
+    filteredStates.value = [...props.stateOptions];
+    return;
+  }
+  filteredStates.value = props.stateOptions.filter((name) =>
+    name.toLowerCase().includes(query),
+  );
+};
+
+const startOfWeek = (value: Date) => {
+  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day);
+  return date;
+};
+
+const endOfWeek = (value: Date) => {
+  const date = startOfWeek(value);
+  date.setDate(date.getDate() + 6);
+  return date;
+};
+
+const isSameDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const isThisWeekActive = computed(() => {
+  if (!startDate.value || !endDate.value) return false;
+  const now = new Date();
+  const weekStart = startOfWeek(now);
+  const weekEnd = endOfWeek(now);
+  return (
+    isSameDay(startDate.value, weekStart) && isSameDay(endDate.value, weekEnd)
+  );
+});
+
+const toggleStatusTag = (status: AppointmentStatus) => {
+  statusTagFilter.value = statusTagFilter.value === status ? null : status;
+};
+
+const toggleThisWeek = () => {
+  if (isThisWeekActive.value) {
+    startDate.value = null;
+    endDate.value = null;
+    return;
+  }
+  const now = new Date();
+  startDate.value = startOfWeek(now);
+  endDate.value = endOfWeek(now);
+};
+
+const toggleQuickPatient = () => {
+  const patientName = props.quickPatientLabel;
+  if (!patientName || patientName === "Patient") return;
+  patientFilter.value =
+    patientFilter.value === patientName ? null : patientName;
+};
+
+const toggleQuickDoctor = () => {
+  const doctorName = props.quickDoctorLabel;
+  if (!doctorName || doctorName === "Doctor") return;
+  employeeFilter.value =
+    employeeFilter.value === doctorName ? null : doctorName;
+};
+
+const clearFilters = () => {
+  employeeFilter.value = null;
+  patientFilter.value = null;
+  statusTagFilter.value = null;
+  startDate.value = null;
+  endDate.value = null;
+  visitTypeFilter.value = null;
+  stateFilter.value = null;
+  filteredEmployees.value = [];
+  filteredPatients.value = [];
+  filteredVisitTypes.value = [];
+  filteredStates.value = [];
+};
+</script>
+
+<template>
+  <div class="border p-3 rounded mb-2">
+    <div class="cc-sidebar-header">
+      <div class="cc-section-title">Filters</div>
+      <div class="cc-help-text">Refine by staff member.</div>
+    </div>
+    <AppointmentCards
+      :is-this-week-active="isThisWeekActive"
+      :status-tag-filter="statusTagFilter"
+      :quick-patient-label="quickPatientLabel"
+      :quick-doctor-label="quickDoctorLabel"
+      :patient-filter="patientFilter"
+      :employee-filter="employeeFilter"
+      @toggle-week="toggleThisWeek"
+      @toggle-status="toggleStatusTag"
+      @toggle-patient="toggleQuickPatient"
+      @toggle-doctor="toggleQuickDoctor"
+    />
+    <div class="row">
+      <div class="col-md-2">
+        <label for="employeeFilter" class="cc-label">Employee</label>
+        <AutoComplete
+          v-model="employeeFilter"
+          inputId="employeeFilter"
+          :suggestions="filteredEmployees"
+          :completeOnFocus="true"
+          :autoOptionFocus="true"
+          appendTo="body"
+          panelClass="cc-autocomplete-panel"
+          inputClass="cc-input"
+          :pt="autoCompletePt"
+          placeholder="Search nurse or doctor"
+          @complete="searchEmployees"
+        />
+      </div>
+      <div class="col-md-2">
+        <label for="patientFilter" class="cc-label">Patient</label>
+        <AutoComplete
+          v-model="patientFilter"
+          inputId="patientFilter"
+          :suggestions="filteredPatients"
+          :completeOnFocus="true"
+          :autoOptionFocus="true"
+          appendTo="body"
+          panelClass="cc-autocomplete-panel"
+          inputClass="cc-input"
+          :pt="autoCompletePt"
+          placeholder="Search patient"
+          @complete="searchPatients"
+        />
+      </div>
+      <div class="col-md-2">
+        <label for="filterStartDate" class="cc-label">Start date</label>
+        <DatePicker
+          v-model="startDate"
+          inputId="filterStartDate"
+          dateFormat="yy-mm-dd"
+          appendTo="body"
+          panelClass="cc-datepicker-panel"
+          :pt="datePickerPt"
+          placeholder="Start date"
+        />
+      </div>
+      <div class="col-md-2">
+        <label for="filterEndDate" class="cc-label">End date</label>
+        <DatePicker
+          v-model="endDate"
+          inputId="filterEndDate"
+          dateFormat="yy-mm-dd"
+          appendTo="body"
+          panelClass="cc-datepicker-panel"
+          :pt="datePickerPt"
+          placeholder="End date"
+        />
+      </div>
+      <div class="col-md-2">
+        <label for="visitTypeFilter" class="cc-label">Visit Type</label>
+        <AutoComplete
+          v-model="visitTypeFilter"
+          inputId="visitTypeFilter"
+          :suggestions="filteredVisitTypes"
+          :completeOnFocus="true"
+          :autoOptionFocus="true"
+          appendTo="body"
+          panelClass="cc-autocomplete-panel"
+          inputClass="cc-input"
+          :pt="autoCompletePt"
+          placeholder="Select visit type"
+          @complete="searchVisitTypes"
+        />
+      </div>
+
+      <div class="col-md-2">
+        <label for="stateFilter" class="cc-label">States</label>
+        <AutoComplete
+          v-model="stateFilter"
+          inputId="stateFilter"
+          :suggestions="filteredStates"
+          :completeOnFocus="true"
+          :autoOptionFocus="true"
+          appendTo="body"
+          panelClass="cc-autocomplete-panel"
+          inputClass="cc-input"
+          :pt="autoCompletePt"
+          placeholder="Select state"
+          @complete="searchStates"
+        />
+      </div>
+      <div class="cc-filters-actions">
+        <button
+          type="button"
+          class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2 cc-btn-full"
+          @click="clearFilters"
+        >
+          Clear Filters
+        </button>
+      </div>
+    </div>
+  </div>
+</template>

@@ -71,3 +71,21 @@ export const quickNoShowAppointment = async (
   );
   return response.data;
 };
+
+export type CancelAppointmentPayload = {
+  reason?: string;
+  notes?: string;
+};
+
+export const cancelAppointment = async (
+  appointmentId: number,
+  payload: CancelAppointmentPayload = {},
+): Promise<unknown> => {
+  const response = await http.get(
+    `/api/vue/appointments/cancel/${appointmentId}`,
+    {
+      params: payload,
+    },
+  );
+  return response.data;
+};
