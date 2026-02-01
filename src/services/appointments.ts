@@ -62,3 +62,12 @@ export const confirmAppointmentAll = async (
   );
   return response.data;
 };
+
+export const quickNoShowAppointment = async (
+  appointmentId: number,
+): Promise<unknown> => {
+  const response = await http.post(
+    `/api/vue/appointments/quick-no-show/${appointmentId}`,
+  );
+  return response.data;
+};

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
-import { CheckCircle, XCircle, Ban } from "lucide-vue-next";
-import { confirmAppointmentAll } from "../services/appointments";
+import { CheckCircle, XCircle, Ban, Loader2 } from "lucide-vue-next";
+import {
+  confirmAppointmentAll,
+  quickNoShowAppointment,
+} from "../services/appointments";
 import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
 
@@ -22,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: "edit", appointment: Appointment): void;
   (event: "confirm-all", appointment: Appointment): void;
+  (event: "no-show", appointment: Appointment): void;
   (
     event: "range-change",
     payload: {
@@ -158,6 +162,7 @@ const formatTimeRange = (appointment: Appointment) => {
 const focus = ref<string>(getInitialFocus(sourceAppointments.value));
 const viewType = ref<"week" | "day">("week");
 const confirmingIds = ref<number[]>([]);
+const noShowIds = ref<number[]>([]);
 const neutralEventColor = () => "";
 
 const isConfirming = (appointmentId: number) =>
@@ -173,6 +178,19 @@ const setConfirming = (appointmentId: number, value: boolean) => {
   confirmingIds.value = confirmingIds.value.filter((id) => id !== appointmentId);
 };
 
+const isNoShowLoading = (appointmentId: number) =>
+  noShowIds.value.includes(appointmentId);
+
+const setNoShowLoading = (appointmentId: number, value: boolean) => {
+  if (value) {
+    if (!noShowIds.value.includes(appointmentId)) {
+      noShowIds.value = [...noShowIds.value, appointmentId];
+    }
+    return;
+  }
+  noShowIds.value = noShowIds.value.filter((id) => id !== appointmentId);
+};
+
 const confirmAll = async (appointment: Appointment) => {
   if (!appointment?.id || isConfirming(appointment.id)) {
     return;
@@ -186,6 +204,22 @@ const confirmAll = async (appointment: Appointment) => {
     console.error("Failed to confirm appointment.", error);
   } finally {
     setConfirming(appointment.id, false);
+  }
+};
+
+const markNoShow = async (appointment: Appointment) => {
+  if (!appointment?.id || isNoShowLoading(appointment.id)) {
+    return;
+  }
+
+  setNoShowLoading(appointment.id, true);
+  try {
+    await quickNoShowAppointment(appointment.id);
+    emit("no-show", appointment);
+  } catch (error) {
+    console.error("Failed to mark appointment as no show.", error);
+  } finally {
+    setNoShowLoading(appointment.id, false);
   }
 };
 
@@ -396,16 +430,27 @@ watch([focus, viewType], () => {
                 :disabled="isConfirming(event.appointment.id)"
                 @click.stop="confirmAll(event.appointment)"
               >
-                <CheckCircle class="cc-icon" aria-hidden="true" />
+                <Loader2
+                  v-if="isConfirming(event.appointment.id)"
+                  class="cc-icon cc-icon-spinner"
+                  aria-hidden="true"
+                />
+                <CheckCircle v-else class="cc-icon" aria-hidden="true" />
               </button>
               <button
                 type="button"
                 class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--no-show"
                 aria-label="Mark as no show"
                 title="No show"
-                @click.stop
+                :disabled="isNoShowLoading(event.appointment.id)"
+                @click.stop="markNoShow(event.appointment)"
               >
-                <XCircle class="cc-icon" aria-hidden="true" />
+                <Loader2
+                  v-if="isNoShowLoading(event.appointment.id)"
+                  class="cc-icon cc-icon-spinner"
+                  aria-hidden="true"
+                />
+                <XCircle v-else class="cc-icon" aria-hidden="true" />
               </button>
               <button
                 type="button"

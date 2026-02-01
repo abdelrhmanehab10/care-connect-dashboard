@@ -24,7 +24,6 @@ import {
   nurseOptions,
   patientOptions as patientOptionsData,
   socialWorkerOptions,
-  visitTypeOptions,
   weekdayOptions,
   type AppointmentStatus,
 } from "./data/options";
@@ -36,6 +35,7 @@ const activeViewIndex = ref(0);
 const page = ref(1);
 const selectedAppointment = ref<Appointment | null>(null);
 const editingAppointment = ref<Appointment | null>(null);
+const isEditLoading = ref(false);
 
 const employeeFilter = ref<string | null>(null);
 const filteredEmployees = ref<string[]>([]);
@@ -96,15 +96,16 @@ const normalizeAppointmentDate = (value: string | null | undefined) => {
 };
 
 const parseIsoDate = (value: string) => {
-  const [year, month, day] = value.split("-").map(Number);
+  const [yearRaw = Number.NaN, monthRaw = Number.NaN, dayRaw = Number.NaN] =
+    value.split("-").map(Number);
   if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day)
+    !Number.isFinite(yearRaw) ||
+    !Number.isFinite(monthRaw) ||
+    !Number.isFinite(dayRaw)
   ) {
     return null;
   }
-  return new Date(year, month - 1, day);
+  return new Date(yearRaw, monthRaw - 1, dayRaw);
 };
 
 const mergeAppointmentDetails = (
@@ -422,6 +423,9 @@ const openAddDialog = () => {
 const openEditDialog = (appointment: Appointment) => {
   const fallback = appointment;
   isDetailsOpen.value = false;
+  isDialogOpen.value = true;
+  isEditLoading.value = true;
+  editingAppointment.value = null;
   fetchAppointmentDetails(appointment.id)
     .then((details) => {
       editingAppointment.value = mergeAppointmentDetails(
@@ -434,7 +438,7 @@ const openEditDialog = (appointment: Appointment) => {
       editingAppointment.value = fallback;
     })
     .finally(() => {
-      isDialogOpen.value = true;
+      isEditLoading.value = false;
     });
 };
 
@@ -449,6 +453,7 @@ watch([apiStart, apiEnd], () => {
 watch(isDialogOpen, (value) => {
   if (!value) {
     editingAppointment.value = null;
+    isEditLoading.value = false;
   }
 });
 </script>
@@ -629,6 +634,7 @@ watch(isDialogOpen, (value) => {
               @range-change="syncCalendarRange"
               @edit="openEditDialog"
               @confirm-all="refreshAppointments"
+              @no-show="refreshAppointments"
             />
           </TabPanel>
         </TabView>
@@ -638,6 +644,7 @@ watch(isDialogOpen, (value) => {
     <AppointmentDialog
       v-model="isDialogOpen"
       :appointment="editingAppointment"
+      :is-loading="isEditLoading"
       :patient-options="patientOptionsData"
       :nurse-options="nurseOptions"
       :doctor-options="doctorOptions"

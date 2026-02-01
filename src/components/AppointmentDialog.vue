@@ -8,6 +8,7 @@ import AutoComplete from "primevue/autocomplete";
 import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
+import { Loader2 } from "lucide-vue-next";
 import {
   type PatientOption,
   type Weekday,
@@ -24,6 +25,7 @@ const visible = defineModel<boolean>({ required: true });
 const props = withDefaults(
   defineProps<{
     appointment?: Appointment | null;
+    isLoading?: boolean;
     patientOptions: PatientOption[];
     nurseOptions: readonly string[];
     doctorOptions: readonly string[];
@@ -34,6 +36,7 @@ const props = withDefaults(
   }>(),
   {
     appointment: null,
+    isLoading: false,
   },
 );
 const {
@@ -598,7 +601,14 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       </div>
     </template>
 
-    <form class="cc-stack" @submit.prevent="submitForm">
+    <form class="cc-stack cc-dialog-form" @submit.prevent="submitForm">
+      <div v-if="props.isLoading" class="cc-dialog-loading">
+        <div class="cc-dialog-loading-content" role="status" aria-live="polite">
+          <Loader2 class="cc-icon cc-icon-spinner" aria-hidden="true" />
+          <span>Loading appointment details...</span>
+        </div>
+      </div>
+      <fieldset :disabled="props.isLoading" class="cc-stack">
       <div>
         <label for="patient" class="cc-label cc-label-strong">Patient</label>
         <AutoComplete
@@ -1275,6 +1285,7 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
           placeholder="Add special instructions or notes"
         ></textarea>
       </div>
+      </fieldset>
     </form>
 
     <template #footer>
