@@ -259,7 +259,9 @@ body {
 .cc-toolbar-action {
   margin-left: auto;
 }
-
+.cc-clear{
+  width: 10% !important;
+}
 .cc-row {
   display: flex;
   align-items: center;

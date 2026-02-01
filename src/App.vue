@@ -580,7 +580,7 @@ watch(isDialogOpen, (value) => {
             <div class="cc-filters-actions">
               <button
                 type="button"
-                class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2 cc-btn-full"
+                class="cc-btn cc-btn-sm cc-btn-input bg-danger cc-clear text-light mt-3 mb-2 cc-btn-full"
                 @click="clearFilters"
               >
                 Clear Filters
