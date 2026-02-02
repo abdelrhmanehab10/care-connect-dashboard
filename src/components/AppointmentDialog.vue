@@ -62,6 +62,7 @@ const filteredPatients = ref<PatientOption[]>([]);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
 const instructions = ref("");
+const hasAttemptedSubmit = ref(false);
 const nurseName = ref<string | null>(null);
 const filteredNurses = ref<string[]>([]);
 const doctorName = ref<string | null>(null);
@@ -190,6 +191,83 @@ const isPatientSelected = computed(() =>
   isPatientOption(selectedPatient.value),
 );
 
+const hasInputValue = (value: unknown) => {
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime());
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  return value !== null && value !== undefined;
+};
+
+const resolveScheduleTimes = () => {
+  const date = schedule.isRecurring
+    ? schedule.recurringStartDate
+    : schedule.appointmentDate;
+  const startTime = schedule.isRecurring
+    ? (recurrenceRows.value[0]?.startTime ?? null)
+    : schedule.appointmentStartTime;
+  const endTime = schedule.isRecurring
+    ? (recurrenceRows.value[0]?.endTime ?? null)
+    : schedule.appointmentEndTime;
+
+  return { date, startTime, endTime };
+};
+
+const validationErrors = computed(() => {
+  const errors: Record<string, string> = {};
+  const { date, startTime, endTime } = resolveScheduleTimes();
+
+  if (!isPatientOption(selectedPatient.value)) {
+    errors.patient = "Patient is required.";
+  }
+
+  if (!visit.type) {
+    errors.visitType = "Visit type is required.";
+  }
+
+  if (!hasInputValue(date)) {
+    errors.date = schedule.isRecurring
+      ? "Start date is required."
+      : "Date is required.";
+  }
+
+  if (!hasInputValue(startTime)) {
+    errors.startTime = "Start time is required.";
+  }
+
+  if (!hasInputValue(endTime)) {
+    errors.endTime = "End time is required.";
+  }
+
+  if (
+    showNurseSection.value &&
+    nurseAssignmentMode.value === "custom" &&
+    !(nurseName.value?.trim() ?? "")
+  ) {
+    errors.nurse = "Nurse is required.";
+  }
+
+  if (
+    showDoctorSection.value &&
+    doctorAssignmentMode.value === "custom" &&
+    !(doctorName.value?.trim() ?? "")
+  ) {
+    errors.doctor = "Doctor is required.";
+  }
+
+  if (
+    showSocialWorkerSection.value &&
+    socialWorkerAssignmentMode.value === "custom" &&
+    !(socialWorkerName.value?.trim() ?? "")
+  ) {
+    errors.socialWorker = "Social worker is required.";
+  }
+
+  return errors;
+});
+
 
 const formatDate = (value: Date | null) => {
   if (!value) {
@@ -265,6 +343,7 @@ const parseDateTime = (
 
 const resetForm = () => {
   cancelPatientSearch();
+  hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
   filteredPatients.value = [];
   nurseName.value = null;
@@ -444,19 +523,16 @@ watch(
 
 
 const handleSave = () => {
+  hasAttemptedSubmit.value = true;
+  if (Object.keys(validationErrors.value).length > 0) {
+    return;
+  }
+
   if (!isPatientOption(selectedPatient.value)) {
     return;
   }
 
-  const date = schedule.isRecurring
-    ? schedule.recurringStartDate
-    : schedule.appointmentDate;
-  const startTime = schedule.isRecurring
-    ? (recurrenceRows.value[0]?.startTime ?? null)
-    : schedule.appointmentStartTime;
-  const endTime = schedule.isRecurring
-    ? (recurrenceRows.value[0]?.endTime ?? null)
-    : schedule.appointmentEndTime;
+  const { date, startTime, endTime } = resolveScheduleTimes();
 
   const formattedDate = formatDate(date);
   const formattedStartTime = formatTime(startTime);
@@ -655,6 +731,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
             </div>
           </template>
         </AutoComplete>
+        <div
+          v-if="hasAttemptedSubmit && validationErrors.patient"
+          class="cc-help-text cc-help-text--error"
+        >
+          {{ validationErrors.patient }}
+        </div>
       </div>
 
       <div class="cc-panel">
@@ -705,6 +787,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
             {{ type }}
           </option>
         </select>
+        <div
+          v-if="hasAttemptedSubmit && validationErrors.visitType"
+          class="cc-help-text cc-help-text--error"
+        >
+          {{ validationErrors.visitType }}
+        </div>
       </div>
 
       <div class="cc-panel">
@@ -732,6 +820,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               panelClass="cc-datepicker-panel"
               :pt="datePickerPt"
             />
+            <div
+              v-if="hasAttemptedSubmit && validationErrors.date"
+              class="cc-help-text cc-help-text--error"
+            >
+              {{ validationErrors.date }}
+            </div>
           </div>
           <div class="cc-grid cc-grid-2">
             <div>
@@ -747,6 +841,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                   v-model="schedule.appointmentStartTime"
                 />
               </div>
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.startTime"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.startTime }}
+              </div>
             </div>
 
             <div>
@@ -759,6 +859,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                   class="form-control"
                   v-model="schedule.appointmentEndTime"
                 />
+              </div>
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.endTime"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.endTime }}
               </div>
             </div>
           </div>
@@ -778,6 +884,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 panelClass="cc-datepicker-panel"
                 :pt="datePickerPt"
               />
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.date"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.date }}
+              </div>
             </div>
             <div>
               <label for="recurringEndDate" class="cc-label">End date</label>
@@ -857,6 +969,18 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
             >
               +
             </button>
+            <div
+              v-if="hasAttemptedSubmit && validationErrors.startTime"
+              class="cc-help-text cc-help-text--error"
+            >
+              {{ validationErrors.startTime }}
+            </div>
+            <div
+              v-if="hasAttemptedSubmit && validationErrors.endTime"
+              class="cc-help-text cc-help-text--error"
+            >
+              {{ validationErrors.endTime }}
+            </div>
           </div>
         </div>
       </div>
@@ -899,6 +1023,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 placeholder="Search nurse"
                 @complete="searchNurses"
               />
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.nurse"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.nurse }}
+              </div>
             </div>
             <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
               <div>
@@ -1041,6 +1171,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 placeholder="Search doctor"
                 @complete="searchDoctors"
               />
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.doctor"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.doctor }}
+              </div>
             </div>
             <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
               <div>
@@ -1185,6 +1321,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 placeholder="Search social worker"
                 @complete="searchSocialWorkers"
               />
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.socialWorker"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.socialWorker }}
+              </div>
             </div>
             <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
               <div>

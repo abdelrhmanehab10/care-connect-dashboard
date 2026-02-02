@@ -346,6 +346,10 @@ body {
   font-size: 0.85rem;
 }
 
+.cc-help-text--error {
+  color: var(--cc-danger);
+}
+
 .cc-label {
   display: block;
   font-size: 0.9rem;
