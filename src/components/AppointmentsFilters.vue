@@ -4,8 +4,10 @@ import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import DatePicker from "primevue/datepicker";
 import AppointmentCards from "./AppointmentCards.vue";
-import type { AppointmentStatus } from "../data/options";
+import type { AppointmentStatus, PatientOption } from "../data/options";
 import { autoCompletePt, datePickerPt } from "../ui/primevuePt";
+import { fetchPatientAutocomplete } from "../services/patients";
+import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 const props = defineProps<{
   employeeOptions: string[];
@@ -19,9 +21,12 @@ const props = defineProps<{
 const employeeFilter = defineModel<string | null>("employeeFilter", {
   default: null,
 });
-const patientFilter = defineModel<string | null>("patientFilter", {
-  default: null,
-});
+const patientFilter = defineModel<PatientOption | string | null>(
+  "patientFilter",
+  {
+    default: null,
+  },
+);
 const visitTypeFilter = defineModel<string | null>("visitTypeFilter", {
   default: null,
 });
@@ -38,9 +43,11 @@ const startDate = defineModel<Date | null>("startDate", { default: null });
 const endDate = defineModel<Date | null>("endDate", { default: null });
 
 const filteredEmployees = ref<string[]>([]);
-const filteredPatients = ref<string[]>([]);
+const filteredPatients = ref<PatientOption[]>([]);
 const filteredVisitTypes = ref<string[]>([]);
 const filteredStates = ref<string[]>([]);
+const { run: runPatientSearch, cancel: cancelPatientSearch } =
+  useDebouncedAsync(300);
 
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -54,13 +61,22 @@ const searchEmployees = (event: AutoCompleteCompleteEvent) => {
 };
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredPatients.value = [...props.patientOptions];
+  const query = event.query.trim();
+  if (query.length < 2) {
+    cancelPatientSearch();
+    filteredPatients.value = [];
     return;
   }
-  filteredPatients.value = props.patientOptions.filter((name) =>
-    name.toLowerCase().includes(query),
+
+  runPatientSearch(
+    () => fetchPatientAutocomplete(query),
+    (results) => {
+      filteredPatients.value = results;
+    },
+    (error) => {
+      filteredPatients.value = [];
+      console.error("Failed to load patient suggestions.", error);
+    },
   );
 };
 
@@ -132,8 +148,12 @@ const toggleThisWeek = () => {
 const toggleQuickPatient = () => {
   const patientName = props.quickPatientLabel;
   if (!patientName || patientName === "Patient") return;
+  const currentPatientName =
+    typeof patientFilter.value === "string"
+      ? patientFilter.value
+      : patientFilter.value?.name ?? "";
   patientFilter.value =
-    patientFilter.value === patientName ? null : patientName;
+    currentPatientName === patientName ? null : patientName;
 };
 
 const toggleQuickDoctor = () => {
@@ -144,6 +164,7 @@ const toggleQuickDoctor = () => {
 };
 
 const clearFilters = () => {
+  cancelPatientSearch();
   employeeFilter.value = null;
   patientFilter.value = null;
   statusTagFilter.value = null;
@@ -156,6 +177,7 @@ const clearFilters = () => {
   filteredVisitTypes.value = [];
   filteredStates.value = [];
 };
+
 </script>
 
 <template>
@@ -199,6 +221,7 @@ const clearFilters = () => {
           v-model="patientFilter"
           inputId="patientFilter"
           :suggestions="filteredPatients"
+          optionLabel="name"
           :completeOnFocus="true"
           :autoOptionFocus="true"
           appendTo="body"

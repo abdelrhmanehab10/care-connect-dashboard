@@ -20,6 +20,8 @@ import {
   toggleSwitchPt,
 } from "../ui/primevuePt";
 import type { Appointment } from "../types";
+import { fetchPatientAutocomplete } from "../services/patients";
+import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 const visible = defineModel<boolean>({ required: true });
 const props = withDefaults(
@@ -57,6 +59,8 @@ const emit = defineEmits<{
 
 const selectedPatient = ref<PatientOption | string | null>(null);
 const filteredPatients = ref<PatientOption[]>([]);
+const { run: runPatientSearch, cancel: cancelPatientSearch } =
+  useDebouncedAsync(300);
 const instructions = ref("");
 const nurseName = ref<string | null>(null);
 const filteredNurses = ref<string[]>([]);
@@ -186,6 +190,7 @@ const isPatientSelected = computed(() =>
   isPatientOption(selectedPatient.value),
 );
 
+
 const formatDate = (value: Date | null) => {
   if (!value) {
     return "";
@@ -259,6 +264,7 @@ const parseDateTime = (
 };
 
 const resetForm = () => {
+  cancelPatientSearch();
   selectedPatient.value = null;
   filteredPatients.value = [];
   nurseName.value = null;
@@ -325,15 +331,29 @@ const resetForm = () => {
   ];
 };
 
-const applyAppointment = (appointment: Appointment) => {
-  resetForm();
+const resolveAppointmentPatient = (
+  appointment: Appointment,
+): PatientOption | null => {
+  const name = appointment.patient?.name ?? "";
+  const id = appointment.patient?.id;
+  if (name || id) {
+    return {
+      id: String(id ?? name),
+      name: name || String(id ?? ""),
+    };
+  }
 
   const patientMatch = patientOptions.value.find(
     (patient) =>
       patient.name.toLowerCase() ===
       (appointment.patient?.name ?? "").toLowerCase(),
   );
-  selectedPatient.value = patientMatch ?? null;
+  return patientMatch ?? null;
+};
+
+const applyAppointment = (appointment: Appointment) => {
+  resetForm();
+  selectedPatient.value = resolveAppointmentPatient(appointment);
 
   visit.type = appointment.visit_type ?? "";
   schedule.isRecurring = false;
@@ -421,6 +441,7 @@ watch(
     }
   },
 );
+
 
 const handleSave = () => {
   if (!isPatientOption(selectedPatient.value)) {
@@ -530,18 +551,23 @@ const removeEmployeeRecurrenceRow = (rows: EmployeeRowsLike, rowId: string) => {
 };
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredPatients.value = [...patientOptions.value];
+  const query = event.query.trim();
+  if (query.length < 2) {
+    cancelPatientSearch();
+    filteredPatients.value = [];
     return;
   }
 
-  filteredPatients.value = patientOptions.value.filter((patient) => {
-    return (
-      patient.name.toLowerCase().includes(query) ||
-      patient.id.toLowerCase().includes(query)
-    );
-  });
+  runPatientSearch(
+    () => fetchPatientAutocomplete(query),
+    (results) => {
+      filteredPatients.value = results;
+    },
+    (error) => {
+      filteredPatients.value = [];
+      console.error("Failed to load patient suggestions.", error);
+    },
+  );
 };
 
 const searchNurses = (event: AutoCompleteCompleteEvent) => {

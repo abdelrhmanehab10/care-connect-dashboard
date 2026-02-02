@@ -50,9 +50,6 @@ const onCancel = () => emit("cancel", props.event.appointment);
       <span class="cc-calendar-event-provider">
         Dr: {{ displayValue(event.appointment.doctor?.name) }}
       </span>
-      <span class="cc-calendar-event-provider">
-        Nurse: {{ displayValue(event.appointment.nurse?.name) }}
-      </span>
     </div>
     <span
       class="cc-calendar-event-status"

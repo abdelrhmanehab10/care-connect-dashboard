@@ -26,6 +26,7 @@ import {
   socialWorkerOptions,
   weekdayOptions,
   type AppointmentStatus,
+  type PatientOption,
 } from "../data/options";
 
 const isDialogOpen = ref(false);
@@ -41,7 +42,7 @@ const employeeOptions = Array.from(
   new Set([...doctorOptions, ...nurseOptions]),
 );
 
-const patientFilter = ref<string | null>(null);
+const patientFilter = ref<PatientOption | string | null>(null);
 
 const statusTagFilter = ref<AppointmentStatus | null>(null);
 
@@ -207,7 +208,10 @@ const exportExcel = () => {
 
 const filteredAppointments = computed(() => {
   const employeeQuery = employeeFilter.value?.trim().toLowerCase() ?? "";
-  const patientQuery = patientFilter.value?.trim().toLowerCase() ?? "";
+  const patientQuery =
+    typeof patientFilter.value === "string"
+      ? patientFilter.value.trim().toLowerCase()
+      : patientFilter.value?.name?.trim().toLowerCase() ?? "";
   const statusQuery = statusTagFilter.value;
 
   const visitTypeQuery = visitTypeFilter.value?.trim().toLowerCase() ?? "";

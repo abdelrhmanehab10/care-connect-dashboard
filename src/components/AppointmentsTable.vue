@@ -14,12 +14,14 @@ import type { Appointment } from "../types";
 import {
   doctorOptions,
   nurseOptions,
-  patientOptions,
   socialWorkerOptions,
   visitTypeOptions,
   type AppointmentStatus,
+  type PatientOption,
 } from "../data/options";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
+import { fetchPatientAutocomplete } from "../services/patients";
+import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 type StaffMember = Appointment["doctor"];
 type Patient = Appointment["patient"];
@@ -31,10 +33,25 @@ const ensureStaffMember = (
   value: StaffMember | null | undefined,
 ): StaffMember => value ?? { id: 0, name: "" };
 
+const isPatientLike = (value: unknown): value is {
+  id?: unknown;
+  name?: unknown;
+  date_of_birth?: unknown;
+} =>
+  typeof value === "object" && value !== null && "name" in value;
+
+const normalizePatientId = (value: unknown) => {
+  if (typeof value === "number") {
+    return value;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const getFieldValue = (data: Appointment, field: string) => {
   switch (field) {
     case "patient.name":
-      return data.patient?.name ?? "";
+      return data.patient ?? null;
     case "nurse.name":
       return data.nurse?.name ?? "";
     case "doctor.name":
@@ -47,23 +64,39 @@ const getFieldValue = (data: Appointment, field: string) => {
 };
 
 const setFieldValue = (data: Appointment, field: string, value: unknown) => {
-  const nextValue = typeof value === "string" ? value : String(value ?? "");
   switch (field) {
     case "patient.name":
+      if (isPatientLike(value)) {
+        const name = typeof value.name === "string" ? value.name : "";
+        const dateOfBirth =
+          typeof value.date_of_birth === "string"
+            ? value.date_of_birth
+            : data.patient?.date_of_birth ?? "";
+        data.patient = {
+          id: normalizePatientId(value.id ?? data.patient?.id ?? 0),
+          name,
+          date_of_birth: dateOfBirth,
+        };
+        return;
+      }
       data.patient = ensurePatient(data.patient);
-      data.patient.name = nextValue;
+      data.patient.name =
+        typeof value === "string" ? value : String(value ?? "");
       return;
     case "nurse.name":
       data.nurse = ensureStaffMember(data.nurse);
-      data.nurse.name = nextValue;
+      data.nurse.name =
+        typeof value === "string" ? value : String(value ?? "");
       return;
     case "doctor.name":
       data.doctor = ensureStaffMember(data.doctor);
-      data.doctor.name = nextValue;
+      data.doctor.name =
+        typeof value === "string" ? value : String(value ?? "");
       return;
     case "social_worker.name":
       data.social_worker = ensureStaffMember(data.social_worker ?? null);
-      data.social_worker.name = nextValue;
+      data.social_worker.name =
+        typeof value === "string" ? value : String(value ?? "");
       return;
     default:
       (data as Record<string, unknown>)[field] = value;
@@ -87,10 +120,12 @@ const emit = defineEmits<{
   (event: "export-excel"): void;
 }>();
 
-const filteredPatients = ref<string[]>([]);
+const filteredPatients = ref<PatientOption[]>([]);
 const filteredNurses = ref<string[]>([]);
 const filteredDoctors = ref<string[]>([]);
 const filteredSocialWorkers = ref<string[]>([]);
+const { run: runPatientSearch, cancel: cancelPatientSearch } =
+  useDebouncedAsync(300);
 const editSnapshots = new Map<string, unknown>();
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
@@ -125,15 +160,23 @@ const displayAppointments = computed(() =>
 const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredPatients.value = patientOptions.map((patient) => patient.name);
+  const query = event.query.trim();
+  if (query.length < 2) {
+    cancelPatientSearch();
+    filteredPatients.value = [];
     return;
   }
 
-  filteredPatients.value = patientOptions
-    .map((patient) => patient.name)
-    .filter((name) => name.toLowerCase().includes(query));
+  runPatientSearch(
+    () => fetchPatientAutocomplete(query),
+    (results) => {
+      filteredPatients.value = results;
+    },
+    (error) => {
+      filteredPatients.value = [];
+      console.error("Failed to load patient suggestions.", error);
+    },
+  );
 };
 
 const searchNurses = (event: AutoCompleteCompleteEvent) => {
@@ -188,6 +231,7 @@ const handleEditorKeydown = (
     cancel(event);
   }
 };
+
 
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
 
@@ -273,7 +317,7 @@ const handleCellEditComplete = (
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.patient?.name ?? ''" :suggestions="filteredPatients"
+                <AutoComplete :modelValue="data.patient ?? null" :suggestions="filteredPatients" optionLabel="name"
                   :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search patient"
                   @update:modelValue="

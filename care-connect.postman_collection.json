@@ -592,7 +592,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/employees/search?name=sara",
+              "raw": "{{url}}/api/employees/search?title=social_worker",
               "host": [
                 "{{url}}"
               ],
@@ -603,8 +603,8 @@
               ],
               "query": [
                 {
-                  "key": "name",
-                  "value": "sara"
+                  "key": "title",
+                  "value": "social_worker"
                 }
               ]
             }
