@@ -24,6 +24,49 @@ export type AppointmentDetailsResponse = {
   message: string;
 };
 
+export type CreateAppointmentPayload = {
+  patient_id: string;
+  new_address: {
+    area_id: string;
+    city: string;
+    address: string;
+  };
+  visit_type_id: string;
+  is_recurring: "0" | "1";
+  date: string;
+  start_time: string;
+  end_time: string;
+  main_nurse?: string;
+  nurse_schedule_type?: string;
+  employee_slots?: {
+    nurse?: { start_time: string; end_time: string } | EmployeeRecurringSlot[];
+    doctor?: { start_time: string; end_time: string } | EmployeeRecurringSlot[];
+    social_worker?:
+      | { start_time: string; end_time: string }
+      | EmployeeRecurringSlot[];
+    driver?: { start_time: string; end_time: string } | EmployeeRecurringSlot[];
+  };
+  main_doctor?: string;
+  doctor_id?: string;
+  doctor_schedule_type?: string;
+  main_social_worker?: string;
+  social_worker_id?: string;
+  social_worker_schedule_type?: string;
+  driver_schedule_type?: string;
+  driver_id?: string;
+  instructions?: string;
+};
+
+type EmployeeRecurringSlot = {
+  day: string;
+  start_time: string;
+  end_time: string;
+};
+
+export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
+  nurse_id?: string;
+};
+
 export const fetchAppointments = async (
   params: AppointmentsQueryParams,
 ): Promise<AppointmentsResponse> => {
@@ -52,6 +95,24 @@ export const fetchAppointmentDetails = async (
   );
   const payload = response.data?.data ?? response.data;
   return payload as AppointmentDetails;
+};
+
+export const createAppointment = async (
+  payload: CreateAppointmentPayload,
+): Promise<unknown> => {
+  const response = await http.post("/api/vue/appointments/create", payload);
+  return response.data;
+};
+
+export const updateAppointment = async (
+  appointmentId: number,
+  payload: UpdateAppointmentPayload,
+): Promise<unknown> => {
+  const response = await http.post(
+    `/api/vue/appointments/update/${appointmentId}`,
+    payload,
+  );
+  return response.data;
 };
 
 export const confirmAppointmentAll = async (

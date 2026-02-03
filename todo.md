@@ -1,9 +1,9 @@
 # TODO
 
-- [x] Fix patient selection gating: `AutoComplete` can set the model to a raw input string while typing; only enable address fields when a real patient option is selected (e.g., object with `id`).
-- [x] Persist DataTable cell edits: add a `cell-edit-complete` handler to commit `event.newValue`/`event.newData` to `appointments` so inline edits are not discarded.
-- [x] Persist cell edits to appointments data in `AppointmentsTable.vue`: handle `cell-edit-complete` and update the backing appointments list (or emit and update in parent) so inline edits are retained.
-- [x] Persist appointment instructions from `AppointmentDialog.vue` textarea in the save payload (and update `NewAppointment` type).
-- [ ] Persist nurse start/end times from `AppointmentDialog.vue` nurse time pickers in the save payload (and update `NewAppointment` type).
-- [ ] Persist social worker selection from `AppointmentDialog.vue` in the save payload (and update `NewAppointment` type).
-
+## Appointments API Integration
+- [ ] Add `createAppointment` service in `src/services/appointments.ts` for `POST /api/vue/appointments/create`, map payload from `src/components/AppointmentDialog.vue`, and wire `@save` in `src/pages/AppointmentsPage.vue` to call it and refresh the list.
+- [ ] Add `updateAppointment` service in `src/services/appointments.ts` for `POST /api/vue/appointments/update/{id}`, wire edit flow in `src/pages/AppointmentsPage.vue` (dialog save) and table cell edits in `src/components/AppointmentsTable.vue` to persist changes and handle rollback on error.
+- [ ] Add `confirmAppointmentByEmployee` service for `GET /api/vue/appointments/confirm/{appointment_id}/{employee_id}` and expose UI to choose the employee (doctor/nurse/social worker) in `src/components/AppointmentDetailsDialog.vue` or `src/components/CalendarAppointmentCard.vue`, then refresh.
+- [ ] Fix cancel integration in `src/services/appointments.ts` to `POST /api/vue/appointments/cancel/{id}` with body `{ reason, notes }`, and add a small cancel form/modal in `src/components/CalendarAppointmentCard.vue` or a dialog to collect reason/notes before calling.
+- [ ] Ensure `fetchAppointmentDetails` is used consistently for “View details” (not just edit) so the details dialog reflects the `details/{id}` endpoint and its `confirmation` data in `src/components/AppointmentDetailsDialog.vue`.
+- [ ] Validate existing integrations for list, confirm-all, and quick-no-show in `src/services/appointments.ts` and keep the current refresh behavior in `src/components/AppointmentsCalendar.vue`.

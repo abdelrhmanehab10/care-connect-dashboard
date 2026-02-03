@@ -21,6 +21,7 @@ import {
 } from "../data/options";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
+import { fetchEmployeesByTitle } from "../services/employees";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 type StaffMember = Appointment["doctor"];
@@ -126,6 +127,9 @@ const filteredDoctors = ref<string[]>([]);
 const filteredSocialWorkers = ref<string[]>([]);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
+const { run: runNurseSearch } = useDebouncedAsync(300);
+const { run: runDoctorSearch } = useDebouncedAsync(300);
+const { run: runSocialWorkerSearch } = useDebouncedAsync(300);
 const editSnapshots = new Map<string, unknown>();
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
@@ -186,8 +190,15 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
     return;
   }
 
-  filteredNurses.value = nurseOptions.filter((name) =>
-    name.toLowerCase().includes(query),
+  runNurseSearch(
+    () => fetchEmployeesByTitle("nurse", query),
+    (results) => {
+      filteredNurses.value = results.length > 0 ? results : [...nurseOptions];
+    },
+    (error) => {
+      console.error("Failed to load nurses.", error);
+      filteredNurses.value = [...nurseOptions];
+    },
   );
 };
 
@@ -198,8 +209,15 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
     return;
   }
 
-  filteredDoctors.value = doctorOptions.filter((name) =>
-    name.toLowerCase().includes(query),
+  runDoctorSearch(
+    () => fetchEmployeesByTitle("doctor", query),
+    (results) => {
+      filteredDoctors.value = results.length > 0 ? results : [...doctorOptions];
+    },
+    (error) => {
+      console.error("Failed to load doctors.", error);
+      filteredDoctors.value = [...doctorOptions];
+    },
   );
 };
 
@@ -210,8 +228,16 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
     return;
   }
 
-  filteredSocialWorkers.value = socialWorkerOptions.filter((name) =>
-    name.toLowerCase().includes(query),
+  runSocialWorkerSearch(
+    () => fetchEmployeesByTitle("social_worker", query),
+    (results) => {
+      filteredSocialWorkers.value =
+        results.length > 0 ? results : [...socialWorkerOptions];
+    },
+    (error) => {
+      console.error("Failed to load social workers.", error);
+      filteredSocialWorkers.value = [...socialWorkerOptions];
+    },
   );
 };
 
@@ -230,6 +256,16 @@ const handleEditorKeydown = (
     event.preventDefault();
     cancel(event);
   }
+};
+
+const formatTime = (value: string | null | undefined) => {
+  if (!value) return "-";
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return trimmed;
+  const hours = match[1].padStart(2, "0");
+  const minutes = match[2];
+  return `${hours}:${minutes}`;
 };
 
 
@@ -349,7 +385,7 @@ const handleCellEditComplete = (
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
           <span v-else class="cc-text-nowrap">
-            {{ data.start_time ?? "-" }} - {{ data.end_time ?? "-" }}
+            {{ formatTime(data.start_time) }} - {{ formatTime(data.end_time) }}
           </span>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">

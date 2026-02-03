@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import Button from "primevue/button";
 import Tab from "primevue/tab";
 import TabList from "primevue/tablist";
@@ -12,7 +12,14 @@ import AppointmentDialog from "../components/AppointmentDialog.vue";
 import AppointmentDetailsDialog from "../components/AppointmentDetailsDialog.vue";
 import AppointmentsCalendar from "../components/AppointmentsCalendar.vue";
 import AppointmentsTable from "../components/AppointmentsTable.vue";
-import { fetchAppointmentDetails } from "../services/appointments";
+import {
+  createAppointment,
+  fetchAppointmentDetails,
+  updateAppointment,
+  type CreateAppointmentPayload,
+  type UpdateAppointmentPayload,
+} from "../services/appointments";
+import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
 import {
   statusBadgeClass,
   useAppointmentsQuery,
@@ -36,6 +43,10 @@ const page = ref(1);
 const selectedAppointment = ref<Appointment | null>(null);
 const editingAppointment = ref<Appointment | null>(null);
 const isEditLoading = ref(false);
+const isSaving = ref(false);
+const saveError = ref<string | null>(null);
+const isInlineSaving = ref(false);
+const visitTypes = ref<VisitTypeOption[]>([]);
 
 const employeeFilter = ref<string | null>(null);
 const employeeOptions = Array.from(
@@ -146,6 +157,16 @@ const {
 
 const normalizeString = (value: string | null | undefined) =>
   value?.toString().trim() ?? "";
+const normalizeStatus = (value: string | null | undefined) =>
+  normalizeString(value).toLowerCase();
+
+const visitTypeIdLookup = computed(() => {
+  const map = new Map<string, string>();
+  for (const type of visitTypes.value) {
+    map.set(type.name.toLowerCase(), type.id);
+  }
+  return map;
+});
 
 const patientNameOptions = computed(() =>
   Array.from(
@@ -227,7 +248,11 @@ const filteredAppointments = computed(() => {
       if (start && appointmentDate < start) return false;
       if (end && appointmentDate > end) return false;
     }
-    if (statusQuery && appointment.status !== statusQuery) return false;
+    if (
+      statusQuery &&
+      normalizeStatus(appointment.status) !== normalizeStatus(statusQuery)
+    )
+      return false;
 
     const doctorName = normalizeString(
       appointment.doctor?.name ?? "",
@@ -268,10 +293,77 @@ const syncCalendarRange = (payload: { start: string; end: string }) => {
   endDate.value = nextEnd;
 };
 
+const resolveInlineAddress = (appointment: Appointment) => {
+  const source = appointment as Appointment & {
+    area_id?: string | number | null;
+    city?: string | null;
+    address?: string | null;
+    patient?: {
+      area_id?: string | number | null;
+      city?: string | null;
+      address?: string | null;
+      street?: string | null;
+    };
+  };
+
+  const areaId = source.area_id ?? source.patient?.area_id ?? "";
+  const city = source.city ?? source.patient?.city ?? "";
+  const address =
+    source.address ?? source.patient?.address ?? source.patient?.street ?? "";
+
+  if (!areaId && !city && !address) {
+    return null;
+  }
+
+  return {
+    area_id: String(areaId ?? "").trim(),
+    city: String(city ?? "").trim(),
+    address: String(address ?? "").trim(),
+  };
+};
+
+const buildInlineUpdatePayload = (
+  appointment: Appointment,
+): UpdateAppointmentPayload => {
+  const visitTypeId = appointment.visit_type
+    ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
+    : undefined;
+  const payload: UpdateAppointmentPayload = {
+    patient_id: String(appointment.patient?.id ?? ""),
+    visit_type_id: visitTypeId,
+    date: normalizeAppointmentDate(appointment.date) || appointment.date,
+    start_time: appointment.start_time ?? "",
+    end_time: appointment.end_time ?? "",
+    is_recurring: "0",
+  };
+
+  const address = resolveInlineAddress(appointment);
+  if (address) {
+    payload.new_address = address;
+  }
+
+  return payload;
+};
+
+const handleInlineUpdate = async (appointment: Appointment): Promise<void> => {
+  if (!appointment?.id || isInlineSaving.value) return;
+  isInlineSaving.value = true;
+  try {
+    const payload = buildInlineUpdatePayload(appointment);
+    await updateAppointment(appointment.id, payload);
+    refreshAppointments();
+  } catch (error) {
+    console.error("Failed to update appointment.", error);
+    refreshAppointments();
+  } finally {
+    isInlineSaving.value = false;
+  }
+};
+
 const handleCellEditComplete = (
-  _event: DataTableCellEditCompleteEvent<Appointment>,
+  event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
-  return;
+  void handleInlineUpdate(event.data);
 };
 
 const openDetails = (appointment: Appointment) => {
@@ -301,6 +393,7 @@ const goNext = () => {
 };
 
 const openAddDialog = () => {
+  saveError.value = null;
   editingAppointment.value = null;
   isDialogOpen.value = true;
 };
@@ -310,6 +403,7 @@ const openEditDialog = (appointment: Appointment) => {
   isDetailsOpen.value = false;
   isDialogOpen.value = true;
   isEditLoading.value = true;
+  saveError.value = null;
   editingAppointment.value = null;
   fetchAppointmentDetails(appointment.id)
     .then((details) => {
@@ -331,6 +425,40 @@ const refreshAppointments = () => {
   void refetch();
 };
 
+const getSaveErrorMessage = (error: unknown) => {
+  const responseMessage =
+    (error as { response?: { data?: { message?: unknown } } })?.response?.data
+      ?.message;
+  if (typeof responseMessage === "string" && responseMessage.trim()) {
+    return responseMessage;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "Failed to save appointment.";
+};
+
+const handleSaveAppointment = async (payload: CreateAppointmentPayload) => {
+  if (isSaving.value) return;
+  isSaving.value = true;
+  saveError.value = null;
+  const appointmentId = editingAppointment.value?.id ?? null;
+  try {
+    if (appointmentId) {
+      await updateAppointment(appointmentId, payload);
+    } else {
+      await createAppointment(payload);
+    }
+    isDialogOpen.value = false;
+    editingAppointment.value = null;
+    refreshAppointments();
+  } catch (error) {
+    saveError.value = getSaveErrorMessage(error);
+  } finally {
+    isSaving.value = false;
+  }
+};
+
 watch([apiStart, apiEnd], () => {
   page.value = 1;
 });
@@ -339,7 +467,20 @@ watch(isDialogOpen, (value) => {
   if (!value) {
     editingAppointment.value = null;
     isEditLoading.value = false;
+    isSaving.value = false;
+    saveError.value = null;
   }
+});
+
+onMounted(() => {
+  fetchVisitTypes()
+    .then((items) => {
+      visitTypes.value = items;
+    })
+    .catch((error) => {
+      console.error("Failed to load visit types.", error);
+      visitTypes.value = [];
+    });
 });
 </script>
 
@@ -436,6 +577,8 @@ watch(isDialogOpen, (value) => {
       v-model="isDialogOpen"
       :appointment="editingAppointment"
       :is-loading="isEditLoading"
+      :is-saving="isSaving"
+      :error-message="saveError"
       :patient-options="patientOptionsData"
       :nurse-options="nurseOptions"
       :doctor-options="doctorOptions"
@@ -443,6 +586,7 @@ watch(isDialogOpen, (value) => {
       :area-options="areaOptions"
       :visit-type-options="visitTypeOptions"
       :weekday-options="weekdayOptions"
+      @save="handleSaveAppointment"
     />
     <AppointmentDetailsDialog
       v-model="isDetailsOpen"

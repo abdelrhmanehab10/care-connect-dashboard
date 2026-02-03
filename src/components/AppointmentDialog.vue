@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, isRef, reactive, ref, toRefs, watch, type Ref } from "vue";
+import {
+  computed,
+  isRef,
+  onMounted,
+  reactive,
+  ref,
+  toRefs,
+  watch,
+  type Ref,
+} from "vue";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
@@ -20,6 +29,10 @@ import {
   toggleSwitchPt,
 } from "../ui/primevuePt";
 import type { Appointment } from "../types";
+import type { CreateAppointmentPayload } from "../services/appointments";
+import { fetchAreas, type AreaOption } from "../services/areas";
+import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
+import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
@@ -35,10 +48,14 @@ const props = withDefaults(
     areaOptions: readonly string[];
     visitTypeOptions: readonly string[];
     weekdayOptions: readonly Weekday[];
+    isSaving?: boolean;
+    errorMessage?: string | null;
   }>(),
   {
     appointment: null,
     isLoading: false,
+    isSaving: false,
+    errorMessage: null,
   },
 );
 const {
@@ -53,13 +70,24 @@ const {
 const dialogTitle = computed(() =>
   props.appointment ? "Edit Appointment" : "Add Appointment",
 );
+const isBusy = computed(() => props.isLoading || props.isSaving);
 const emit = defineEmits<{
-  save: [payload: any];
+  save: [payload: CreateAppointmentPayload];
 }>();
 
 const selectedPatient = ref<PatientOption | string | null>(null);
 const filteredPatients = ref<PatientOption[]>([]);
+const fetchedAreas = ref<AreaOption[]>([]);
+const isAreasLoading = ref(false);
+const fetchedVisitTypes = ref<VisitTypeOption[]>([]);
+const isVisitTypesLoading = ref(false);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
+  useDebouncedAsync(300);
+const { run: runNurseSearch, cancel: cancelNurseSearch } =
+  useDebouncedAsync(300);
+const { run: runDoctorSearch, cancel: cancelDoctorSearch } =
+  useDebouncedAsync(300);
+const { run: runSocialWorkerSearch, cancel: cancelSocialWorkerSearch } =
   useDebouncedAsync(300);
 const instructions = ref("");
 const hasAttemptedSubmit = ref(false);
@@ -191,6 +219,28 @@ const isPatientSelected = computed(() =>
   isPatientOption(selectedPatient.value),
 );
 
+const fallbackAreas = computed<AreaOption[]>(() =>
+  (areaOptions.value ?? []).map((name) => ({
+    id: name,
+    name,
+  })),
+);
+
+const availableAreas = computed(() =>
+  fetchedAreas.value.length ? fetchedAreas.value : fallbackAreas.value,
+);
+
+const fallbackVisitTypes = computed<VisitTypeOption[]>(() =>
+  (visitTypeOptions.value ?? []).map((name) => ({
+    id: name,
+    name,
+  })),
+);
+
+const availableVisitTypes = computed(() =>
+  fetchedVisitTypes.value.length ? fetchedVisitTypes.value : fallbackVisitTypes.value,
+);
+
 const hasInputValue = (value: unknown) => {
   if (value instanceof Date) {
     return Number.isFinite(value.getTime());
@@ -215,56 +265,189 @@ const resolveScheduleTimes = () => {
   return { date, startTime, endTime };
 };
 
-const validationErrors = computed(() => {
-  const errors: Record<string, string> = {};
+const validationSchema = z
+  .object({
+    patientSelected: z.boolean(),
+    visitType: z.string(),
+    isRecurring: z.boolean(),
+    date: z.string(),
+    startTime: z.string(),
+    endTime: z.string(),
+    nurseRequired: z.boolean(),
+    nurseName: z.string().optional(),
+    nurseTimesValid: z.boolean().optional(),
+    doctorRequired: z.boolean(),
+    doctorName: z.string().optional(),
+    doctorTimesValid: z.boolean().optional(),
+    socialWorkerRequired: z.boolean(),
+    socialWorkerName: z.string().optional(),
+    socialWorkerTimesValid: z.boolean().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (!values.patientSelected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["patient"],
+        message: "Patient is required.",
+      });
+    }
+
+    if (!values.visitType.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["visitType"],
+        message: "Visit type is required.",
+      });
+    }
+
+    if (!values.date.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["date"],
+        message: values.isRecurring ? "Start date is required." : "Date is required.",
+      });
+    }
+
+    if (!values.startTime.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startTime"],
+        message: "Start time is required.",
+      });
+    }
+
+    if (!values.endTime.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endTime"],
+        message: "End time is required.",
+      });
+    }
+
+    if (
+      values.startTime.trim() &&
+      values.endTime.trim() &&
+      values.startTime >= values.endTime
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endTime"],
+        message: "End time must be after start time.",
+      });
+    }
+
+    if (values.nurseRequired && !(values.nurseName?.trim() ?? "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nurse"],
+        message: "Nurse is required.",
+      });
+    }
+
+    if (values.nurseRequired && values.nurseTimesValid === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startTime"],
+        message: "Nurse start and end time are required.",
+      });
+    }
+
+    if (values.doctorRequired && !(values.doctorName?.trim() ?? "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["doctor"],
+        message: "Doctor is required.",
+      });
+    }
+
+    if (values.doctorRequired && values.doctorTimesValid === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startTime"],
+        message: "Doctor start and end time are required.",
+      });
+    }
+
+    if (
+      values.socialWorkerRequired &&
+      !(values.socialWorkerName?.trim() ?? "")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["socialWorker"],
+        message: "Social worker is required.",
+      });
+    }
+
+    if (values.socialWorkerRequired && values.socialWorkerTimesValid === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startTime"],
+        message: "Social worker start and end time are required.",
+      });
+    }
+  });
+
+const hasCompleteTimeRange = (start: Date | null, end: Date | null) =>
+  Boolean(formatTime(start) && formatTime(end));
+
+const hasValidRecurringTimes = (rows: EmployeeRecurrenceRow[]) =>
+  rows.every(
+    (row) =>
+      Boolean(formatTime(row.startTime)) && Boolean(formatTime(row.endTime)),
+  );
+
+const buildValidationPayload = () => {
   const { date, startTime, endTime } = resolveScheduleTimes();
+  const isRecurring = schedule.isRecurring;
+  const nurseTimesValid = isRecurring
+    ? hasValidRecurringTimes(nurseRecurrenceRows.value)
+    : hasCompleteTimeRange(nurseSchedule.startTime, nurseSchedule.endTime);
+  const doctorTimesValid = isRecurring
+    ? hasValidRecurringTimes(doctorRecurrenceRows.value)
+    : hasCompleteTimeRange(doctorSchedule.startTime, doctorSchedule.endTime);
+  const socialWorkerTimesValid = isRecurring
+    ? hasValidRecurringTimes(socialWorkerRecurrenceRows.value)
+    : hasCompleteTimeRange(
+        socialWorkerSchedule.startTime,
+        socialWorkerSchedule.endTime,
+      );
+  return {
+    patientSelected: isPatientOption(selectedPatient.value),
+    visitType: visit.type ?? "",
+    isRecurring,
+    date: formatDate(date),
+    startTime: formatTime(startTime),
+    endTime: formatTime(endTime),
+    nurseRequired:
+      showNurseSection.value && nurseAssignmentMode.value === "custom",
+    nurseName: nurseName.value ?? "",
+    nurseTimesValid,
+    doctorRequired:
+      showDoctorSection.value && doctorAssignmentMode.value === "custom",
+    doctorName: doctorName.value ?? "",
+    doctorTimesValid,
+    socialWorkerRequired:
+      showSocialWorkerSection.value &&
+      socialWorkerAssignmentMode.value === "custom",
+    socialWorkerName: socialWorkerName.value ?? "",
+    socialWorkerTimesValid,
+  };
+};
 
-  if (!isPatientOption(selectedPatient.value)) {
-    errors.patient = "Patient is required.";
+const validationErrors = computed(() => {
+  const result = validationSchema.safeParse(buildValidationPayload());
+  if (result.success) {
+    return {};
   }
 
-  if (!visit.type) {
-    errors.visitType = "Visit type is required.";
+  const errors: Record<string, string> = {};
+  for (const issue of result.error.issues) {
+    const key = String(issue.path[0] ?? "form");
+    if (!errors[key]) {
+      errors[key] = issue.message;
+    }
   }
-
-  if (!hasInputValue(date)) {
-    errors.date = schedule.isRecurring
-      ? "Start date is required."
-      : "Date is required.";
-  }
-
-  if (!hasInputValue(startTime)) {
-    errors.startTime = "Start time is required.";
-  }
-
-  if (!hasInputValue(endTime)) {
-    errors.endTime = "End time is required.";
-  }
-
-  if (
-    showNurseSection.value &&
-    nurseAssignmentMode.value === "custom" &&
-    !(nurseName.value?.trim() ?? "")
-  ) {
-    errors.nurse = "Nurse is required.";
-  }
-
-  if (
-    showDoctorSection.value &&
-    doctorAssignmentMode.value === "custom" &&
-    !(doctorName.value?.trim() ?? "")
-  ) {
-    errors.doctor = "Doctor is required.";
-  }
-
-  if (
-    showSocialWorkerSection.value &&
-    socialWorkerAssignmentMode.value === "custom" &&
-    !(socialWorkerName.value?.trim() ?? "")
-  ) {
-    errors.socialWorker = "Social worker is required.";
-  }
-
   return errors;
 });
 
@@ -289,6 +472,15 @@ const formatTime = (value: Date | null) => {
   const minutes = String(value.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 };
+
+const buildRecurringSlots = (rows: EmployeeRecurrenceRow[]) =>
+  rows
+    .map((row) => ({
+      day: row.day,
+      start_time: formatTime(row.startTime),
+      end_time: formatTime(row.endTime),
+    }))
+    .filter((row) => row.start_time && row.end_time);
 
 const normalizeDateValue = (value: string | null | undefined) => {
   if (!value) {
@@ -343,6 +535,9 @@ const parseDateTime = (
 
 const resetForm = () => {
   cancelPatientSearch();
+  cancelNurseSearch();
+  cancelDoctorSearch();
+  cancelSocialWorkerSearch();
   hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
   filteredPatients.value = [];
@@ -428,6 +623,30 @@ const resolveAppointmentPatient = (
       (appointment.patient?.name ?? "").toLowerCase(),
   );
   return patientMatch ?? null;
+};
+
+const loadAreas = async () => {
+  isAreasLoading.value = true;
+  try {
+    fetchedAreas.value = await fetchAreas();
+  } catch (error) {
+    console.error("Failed to load areas.", error);
+    fetchedAreas.value = [];
+  } finally {
+    isAreasLoading.value = false;
+  }
+};
+
+const loadVisitTypes = async () => {
+  isVisitTypesLoading.value = true;
+  try {
+    fetchedVisitTypes.value = await fetchVisitTypes();
+  } catch (error) {
+    console.error("Failed to load visit types.", error);
+    fetchedVisitTypes.value = [];
+  } finally {
+    isVisitTypesLoading.value = false;
+  }
 };
 
 const applyAppointment = (appointment: Appointment) => {
@@ -521,8 +740,22 @@ watch(
   },
 );
 
+watch(visible, (value) => {
+  if (!value) {
+    resetForm();
+  }
+});
+
+onMounted(() => {
+  void loadAreas();
+  void loadVisitTypes();
+});
+
 
 const handleSave = () => {
+  if (props.isSaving) {
+    return;
+  }
   hasAttemptedSubmit.value = true;
   if (Object.keys(validationErrors.value).length > 0) {
     return;
@@ -542,41 +775,114 @@ const handleSave = () => {
     return;
   }
 
-  const trimmedNurse = showNurseSection.value
-    ? (nurseName.value?.trim() ?? "")
-    : "";
-  const trimmedDoctor = showDoctorSection.value
-    ? (doctorName.value?.trim() ?? "")
-    : "";
-  const formattedNurseStartTime = showNurseSection.value
-    ? formatTime(nurseSchedule.startTime)
-    : "";
-  const formattedNurseEndTime = showNurseSection.value
-    ? formatTime(nurseSchedule.endTime)
-    : "";
-  const formattedDoctorStartTime = showDoctorSection.value
-    ? formatTime(doctorSchedule.startTime)
-    : "";
-  const formattedDoctorEndTime = showDoctorSection.value
-    ? formatTime(doctorSchedule.endTime)
-    : "";
-  const trimmedInstructions = instructions.value.trim();
-  emit("save", {
-    date: formattedDate,
-    patient: selectedPatient.value.name,
-    startTime: formattedStartTime,
-    endTime: formattedEndTime,
-    nurse: trimmedNurse || undefined,
-    nurseStartTime: formattedNurseStartTime || undefined,
-    nurseEndTime: formattedNurseEndTime || undefined,
-    doctor: trimmedDoctor || undefined,
-    doctorStartTime: formattedDoctorStartTime || undefined,
-    doctorEndTime: formattedDoctorEndTime || undefined,
-    instructions: trimmedInstructions || undefined,
-  });
+  const visitTypeId =
+    availableVisitTypes.value.find((type) => type.name === visit.type)?.id ??
+    "";
 
-  visible.value = false;
-  resetForm();
+  const trimmedCity = address.city.trim();
+  const trimmedAddress = address.street.trim();
+  const trimmedInstructions = instructions.value.trim();
+
+  const employeeSlots: CreateAppointmentPayload["employee_slots"] = {};
+  const shouldIncludeNurse =
+    showNurseSection.value && nurseAssignmentMode.value === "custom";
+  const shouldIncludeDoctor =
+    showDoctorSection.value && doctorAssignmentMode.value === "custom";
+  const shouldIncludeSocialWorker =
+    showSocialWorkerSection.value &&
+    socialWorkerAssignmentMode.value === "custom";
+
+  if (shouldIncludeNurse) {
+    if (schedule.isRecurring) {
+      const slots = buildRecurringSlots(nurseRecurrenceRows.value);
+      if (slots.length) {
+        employeeSlots.nurse = slots;
+      }
+    } else {
+      const nurseSlotStart = formatTime(nurseSchedule.startTime);
+      const nurseSlotEnd = formatTime(nurseSchedule.endTime);
+      if (nurseSlotStart && nurseSlotEnd) {
+        employeeSlots.nurse = {
+          start_time: nurseSlotStart,
+          end_time: nurseSlotEnd,
+        };
+      }
+    }
+  }
+
+  if (shouldIncludeDoctor) {
+    if (schedule.isRecurring) {
+      const slots = buildRecurringSlots(doctorRecurrenceRows.value);
+      if (slots.length) {
+        employeeSlots.doctor = slots;
+      }
+    } else {
+      const doctorSlotStart = formatTime(doctorSchedule.startTime);
+      const doctorSlotEnd = formatTime(doctorSchedule.endTime);
+      if (doctorSlotStart && doctorSlotEnd) {
+        employeeSlots.doctor = {
+          start_time: doctorSlotStart,
+          end_time: doctorSlotEnd,
+        };
+      }
+    }
+  }
+
+  if (shouldIncludeSocialWorker) {
+    if (schedule.isRecurring) {
+      const slots = buildRecurringSlots(socialWorkerRecurrenceRows.value);
+      if (slots.length) {
+        employeeSlots.social_worker = slots;
+      }
+    } else {
+      const socialSlotStart = formatTime(socialWorkerSchedule.startTime);
+      const socialSlotEnd = formatTime(socialWorkerSchedule.endTime);
+      if (socialSlotStart && socialSlotEnd) {
+        employeeSlots.social_worker = {
+          start_time: socialSlotStart,
+          end_time: socialSlotEnd,
+        };
+      }
+    }
+  }
+
+  const payload: CreateAppointmentPayload = {
+    patient_id: selectedPatient.value.id,
+    new_address: {
+      area_id: address.area,
+      city: trimmedCity,
+      address: trimmedAddress,
+    },
+    visit_type_id: visitTypeId,
+    is_recurring: schedule.isRecurring ? "1" : "0",
+    date: formattedDate,
+    start_time: formattedStartTime,
+    end_time: formattedEndTime,
+    main_nurse:
+      showNurseSection.value && nurseAssignmentMode.value === "primary"
+        ? "1"
+        : "0",
+    nurse_schedule_type: "same",
+    employee_slots: Object.keys(employeeSlots).length ? employeeSlots : undefined,
+    main_doctor:
+      showDoctorSection.value && doctorAssignmentMode.value === "primary"
+        ? "1"
+        : "0",
+    doctor_id: "",
+    doctor_schedule_type: "same",
+    main_social_worker:
+      showSocialWorkerSection.value &&
+      socialWorkerAssignmentMode.value === "primary"
+        ? "1"
+        : "0",
+    social_worker_id: "",
+    social_worker_schedule_type: "same",
+    driver_schedule_type: "same",
+    driver_id: "",
+    instructions: trimmedInstructions,
+  };
+
+  emit("save", payload);
 };
 
 const addRecurrenceRow = () => {
@@ -653,8 +959,16 @@ const searchNurses = (event: AutoCompleteCompleteEvent) => {
     return;
   }
 
-  filteredNurses.value = nurseOptions.value.filter((name) =>
-    name.toLowerCase().includes(query),
+  runNurseSearch(
+    () => fetchEmployeesByTitle("nurse", query),
+    (results) => {
+      filteredNurses.value =
+        results.length > 0 ? results : [...nurseOptions.value];
+    },
+    (error) => {
+      console.error("Failed to load nurses.", error);
+      filteredNurses.value = [...nurseOptions.value];
+    },
   );
 };
 
@@ -665,8 +979,16 @@ const searchDoctors = (event: AutoCompleteCompleteEvent) => {
     return;
   }
 
-  filteredDoctors.value = doctorOptions.value.filter((name) =>
-    name.toLowerCase().includes(query),
+  runDoctorSearch(
+    () => fetchEmployeesByTitle("doctor", query),
+    (results) => {
+      filteredDoctors.value =
+        results.length > 0 ? results : [...doctorOptions.value];
+    },
+    (error) => {
+      console.error("Failed to load doctors.", error);
+      filteredDoctors.value = [...doctorOptions.value];
+    },
   );
 };
 
@@ -677,8 +999,16 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
     return;
   }
 
-  filteredSocialWorkers.value = socialWorkerOptions.value.filter((name) =>
-    name.toLowerCase().includes(query),
+  runSocialWorkerSearch(
+    () => fetchEmployeesByTitle("social_worker", query),
+    (results) => {
+      filteredSocialWorkers.value =
+        results.length > 0 ? results : [...socialWorkerOptions.value];
+    },
+    (error) => {
+      console.error("Failed to load social workers.", error);
+      filteredSocialWorkers.value = [...socialWorkerOptions.value];
+    },
   );
 };
 </script>
@@ -702,14 +1032,18 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       </div>
     </template>
 
-    <form class="cc-stack cc-dialog-form" @submit.prevent="submitForm">
+    <form
+      id="appointment-form"
+      class="cc-stack cc-dialog-form"
+      @submit.prevent="submitForm"
+    >
       <div v-if="props.isLoading" class="cc-dialog-loading">
         <div class="cc-dialog-loading-content" role="status" aria-live="polite">
           <Loader2 class="cc-icon cc-icon-spinner" aria-hidden="true" />
           <span>Loading appointment details...</span>
         </div>
       </div>
-      <fieldset :disabled="props.isLoading" class="cc-stack">
+      <fieldset :disabled="isBusy" class="cc-stack">
       <div>
         <label for="patient" class="cc-label cc-label-strong">Patient</label>
         <AutoComplete
@@ -748,9 +1082,15 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
           <div>
             <label for="area" class="cc-label">Area</label>
             <select id="area" v-model="address.area" class="cc-select">
-              <option value="" disabled>Select area</option>
-              <option v-for="area in areaOptions" :key="area" :value="area">
-                {{ area }}
+              <option value="" disabled>
+                {{ isAreasLoading ? "Loading areas..." : "Select area" }}
+              </option>
+              <option
+                v-for="area in availableAreas"
+                :key="area.id"
+                :value="area.id"
+              >
+                {{ area.name }}
               </option>
             </select>
           </div>
@@ -782,9 +1122,15 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
           >Visit type</label
         >
         <select id="visitType" v-model="visit.type" class="cc-select">
-          <option value="" disabled>Select visit type</option>
-          <option v-for="type in visitTypeOptions" :key="type" :value="type">
-            {{ type }}
+          <option value="" disabled>
+            {{ isVisitTypesLoading ? "Loading visit types..." : "Select visit type" }}
+          </option>
+          <option
+            v-for="type in availableVisitTypes"
+            :key="type.id"
+            :value="type.name"
+          >
+            {{ type.name }}
           </option>
         </select>
         <div
@@ -1452,6 +1798,12 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
           placeholder="Add special instructions or notes"
         ></textarea>
       </div>
+      <div
+        v-if="props.errorMessage"
+        class="cc-help-text cc-help-text--error"
+      >
+        {{ props.errorMessage }}
+      </div>
       </fieldset>
     </form>
 
@@ -1459,11 +1811,20 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
       <button
         type="button"
         class="cc-btn cc-btn-outline bg-danger text-light"
+        :disabled="props.isSaving"
         @click="visible = false"
       >
         Cancel
       </button>
-      <button type="submit" class="cc-btn save text-light">Save</button>
+      <button
+        type="submit"
+        class="cc-btn save text-light"
+        form="appointment-form"
+        :disabled="isBusy"
+      >
+        <Loader2 v-if="props.isSaving" class="cc-icon cc-icon-spinner" />
+        <span>{{ props.isSaving ? "Saving..." : "Save" }}</span>
+      </button>
     </template>
   </Dialog>
 </template>

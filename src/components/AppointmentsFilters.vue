@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import DatePicker from "primevue/datepicker";
 import AppointmentCards from "./AppointmentCards.vue";
 import type { AppointmentStatus, PatientOption } from "../data/options";
 import { autoCompletePt, datePickerPt } from "../ui/primevuePt";
+import { fetchEmployeesByTitle } from "../services/employees";
+import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
@@ -43,8 +45,12 @@ const startDate = defineModel<Date | null>("startDate", { default: null });
 const endDate = defineModel<Date | null>("endDate", { default: null });
 
 const filteredEmployees = ref<string[]>([]);
+const fetchedEmployees = ref<string[]>([]);
+const isEmployeesLoading = ref(false);
 const filteredPatients = ref<PatientOption[]>([]);
 const filteredVisitTypes = ref<string[]>([]);
+const fetchedVisitTypes = ref<VisitTypeOption[]>([]);
+const isVisitTypesLoading = ref(false);
 const filteredStates = ref<string[]>([]);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
@@ -52,10 +58,18 @@ const { run: runPatientSearch, cancel: cancelPatientSearch } =
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
-    filteredEmployees.value = [...props.employeeOptions];
+    filteredEmployees.value = [
+      ...(fetchedEmployees.value.length
+        ? fetchedEmployees.value
+        : props.employeeOptions),
+    ];
     return;
   }
-  filteredEmployees.value = props.employeeOptions.filter((name) =>
+  const source =
+    fetchedEmployees.value.length > 0
+      ? fetchedEmployees.value
+      : props.employeeOptions;
+  filteredEmployees.value = source.filter((name) =>
     name.toLowerCase().includes(query),
   );
 };
@@ -83,10 +97,18 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
 const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
-    filteredVisitTypes.value = [...props.visitTypeOptions];
+    filteredVisitTypes.value = [
+      ...((fetchedVisitTypes.value.length
+        ? fetchedVisitTypes.value.map((type) => type.name)
+        : props.visitTypeOptions) as string[]),
+    ];
     return;
   }
-  filteredVisitTypes.value = props.visitTypeOptions.filter((name) =>
+  const source =
+    fetchedVisitTypes.value.length > 0
+      ? fetchedVisitTypes.value.map((type) => type.name)
+      : props.visitTypeOptions;
+  filteredVisitTypes.value = source.filter((name) =>
     name.toLowerCase().includes(query),
   );
 };
@@ -178,6 +200,48 @@ const clearFilters = () => {
   filteredStates.value = [];
 };
 
+const loadEmployees = async () => {
+  isEmployeesLoading.value = true;
+  try {
+    const [nurses, doctors] = await Promise.all([
+      fetchEmployeesByTitle("nurse"),
+      fetchEmployeesByTitle("doctor"),
+    ]);
+    const unique = Array.from(new Set([...nurses, ...doctors]));
+    fetchedEmployees.value = unique;
+    if (filteredEmployees.value.length === 0) {
+      filteredEmployees.value = [...unique];
+    }
+  } catch (error) {
+    console.error("Failed to load employees.", error);
+    fetchedEmployees.value = [];
+  } finally {
+    isEmployeesLoading.value = false;
+  }
+};
+
+const loadVisitTypes = async () => {
+  isVisitTypesLoading.value = true;
+  try {
+    fetchedVisitTypes.value = await fetchVisitTypes();
+    if (filteredVisitTypes.value.length === 0) {
+      filteredVisitTypes.value = fetchedVisitTypes.value.map(
+        (type) => type.name,
+      );
+    }
+  } catch (error) {
+    console.error("Failed to load visit types.", error);
+    fetchedVisitTypes.value = [];
+  } finally {
+    isVisitTypesLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  void loadEmployees();
+  void loadVisitTypes();
+});
+
 </script>
 
 <template>
@@ -211,7 +275,7 @@ const clearFilters = () => {
           panelClass="cc-autocomplete-panel"
           inputClass="cc-input"
           :pt="autoCompletePt"
-          placeholder="Search nurse or doctor"
+          :placeholder="isEmployeesLoading ? 'Loading employees...' : 'Search nurse or doctor'"
           @complete="searchEmployees"
         />
       </div>
@@ -268,7 +332,7 @@ const clearFilters = () => {
           panelClass="cc-autocomplete-panel"
           inputClass="cc-input"
           :pt="autoCompletePt"
-          placeholder="Select visit type"
+          :placeholder="isVisitTypesLoading ? 'Loading visit types...' : 'Select visit type'"
           @complete="searchVisitTypes"
         />
       </div>

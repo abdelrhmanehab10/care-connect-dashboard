@@ -513,7 +513,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/vue/appointments/quick-no-show/{{appointment_id}}",
+              "raw": "{{url}}/api/vue/appointments/quick-no-show/20",
               "host": [
                 "{{url}}"
               ],
@@ -522,7 +522,7 @@
                 "vue",
                 "appointments",
                 "quick-no-show",
-                "{{appointment_id}}"
+                "20"
               ]
             }
           },
@@ -530,9 +530,6 @@
         },
         {
           "name": "Cancel Appointment",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
           "request": {
             "auth": {
               "type": "bearer",
@@ -544,7 +541,7 @@
                 }
               ]
             },
-            "method": "GET",
+            "method": "POST",
             "header": [],
             "body": {
               "mode": "raw",
@@ -556,7 +553,7 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/vue/appointments/cancel/{{appointment_id}}",
+              "raw": "{{url}}/api/vue/appointments/cancel/20",
               "host": [
                 "{{url}}"
               ],
@@ -565,7 +562,7 @@
                 "vue",
                 "appointments",
                 "cancel",
-                "{{appointment_id}}"
+                "20"
               ]
             }
           },
