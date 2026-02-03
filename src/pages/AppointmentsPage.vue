@@ -322,25 +322,39 @@ const resolveInlineAddress = (appointment: Appointment) => {
   };
 };
 
-const buildInlineUpdatePayload = (
-  appointment: Appointment,
-): UpdateAppointmentPayload => {
-  const visitTypeId = appointment.visit_type
-    ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
-    : undefined;
-  const payload: UpdateAppointmentPayload = {
-    patient_id: String(appointment.patient?.id ?? ""),
-    visit_type_id: visitTypeId,
-    date: normalizeAppointmentDate(appointment.date) || appointment.date,
-    start_time: appointment.start_time ?? "",
-    end_time: appointment.end_time ?? "",
-    is_recurring: "0",
-  };
+  const buildInlineUpdatePayload = (
+    appointment: Appointment,
+  ): UpdateAppointmentPayload => {
+    const visitTypeId = appointment.visit_type
+      ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
+      : undefined;
+    const payload: UpdateAppointmentPayload = {
+      patient_id: String(appointment.patient?.id ?? ""),
+      visit_type_id: visitTypeId,
+      date: normalizeAppointmentDate(appointment.date) || appointment.date,
+      start_time: appointment.start_time ?? "",
+      end_time: appointment.end_time ?? "",
+      is_recurring: "0",
+    };
 
-  const address = resolveInlineAddress(appointment);
-  if (address) {
-    payload.new_address = address;
-  }
+    const doctorId = appointment.doctor?.id;
+    const nurseId = appointment.nurse?.id;
+    const socialWorkerId = appointment.social_worker?.id ?? null;
+
+    if (doctorId) {
+      payload.doctor_id = String(doctorId);
+    }
+    if (nurseId) {
+      payload.nurse_id = String(nurseId);
+    }
+    if (socialWorkerId) {
+      payload.social_worker_id = String(socialWorkerId);
+    }
+
+    const address = resolveInlineAddress(appointment);
+    if (address) {
+      payload.new_address = address;
+    }
 
   return payload;
 };

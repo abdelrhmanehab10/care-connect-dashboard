@@ -263,8 +263,9 @@ const formatTime = (value: string | null | undefined) => {
   const trimmed = value.trim();
   const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
   if (!match) return trimmed;
-  const hours = match[1].padStart(2, "0");
-  const minutes = match[2];
+  const hours = (match[1] ?? "").padStart(2, "0");
+  const minutes = match[2] ?? "";
+  if (!hours || !minutes) return trimmed;
   return `${hours}:${minutes}`;
 };
 

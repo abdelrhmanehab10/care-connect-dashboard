@@ -241,16 +241,6 @@ const availableVisitTypes = computed(() =>
   fetchedVisitTypes.value.length ? fetchedVisitTypes.value : fallbackVisitTypes.value,
 );
 
-const hasInputValue = (value: unknown) => {
-  if (value instanceof Date) {
-    return Number.isFinite(value.getTime());
-  }
-  if (typeof value === "string") {
-    return value.trim().length > 0;
-  }
-  return value !== null && value !== undefined;
-};
-
 const resolveScheduleTimes = () => {
   const date = schedule.isRecurring
     ? schedule.recurringStartDate
