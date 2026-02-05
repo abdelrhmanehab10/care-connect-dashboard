@@ -246,10 +246,6 @@ onMounted(() => {
 
 <template>
   <div class="border p-3 rounded mb-2">
-    <div class="cc-sidebar-header">
-      <div class="cc-section-title">Filters</div>
-      <div class="cc-help-text">Refine by staff member.</div>
-    </div>
     <AppointmentCards
       :is-this-week-active="isThisWeekActive"
       :status-tag-filter="statusTagFilter"
@@ -356,7 +352,7 @@ onMounted(() => {
       <div class="cc-filters-actions">
         <button
           type="button"
-          class="cc-btn cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2 cc-btn-full"
+          class="rounded cc-btn-sm cc-btn-input bg-danger text-light mt-3 mb-2 cc-btn-full"
           @click="clearFilters"
         >
           Clear Filters

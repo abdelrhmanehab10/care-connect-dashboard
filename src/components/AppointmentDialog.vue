@@ -35,6 +35,7 @@ import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
+import AppointmentMap from "./AppointmentMap.vue";
 
 const visible = defineModel<boolean>({ required: true });
 const props = withDefaults(
@@ -1104,6 +1105,8 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
               placeholder="Enter street address"
             ></textarea>
           </div>
+          <AppointmentMap :lat="24.7136" :lng="46.6753" :zoom="9" height="360px" />
+
         </fieldset>
       </div>
 

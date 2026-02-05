@@ -71,7 +71,7 @@ const displayValue = (value: string | null | undefined) => value ?? "-";
     <template #footer>
       <button
         type="button"
-        class="cc-btn cc-btn-outline"
+        class="cc-btn bg-danger"
         @click="visible = false"
       >
         Close

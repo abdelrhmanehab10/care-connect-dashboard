@@ -10,7 +10,7 @@ interface Card {
 
 const cards = ref<Card[]>([
   {
-    title: "Total Visits Today",
+    title: "Total Appointments Today",
     value:  0,
     icon: "fa-solid fa-notes-medical",
     theme: "theme-teal",

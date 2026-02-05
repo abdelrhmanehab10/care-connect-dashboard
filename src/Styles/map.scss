@@ -1,0 +1,22 @@
+.location-map {
+    width: 100%
+}
+
+.map-label {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.map-frame {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff
+}
+
+.map-iframe {
+    width: 100%;
+    height: v-bind(height);
+    border: 0
+}
