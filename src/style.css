@@ -951,7 +951,15 @@ body {
 .cc-calendar .v-calendar-weekly__body {
   overflow: hidden;
 }
-
+.v-calendar-daily__head{
+  background: aliceblue;
+}
+.v-calendar-daily__intervals-body{
+  background: ghostwhite;
+}
+.v-event-timed{
+  width: 20%;
+}
 .cc-calendar-event {
   display: flex;
   flex-direction: column;

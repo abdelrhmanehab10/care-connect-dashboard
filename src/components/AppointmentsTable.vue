@@ -112,14 +112,7 @@ const props = defineProps<{
 }>();
 const { isLoading } = toRefs(props);
 
-const emit = defineEmits<{
-  (
-    event: "cell-edit-complete",
-    payload: DataTableCellEditCompleteEvent<Appointment>,
-  ): void;
-  (event: "view-details", payload: Appointment): void;
-  (event: "export-excel"): void;
-}>();
+
 
 const filteredPatients = ref<PatientOption[]>([]);
 const filteredNurses = ref<string[]>([]);
@@ -298,15 +291,19 @@ const handleCellEditComplete = (
   editSnapshots.delete(snapshotKey(event.data, event.field));
   emit("cell-edit-complete", event);
 };
+const emit = defineEmits<{
+  (
+    event: "cell-edit-complete",
+    payload: DataTableCellEditCompleteEvent<Appointment>
+  ): void;
+  (event: "view-details", payload: Appointment): void;
+}>();
+
 </script>
 
 <template>
   <div class="cc-card">
-    <div class="cc-table-toolbar">
-      <button type="button" class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light" @click="emit('export-excel')">
-        Export Excel
-      </button>
-    </div>
+ 
     <DataTable :value="displayAppointments" dataKey="id" :editMode="editMode" @cell-edit-init="handleCellEditInit"
       @cell-edit-cancel="handleCellEditCancel" @cell-edit-complete="handleCellEditComplete" :pt="dataTablePt">
       <template #empty>

@@ -322,39 +322,39 @@ const resolveInlineAddress = (appointment: Appointment) => {
   };
 };
 
-  const buildInlineUpdatePayload = (
-    appointment: Appointment,
-  ): UpdateAppointmentPayload => {
-    const visitTypeId = appointment.visit_type
-      ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
-      : undefined;
-    const payload: UpdateAppointmentPayload = {
-      patient_id: String(appointment.patient?.id ?? ""),
-      visit_type_id: visitTypeId,
-      date: normalizeAppointmentDate(appointment.date) || appointment.date,
-      start_time: appointment.start_time ?? "",
-      end_time: appointment.end_time ?? "",
-      is_recurring: "0",
-    };
+const buildInlineUpdatePayload = (
+  appointment: Appointment,
+): UpdateAppointmentPayload => {
+  const visitTypeId = appointment.visit_type
+    ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
+    : undefined;
+  const payload: UpdateAppointmentPayload = {
+    patient_id: String(appointment.patient?.id ?? ""),
+    visit_type_id: visitTypeId,
+    date: normalizeAppointmentDate(appointment.date) || appointment.date,
+    start_time: appointment.start_time ?? "",
+    end_time: appointment.end_time ?? "",
+    is_recurring: "0",
+  };
 
-    const doctorId = appointment.doctor?.id;
-    const nurseId = appointment.nurse?.id;
-    const socialWorkerId = appointment.social_worker?.id ?? null;
+  const doctorId = appointment.doctor?.id;
+  const nurseId = appointment.nurse?.id;
+  const socialWorkerId = appointment.social_worker?.id ?? null;
 
-    if (doctorId) {
-      payload.doctor_id = String(doctorId);
-    }
-    if (nurseId) {
-      payload.nurse_id = String(nurseId);
-    }
-    if (socialWorkerId) {
-      payload.social_worker_id = String(socialWorkerId);
-    }
+  if (doctorId) {
+    payload.doctor_id = String(doctorId);
+  }
+  if (nurseId) {
+    payload.nurse_id = String(nurseId);
+  }
+  if (socialWorkerId) {
+    payload.social_worker_id = String(socialWorkerId);
+  }
 
-    const address = resolveInlineAddress(appointment);
-    if (address) {
-      payload.new_address = address;
-    }
+  const address = resolveInlineAddress(appointment);
+  if (address) {
+    payload.new_address = address;
+  }
 
   return payload;
 };
@@ -496,6 +496,14 @@ onMounted(() => {
       visitTypes.value = [];
     });
 });
+const emit = defineEmits<{
+  (
+    event: "cell-edit-complete",
+    payload: DataTableCellEditCompleteEvent<Appointment>,
+  ): void;
+  (event: "view-details", payload: Appointment): void;
+  (event: "export-excel"): void;
+}>();
 </script>
 
 <template>
@@ -504,107 +512,69 @@ onMounted(() => {
       <section class="cc-main">
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointments</h2>
-          <Button
-            label="Add Appointment"
-            class="cc-btn cc-btn-primary cc-toolbar-action text-light"
-            @click="openAddDialog"
-          />
+          <Button label="Add Appointment" class="cc-btn cc-btn-primary cc-toolbar-action text-light"
+            @click="openAddDialog" />
         </div>
-        <AppointmentsFilters
-          v-model:employee-filter="employeeFilter"
-          v-model:patient-filter="patientFilter"
-          v-model:visit-type-filter="visitTypeFilter"
-          v-model:state-filter="stateFilter"
-          v-model:status-tag-filter="statusTagFilter"
-          v-model:start-date="startDate"
-          v-model:end-date="endDate"
-          :employee-options="employeeOptions"
-          :patient-options="patientNameOptions"
-          :visit-type-options="visitTypeOptions"
-          :state-options="stateOptions"
-          :quick-patient-label="quickPatientLabel"
-          :quick-doctor-label="quickDoctorLabel"
-        />
+        <AppointmentsFilters v-model:employee-filter="employeeFilter" v-model:patient-filter="patientFilter"
+          v-model:visit-type-filter="visitTypeFilter" v-model:state-filter="stateFilter"
+          v-model:status-tag-filter="statusTagFilter" v-model:start-date="startDate" v-model:end-date="endDate"
+          :employee-options="employeeOptions" :patient-options="patientNameOptions"
+          :visit-type-options="visitTypeOptions" :state-options="stateOptions" :quick-patient-label="quickPatientLabel"
+          :quick-doctor-label="quickDoctorLabel" />
 
         <Tabs v-model:value="activeTab">
-          <div class="cc-tabs-wrap">
+          <div class="cc-tabs-wrap d-flex justify-content-between">
             <TabList class="cc-tabs">
               <Tab value="table" :pt="tabLinkPt">Table View</Tab>
               <Tab value="calendar" :pt="tabLinkPt">Calendar View</Tab>
             </TabList>
+            <button type="button" class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light"
+              @click="emit('export-excel')">
+              Export Excel
+            </button>
+         
           </div>
+         
           <TabPanels :pt="tabPanelsPt">
             <TabPanel value="table">
-            <div class="cc-table-card">
-              <AppointmentsTable
-                :appointments="filteredAppointments"
-                :is-loading="isLoading"
-                :status-options="statusOptions"
-                :status-badge-class="statusBadgeClass"
-                @cell-edit-complete="handleCellEditComplete"
-                @view-details="openDetails"
-                @export-excel="exportExcel"
-              />
-              <div class="cc-table-footer">
-                <div class="cc-help-text">
-                  Page {{ appointmentsResponse?.currentPage ?? 1 }} of
-                  {{ totalPages }}
-                </div>
-                <div class="cc-row cc-stack-sm">
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline cc-btn-sm"
-                    :disabled="!canGoPrev"
-                    @click="goPrev"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline cc-btn-sm"
-                    :disabled="!canGoNext"
-                    @click="goNext"
-                  >
-                    Next
-                  </button>
+              <div class="cc-table-card">
+                <AppointmentsTable :appointments="filteredAppointments" :is-loading="isLoading"
+                  :status-options="statusOptions" :status-badge-class="statusBadgeClass"
+                  @cell-edit-complete="handleCellEditComplete" @view-details="openDetails"
+                  @export-excel="exportExcel" />
+                <div class="cc-table-footer">
+                  <div class="cc-help-text">
+                    Page {{ appointmentsResponse?.currentPage ?? 1 }} of
+                    {{ totalPages }}
+                  </div>
+                  <div class="cc-row cc-stack-sm">
+                    <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" :disabled="!canGoPrev"
+                      @click="goPrev">
+                      Prev
+                    </button>
+                    <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" :disabled="!canGoNext"
+                      @click="goNext">
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
             </TabPanel>
             <TabPanel value="calendar">
-            <AppointmentsCalendar
-              :appointments="filteredAppointments"
-              :is-loading="isLoading"
-              @range-change="syncCalendarRange"
-              @edit="openEditDialog"
-              @confirm-all="refreshAppointments"
-              @no-show="refreshAppointments"
-              @cancel="refreshAppointments"
-            />
+              <AppointmentsCalendar :appointments="filteredAppointments" :is-loading="isLoading"
+                @range-change="syncCalendarRange" @edit="openEditDialog" @confirm-all="refreshAppointments"
+                @no-show="refreshAppointments" @cancel="refreshAppointments" />
             </TabPanel>
           </TabPanels>
         </Tabs>
       </section>
     </div>
 
-    <AppointmentDialog
-      v-model="isDialogOpen"
-      :appointment="editingAppointment"
-      :is-loading="isEditLoading"
-      :is-saving="isSaving"
-      :error-message="saveError"
-      :patient-options="patientOptionsData"
-      :nurse-options="nurseOptions"
-      :doctor-options="doctorOptions"
-      :social-worker-options="socialWorkerOptions"
-      :area-options="areaOptions"
-      :visit-type-options="visitTypeOptions"
-      :weekday-options="weekdayOptions"
-      @save="handleSaveAppointment"
-    />
-    <AppointmentDetailsDialog
-      v-model="isDetailsOpen"
-      :appointment="selectedAppointment"
-    />
+    <AppointmentDialog v-model="isDialogOpen" :appointment="editingAppointment" :is-loading="isEditLoading"
+      :is-saving="isSaving" :error-message="saveError" :patient-options="patientOptionsData"
+      :nurse-options="nurseOptions" :doctor-options="doctorOptions" :social-worker-options="socialWorkerOptions"
+      :area-options="areaOptions" :visit-type-options="visitTypeOptions" :weekday-options="weekdayOptions"
+      @save="handleSaveAppointment" />
+    <AppointmentDetailsDialog v-model="isDetailsOpen" :appointment="selectedAppointment" />
   </div>
 </template>
