@@ -7,7 +7,7 @@ export const http = axios.create({
 http.interceptors.request.use((config) => {
   const storedToken =
     localStorage.getItem("cc_token") ?? sessionStorage.getItem("cc_token");
-  const envToken = import.meta.env.DEV ? import.meta.env.VITE_TOKEN : undefined;
+  const envToken = import.meta.env.VITE_TOKEN;
   const token = envToken ?? storedToken;
   if (token) {
     const headers = AxiosHeaders.from(config.headers);
