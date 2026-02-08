@@ -27,14 +27,8 @@
             "header": [],
             "url": {
               "raw": "{{url}}/api/labs/companies",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "labs",
-                "companies"
-              ]
+              "host": ["{{url}}"],
+              "path": ["api", "labs", "companies"]
             }
           },
           "response": []
@@ -68,14 +62,8 @@
             },
             "url": {
               "raw": "{{url}}/api/labs/tests",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "labs",
-                "tests"
-              ]
+              "host": ["{{url}}"],
+              "path": ["api", "labs", "tests"]
             }
           },
           "response": []
@@ -87,14 +75,8 @@
             "header": [],
             "url": {
               "raw": "{{url}}/api/labs/panels",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "labs",
-                "panels"
-              ]
+              "host": ["{{url}}"],
+              "path": ["api", "labs", "panels"]
             }
           },
           "response": []
@@ -128,14 +110,8 @@
             },
             "url": {
               "raw": "{{url}}/api/labs/profiles",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "labs",
-                "profiles"
-              ]
+              "host": ["{{url}}"],
+              "path": ["api", "labs", "profiles"]
             }
           },
           "response": []
@@ -166,14 +142,8 @@
             },
             "url": {
               "raw": "{{url}}/api/labs/orders",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "labs",
-                "orders"
-              ]
+              "host": ["{{url}}"],
+              "path": ["api", "labs", "orders"]
             }
           },
           "response": []
@@ -204,15 +174,9 @@
               ]
             },
             "url": {
-              "raw": "{{url}}/api/admin/login",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "login"
-              ]
+              "raw": "{{url}}/admin/login",
+              "host": ["{{url}}"],
+              "path": ["admin", "login"]
             }
           },
           "response": []
@@ -239,7 +203,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"start\":\"\",\n    \"end\":\"\",\n    \"view_pagination\":true\n}",
+              "raw": "{\n    \"start\":\"\",\n    \"end\":\"\",\n    \"status\":\"waiting\",\n    \"view_pagination\":true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -247,16 +211,9 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/vue/appointments/list",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "vue",
-                "appointments",
-                "list"
-              ]
+              "raw": "{{url}}/vue/appointments/list",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "list"]
             }
           },
           "response": [
@@ -276,14 +233,8 @@
                 },
                 "url": {
                   "raw": "{{url}}/api/scheduler/appointments",
-                  "host": [
-                    "{{url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "scheduler",
-                    "appointments"
-                  ]
+                  "host": ["{{url}}"],
+                  "path": ["api", "scheduler", "appointments"]
                 }
               },
               "status": "OK",
@@ -340,20 +291,60 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/vue/appointments/details/20",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "vue",
-                "appointments",
-                "details",
-                "20"
-              ]
+              "raw": "{{url}}/vue/appointments/details/23",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "details", "23"]
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "Appointment Details",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{url}}/vue/appointments/details/23",
+                  "host": ["{{url}}"],
+                  "path": ["vue", "appointments", "details", "23"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Host",
+                  "value": "127.0.0.1:8000"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/8.3.10"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 07 Feb 2026 09:45:13 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": 23,\n        \"patient\": {\n            \"id\": 3,\n            \"name\": \"Ahmed yasser ,Ali\",\n            \"date_of_birth\": \"1992-01-01\"\n        },\n        \"patient_address\": {\n            \"id\": 16,\n            \"area_id\": 1,\n            \"city\": \"Cairo\",\n            \"address\": \"PM7G+C4F, Al Olaya, Riyadh 12251, Saudi Arabia\",\n            \"lat\": 24.7135517,\n            \"lng\": 46.6752957\n        },\n        \"start_time\": \"02:02:00\",\n        \"end_time\": \"04:02:00\",\n        \"date\": \"2026/02/14\",\n        \"status\": \"new\",\n        \"visit_type\": \"Initial Visit\",\n        \"confirmations\": [],\n        \"care_team\": [\n            {\n                \"employee\": {\n                    \"id\": 4,\n                    \"name\": \"Sara Ali\"\n                },\n                \"role\": \"nurse\",\n                \"start_time\": \"02:00:00\",\n                \"end_time\": \"04:00:00\"\n            },\n            {\n                \"employee\": {\n                    \"id\": 1,\n                    \"name\": \"Ahmed Mohamed\"\n                },\n                \"role\": \"doctor\",\n                \"start_time\": \"02:00:00\",\n                \"end_time\": \"04:00:00\"\n            },\n            {\n                \"employee\": {\n                    \"id\": 5,\n                    \"name\": \"Fatma Ahmed\"\n                },\n                \"role\": \"social_worker\",\n                \"start_time\": \"02:00:00\",\n                \"end_time\": \"04:00:00\"\n            }\n        ]\n    },\n    \"status\": \"success\",\n    \"message\": \"\"\n}"
+            }
+          ]
         },
         {
           "name": "Add new Appointment",
@@ -380,16 +371,9 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/vue/appointments/create",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "vue",
-                "appointments",
-                "create"
-              ]
+              "raw": "{{url}}/vue/appointments/create",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "create"]
             }
           },
           "response": []
@@ -419,17 +403,9 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/vue/appointments/update/1",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "vue",
-                "appointments",
-                "update",
-                "1"
-              ]
+              "raw": "{{url}}/vue/appointments/update/1",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "update", "1"]
             }
           },
           "response": []
@@ -450,12 +426,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/vue/appointments/confirm/{{appointment_id}}/{{employee_id}}",
-              "host": [
-                "{{url}}"
-              ],
+              "raw": "{{url}}/vue/appointments/confirm/{{appointment_id}}/{{employee_id}}",
+              "host": ["{{url}}"],
               "path": [
-                "api",
                 "vue",
                 "appointments",
                 "confirm",
@@ -482,12 +455,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/vue/appointments/confirm-all/{{appointment_id}}",
-              "host": [
-                "{{url}}"
-              ],
+              "raw": "{{url}}/vue/appointments/confirm-all/{{appointment_id}}",
+              "host": ["{{url}}"],
               "path": [
-                "api",
                 "vue",
                 "appointments",
                 "confirm-all",
@@ -513,17 +483,9 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/vue/appointments/quick-no-show/20",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "vue",
-                "appointments",
-                "quick-no-show",
-                "20"
-              ]
+              "raw": "{{url}}/vue/appointments/quick-no-show/20",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "quick-no-show", "20"]
             }
           },
           "response": []
@@ -553,20 +515,233 @@
               }
             },
             "url": {
-              "raw": "{{url}}/api/vue/appointments/cancel/20",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "vue",
-                "appointments",
-                "cancel",
-                "20"
-              ]
+              "raw": "{{url}}/vue/appointments/cancel/20",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "cancel", "20"]
             }
           },
           "response": []
+        },
+        {
+          "name": "List Appointment Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/vue/appointments/status-list",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "status-list"]
+            }
+          },
+          "response": [
+            {
+              "name": "List Appointment Statuses",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{url}}/api/vue/appointments/status-list",
+                  "host": ["{{url}}"],
+                  "path": ["api", "vue", "appointments", "status-list"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Host",
+                  "value": "127.0.0.1:8000"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/8.3.10"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 07 Feb 2026 08:17:54 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"key\": \"New\",\n            \"value\": \"new\",\n            \"level\": 1,\n            \"is_final\": false\n        },\n        {\n            \"key\": \"Waiting\",\n            \"value\": \"waiting\",\n            \"level\": 1,\n            \"is_final\": false\n        },\n        {\n            \"key\": \"Confirmed\",\n            \"value\": \"confirmed\",\n            \"level\": 2,\n            \"is_final\": false\n        },\n        {\n            \"key\": \"Rescheduled\",\n            \"value\": \"rescheduled\",\n            \"level\": 2,\n            \"is_final\": false\n        },\n        {\n            \"key\": \"Patient Confirmed\",\n            \"value\": \"patient_confirmed\",\n            \"level\": 2,\n            \"is_final\": false\n        },\n        {\n            \"key\": \"Canceled\",\n            \"value\": \"canceled\",\n            \"level\": 3,\n            \"is_final\": true\n        },\n        {\n            \"key\": \"No Show\",\n            \"value\": \"no_show\",\n            \"level\": 3,\n            \"is_final\": true\n        },\n        {\n            \"key\": \"Completed\",\n            \"value\": \"completed\",\n            \"level\": 3,\n            \"is_final\": true\n        }\n    ],\n    \"status\": \"success\",\n    \"message\": \"\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Appointments cards (Counts)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/vue/appointments/cards",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "cards"]
+            }
+          },
+          "response": [
+            {
+              "name": "List Appointments cards (counts)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{url}}/api/vue/appointments/cards",
+                  "host": ["{{url}}"],
+                  "path": ["api", "vue", "appointments", "cards"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Host",
+                  "value": "127.0.0.1:8000"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/8.3.10"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 07 Feb 2026 09:07:10 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"total\": 21,\n        \"by_status\": [\n            {\n                \"status\": \"New\",\n                \"name\": \"new\",\n                \"count\": 2\n            },\n            {\n                \"status\": \"Waiting\",\n                \"name\": \"waiting\",\n                \"count\": 3\n            },\n            {\n                \"status\": \"Confirmed\",\n                \"name\": \"confirmed\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Rescheduled\",\n                \"name\": \"rescheduled\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Patient Confirmed\",\n                \"name\": \"patient_confirmed\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Canceled\",\n                \"name\": \"canceled\",\n                \"count\": 4\n            },\n            {\n                \"status\": \"No Show\",\n                \"name\": \"no_show\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Completed\",\n                \"name\": \"completed\",\n                \"count\": 12\n            }\n        ],\n        \"periods\": {\n            \"today\": 0,\n            \"this_week\": 1,\n            \"this_month\": 1\n        }\n    },\n    \"status\": \"success\",\n    \"message\": \"\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Appointment Log",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/vue/appointments/log/353",
+              "host": ["{{url}}"],
+              "path": ["vue", "appointments", "log", "353"]
+            }
+          },
+          "response": [
+            {
+              "name": "Appointment Log",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{url}}/vue/appointments/log/353",
+                  "host": ["{{url}}"],
+                  "path": ["vue", "appointments", "log", "353"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Sat, 07 Feb 2026 15:06:58 GMT"
+                },
+                {
+                  "key": "Server",
+                  "value": "Apache/2.4.63 (Ubuntu)"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Authorization"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5, max=100"
+                },
+                {
+                  "key": "Connection",
+                  "value": "Keep-Alive"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"employee\": \"Waleed abdelrahman\",\n            \"patient\": \"Mansour abdulrahman ,alhawash\",\n            \"action\": \"updated status from confirmed to completed\",\n            \"time\": \"2026/02/06 13:52:48\"\n        },\n        {\n            \"employee\": \"Waleed abdelrahman\",\n            \"patient\": \"Mansour abdulrahman ,alhawash\",\n            \"action\": \"updated status from new to waiting\",\n            \"time\": \"2026/02/06 13:51:25\"\n        },\n        {\n            \"employee\": \"Waleed abdelrahman\",\n            \"patient\": \"Mansour abdulrahman ,alhawash\",\n            \"action\": \"updated status from waiting to confirmed\",\n            \"time\": \"2026/02/06 13:51:25\"\n        },\n        {\n            \"employee\": \"Waleed abdelrahman\",\n            \"patient\": \"Mansour abdulrahman ,alhawash\",\n            \"action\": \"created status from None to new\",\n            \"time\": \"2026/02/06 13:51:16\"\n        },\n        {\n            \"employee\": \"Waleed abdelrahman\",\n            \"patient\": \"Mansour abdulrahman ,alhawash\",\n            \"action\": \"created status from None to new\",\n            \"time\": \"2025/06/24 16:37:52\"\n        }\n    ],\n    \"status\": \"success\",\n    \"message\": \"\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -589,15 +764,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/employees/search?title=social_worker",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "employees",
-                "search"
-              ],
+              "raw": "{{url}}/employees/search?title=social_worker",
+              "host": ["{{url}}"],
+              "path": ["employees", "search"],
               "query": [
                 {
                   "key": "title",
@@ -629,14 +798,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/visit-types",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "visit-types"
-              ]
+              "raw": "{{url}}/visit-types",
+              "host": ["{{url}}"],
+              "path": ["visit-types"]
             }
           },
           "response": []
@@ -662,14 +826,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/areas",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "areas"
-              ]
+              "raw": "{{url}}/areas",
+              "host": ["{{url}}"],
+              "path": ["areas"]
             }
           },
           "response": []
@@ -696,9 +855,7 @@
             "header": [],
             "url": {
               "raw": "{{url}}/api/vue/appointments/quick-confirm/{{appointment_id}}",
-              "host": [
-                "{{url}}"
-              ],
+              "host": ["{{url}}"],
               "path": [
                 "api",
                 "vue",
@@ -736,9 +893,7 @@
             },
             "url": {
               "raw": "{{url}}/api/vue/appointments/quick-cancel/{{appointment_id}}",
-              "host": [
-                "{{url}}"
-              ],
+              "host": ["{{url}}"],
               "path": [
                 "api",
                 "vue",
@@ -771,15 +926,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/api/patients/autocomplete?q=yass",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "api",
-                "patients",
-                "autocomplete"
-              ],
+              "raw": "{{url}}/patients/autocomplete?q=yass",
+              "host": ["{{url}}"],
+              "path": ["patients", "autocomplete"],
               "query": [
                 {
                   "key": "q",

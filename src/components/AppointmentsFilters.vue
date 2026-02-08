@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import AutoComplete from "primevue/autocomplete";
-import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
+import type {
+  AutoCompleteCompleteEvent,
+  AutoCompleteOptionSelectEvent,
+} from "primevue/autocomplete";
 import DatePicker from "primevue/datepicker";
 import AppointmentCards from "./AppointmentCards.vue";
 import type { AppointmentStatus, PatientOption } from "../data/options";
 import { autoCompletePt, datePickerPt } from "../ui/primevuePt";
 import { fetchEmployeesByTitle } from "../services/employees";
-import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
+import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
+import { useAppointmentStatusesQuery } from "../composables/useAppointmentStatusesQuery";
+import type { AppointmentStatusOption } from "../services/appointments";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 const props = defineProps<{
   employeeOptions: string[];
-  patientOptions: string[];
+  patientOptions: PatientOption[];
   visitTypeOptions: string[];
-  stateOptions: string[];
   quickPatientLabel: string;
   quickDoctorLabel: string;
 }>();
@@ -23,16 +27,13 @@ const props = defineProps<{
 const employeeFilter = defineModel<string | null>("employeeFilter", {
   default: null,
 });
-const patientFilter = defineModel<PatientOption | string | null>(
-  "patientFilter",
-  {
-    default: null,
-  },
-);
+const patientFilter = defineModel<PatientOption | null>("patientFilter", {
+  default: null,
+});
 const visitTypeFilter = defineModel<string | null>("visitTypeFilter", {
   default: null,
 });
-const stateFilter = defineModel<string | null>("stateFilter", {
+const stateFilter = defineModel<AppointmentStatusOption | null>("stateFilter", {
   default: null,
 });
 const statusTagFilter = defineModel<AppointmentStatus | null>(
@@ -48,12 +49,28 @@ const filteredEmployees = ref<string[]>([]);
 const fetchedEmployees = ref<string[]>([]);
 const isEmployeesLoading = ref(false);
 const filteredPatients = ref<PatientOption[]>([]);
+const patientInput = ref<PatientOption | string | null>(null);
+const employeeInput = ref<string | null>(null);
 const filteredVisitTypes = ref<string[]>([]);
-const fetchedVisitTypes = ref<VisitTypeOption[]>([]);
+const fetchedVisitTypes = ref<VisitType[]>([]);
 const isVisitTypesLoading = ref(false);
-const filteredStates = ref<string[]>([]);
+const visitTypeInput = ref<string | null>(null);
+const filteredStates = ref<AppointmentStatusOption[]>([]);
+const stateInput = ref<AppointmentStatusOption | null>(null);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
+
+const {
+  statuses: appointmentStatuses,
+  isLoading: isStatesLoading,
+  isFetching: isStatesFetching,
+} = useAppointmentStatusesQuery();
+
+const isStatesBusy = computed(
+  () => isStatesLoading.value || isStatesFetching.value,
+);
+
+const stateOptions = computed(() => appointmentStatuses.value);
 
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -94,6 +111,43 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
   );
 };
 
+const handleEmployeeSelect = (event: AutoCompleteOptionSelectEvent) => {
+  employeeFilter.value = event.value as string;
+  employeeInput.value = event.value as string;
+};
+
+const handlePatientSelect = (event: AutoCompleteOptionSelectEvent) => {
+  patientFilter.value = event.value as PatientOption;
+  patientInput.value = event.value as PatientOption;
+};
+
+const handlePatientModelUpdate = (value: PatientOption | string | null) => {
+  if (value === null) {
+    patientFilter.value = null;
+    return;
+  }
+  if (typeof value === "object") {
+    patientFilter.value = value as PatientOption;
+    return;
+  }
+  const match = filteredPatients.value.find(
+    (option) => option.name === value || option.id === value,
+  );
+  if (match) {
+    patientFilter.value = match;
+  }
+};
+
+const handleVisitTypeSelect = (event: AutoCompleteOptionSelectEvent) => {
+  visitTypeFilter.value = event.value as string;
+  visitTypeInput.value = event.value as string;
+};
+
+const handleStateSelect = (event: AutoCompleteOptionSelectEvent) => {
+  stateFilter.value = event.value as AppointmentStatusOption;
+  stateInput.value = event.value as AppointmentStatusOption;
+};
+
 const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
   if (!query) {
@@ -115,12 +169,13 @@ const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
 
 const searchStates = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
+  const source = stateOptions.value;
   if (!query) {
-    filteredStates.value = [...props.stateOptions];
+    filteredStates.value = [...source];
     return;
   }
-  filteredStates.value = props.stateOptions.filter((name) =>
-    name.toLowerCase().includes(query),
+  filteredStates.value = source.filter((option) =>
+    option.key.toLowerCase().includes(query),
   );
 };
 
@@ -170,30 +225,44 @@ const toggleThisWeek = () => {
 const toggleQuickPatient = () => {
   const patientName = props.quickPatientLabel;
   if (!patientName || patientName === "Patient") return;
-  const currentPatientName =
-    typeof patientFilter.value === "string"
-      ? patientFilter.value
-      : patientFilter.value?.name ?? "";
-  patientFilter.value =
-    currentPatientName === patientName ? null : patientName;
+  const match = props.patientOptions.find(
+    (option) => option.name.toLowerCase() === patientName.toLowerCase(),
+  );
+  if (!match) return;
+  if (patientFilter.value?.id === match.id) {
+    patientFilter.value = null;
+    patientInput.value = null;
+    return;
+  }
+  patientFilter.value = match;
+  patientInput.value = match;
 };
 
 const toggleQuickDoctor = () => {
   const doctorName = props.quickDoctorLabel;
   if (!doctorName || doctorName === "Doctor") return;
-  employeeFilter.value =
-    employeeFilter.value === doctorName ? null : doctorName;
+  if (employeeFilter.value === doctorName) {
+    employeeFilter.value = null;
+    employeeInput.value = null;
+    return;
+  }
+  employeeFilter.value = doctorName;
+  employeeInput.value = doctorName;
 };
 
 const clearFilters = () => {
   cancelPatientSearch();
   employeeFilter.value = null;
+  employeeInput.value = null;
   patientFilter.value = null;
+  patientInput.value = null;
   statusTagFilter.value = null;
   startDate.value = null;
   endDate.value = null;
   visitTypeFilter.value = null;
+  visitTypeInput.value = null;
   stateFilter.value = null;
+  stateInput.value = null;
   filteredEmployees.value = [];
   filteredPatients.value = [];
   filteredVisitTypes.value = [];
@@ -242,6 +311,75 @@ onMounted(() => {
   void loadVisitTypes();
 });
 
+watch(
+  () => employeeFilter.value,
+  (value) => {
+    if (employeeInput.value !== value) {
+      employeeInput.value = value;
+    }
+  },
+);
+
+watch(
+  () => employeeInput.value,
+  (value) => {
+    if (value === null) {
+      employeeFilter.value = null;
+    }
+  },
+);
+
+watch(
+  () => patientFilter.value,
+  (value) => {
+    if (!value && patientInput.value !== null) {
+      patientInput.value = null;
+    } else if (value && patientInput.value !== value) {
+      patientInput.value = value;
+    }
+  },
+);
+
+watch(
+  () => visitTypeFilter.value,
+  (value) => {
+    if (visitTypeInput.value !== value) {
+      visitTypeInput.value = value;
+    }
+  },
+);
+
+watch(
+  () => visitTypeInput.value,
+  (value) => {
+    if (value === null) {
+      visitTypeFilter.value = null;
+    }
+  },
+);
+
+watch(
+  () => stateFilter.value,
+  (value) => {
+    if (stateInput.value !== value) {
+      stateInput.value = value;
+    }
+  },
+);
+
+watch(
+  () => stateInput.value,
+  (value) => {
+    if (value === null) {
+      stateFilter.value = null;
+      return;
+    }
+    if (typeof value === "object") {
+      stateFilter.value = value as AppointmentStatusOption;
+    }
+  },
+);
+
 </script>
 
 <template>
@@ -262,9 +400,10 @@ onMounted(() => {
       <div class="col-md-2">
         <label for="employeeFilter" class="cc-label">Employee</label>
         <AutoComplete
-          v-model="employeeFilter"
+          v-model="employeeInput"
           inputId="employeeFilter"
           :suggestions="filteredEmployees"
+          :forceSelection="true"
           :completeOnFocus="true"
           :autoOptionFocus="true"
           appendTo="body"
@@ -273,15 +412,18 @@ onMounted(() => {
           :pt="autoCompletePt"
           :placeholder="isEmployeesLoading ? 'Loading employees...' : 'Search nurse or doctor'"
           @complete="searchEmployees"
+          @option-select="handleEmployeeSelect"
+          @item-select="handleEmployeeSelect"
         />
       </div>
       <div class="col-md-2">
         <label for="patientFilter" class="cc-label">Patient</label>
         <AutoComplete
-          v-model="patientFilter"
+          v-model="patientInput"
           inputId="patientFilter"
           :suggestions="filteredPatients"
           optionLabel="name"
+          :forceSelection="true"
           :completeOnFocus="true"
           :autoOptionFocus="true"
           appendTo="body"
@@ -289,7 +431,10 @@ onMounted(() => {
           inputClass="cc-input"
           :pt="autoCompletePt"
           placeholder="Search patient"
+          @update:modelValue="handlePatientModelUpdate"
           @complete="searchPatients"
+          @option-select="handlePatientSelect"
+          @item-select="handlePatientSelect"
         />
       </div>
       <div class="col-md-2">
@@ -319,9 +464,10 @@ onMounted(() => {
       <div class="col-md-2">
         <label for="visitTypeFilter" class="cc-label">Visit Type</label>
         <AutoComplete
-          v-model="visitTypeFilter"
+          v-model="visitTypeInput"
           inputId="visitTypeFilter"
           :suggestions="filteredVisitTypes"
+          :forceSelection="true"
           :completeOnFocus="true"
           :autoOptionFocus="true"
           appendTo="body"
@@ -330,23 +476,29 @@ onMounted(() => {
           :pt="autoCompletePt"
           :placeholder="isVisitTypesLoading ? 'Loading visit types...' : 'Select visit type'"
           @complete="searchVisitTypes"
+          @option-select="handleVisitTypeSelect"
+          @item-select="handleVisitTypeSelect"
         />
       </div>
 
       <div class="col-md-2">
         <label for="stateFilter" class="cc-label">States</label>
         <AutoComplete
-          v-model="stateFilter"
+          v-model="stateInput"
           inputId="stateFilter"
           :suggestions="filteredStates"
+          optionLabel="key"
+          :forceSelection="true"
           :completeOnFocus="true"
           :autoOptionFocus="true"
           appendTo="body"
           panelClass="cc-autocomplete-panel"
           inputClass="cc-input"
           :pt="autoCompletePt"
-          placeholder="Select state"
+          :placeholder="isStatesBusy ? 'Loading states...' : 'Select state'"
           @complete="searchStates"
+          @option-select="handleStateSelect"
+          @item-select="handleStateSelect"
         />
       </div>
       <div class="cc-filters-actions">

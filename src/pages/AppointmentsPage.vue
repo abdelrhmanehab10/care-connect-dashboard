@@ -18,8 +18,9 @@ import {
   updateAppointment,
   type CreateAppointmentPayload,
   type UpdateAppointmentPayload,
+  type AppointmentStatusOption,
 } from "../services/appointments";
-import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
+import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import {
   statusBadgeClass,
   useAppointmentsQuery,
@@ -46,29 +47,22 @@ const isEditLoading = ref(false);
 const isSaving = ref(false);
 const saveError = ref<string | null>(null);
 const isInlineSaving = ref(false);
-const visitTypes = ref<VisitTypeOption[]>([]);
+const visitTypes = ref<VisitType[]>([]);
 
 const employeeFilter = ref<string | null>(null);
 const employeeOptions = Array.from(
   new Set([...doctorOptions, ...nurseOptions]),
 );
 
-const patientFilter = ref<PatientOption | string | null>(null);
+const patientFilter = ref<PatientOption | null>(null);
 
 const statusTagFilter = ref<AppointmentStatus | null>(null);
 
 // Added options list to avoid missing data errors.
 const visitTypeOptions = ["Routine", "Urgent", "Home Visit", "Clinic Visit"];
-const stateOptions = [
-  "Scheduled",
-  "In-Progress",
-  "Completed",
-  "Cancelled",
-  "No Show",
-];
 
 const visitTypeFilter = ref<string | null>(null);
-const stateFilter = ref<string | null>(null);
+const stateFilter = ref<AppointmentStatusOption | null>(null);
 
 const startDate = ref<Date | null>(null);
 const endDate = ref<Date | null>(null);
@@ -142,6 +136,25 @@ const apiStart = computed(() =>
   startDate.value ? formatDate(startDate.value) : "",
 );
 const apiEnd = computed(() => (endDate.value ? formatDate(endDate.value) : ""));
+const patientIdFilter = computed(() => patientFilter.value?.id ?? "");
+
+const resolveStateFilter = () => {
+  return stateFilter.value?.value ?? stateFilter.value?.key ?? "";
+};
+
+const visitTypeIdLookup = computed(() => {
+  const map = new Map<string, string>();
+  for (const type of visitTypes.value) {
+    map.set(type.name.toLowerCase(), type.id);
+  }
+  return map;
+});
+
+const visitTypeFilterId = computed(() => {
+  const name = String(visitTypeFilter.value ?? "").toLowerCase();
+  if (!name) return "";
+  return visitTypeIdLookup.value.get(name) ?? "";
+});
 
 const {
   appointments,
@@ -153,38 +166,38 @@ const {
   page,
   start: apiStart,
   end: apiEnd,
-});
-
-const normalizeString = (value: string | null | undefined) =>
-  value?.toString().trim() ?? "";
-const normalizeStatus = (value: string | null | undefined) =>
-  normalizeString(value).toLowerCase();
-
-const visitTypeIdLookup = computed(() => {
-  const map = new Map<string, string>();
-  for (const type of visitTypes.value) {
-    map.set(type.name.toLowerCase(), type.id);
-  }
-  return map;
-});
-
-const patientNameOptions = computed(() =>
-  Array.from(
-    new Set(
-      appointments.value
-        .map((appointment) => normalizeString(appointment.patient?.name ?? ""))
-        .filter((name) => name.length > 0),
-    ),
+  status: computed(() => statusTagFilter.value ?? ""),
+  employee: computed(() => employeeFilter.value ?? ""),
+  patient_id: patientIdFilter,
+  visit_type: computed(() =>
+    visitTypeFilterId.value ? "" : (visitTypeFilter.value ?? ""),
   ),
-);
+  visit_type_id: visitTypeFilterId,
+  state: computed(() => resolveStateFilter()),
+});
+
+const patientOptions = computed<PatientOption[]>(() => {
+  const map = new Map<string, PatientOption>();
+  for (const appointment of appointments.value) {
+    const patient = appointment.patient;
+    if (!patient) continue;
+    const id = String(patient.id ?? "").trim();
+    const name = String(patient.name ?? "").trim();
+    if (!id || !name) continue;
+    if (!map.has(id)) {
+      map.set(id, { id, name });
+    }
+  }
+  return Array.from(map.values());
+});
 
 const quickPatientLabel = computed<string>(
-  () => patientNameOptions.value[0] ?? patientOptionsData[0]?.name ?? "Patient",
+  () => patientOptions.value[0]?.name ?? patientOptionsData[0]?.name ?? "Patient",
 );
 const quickDoctorLabel = computed<string>(() => doctorOptions[0] ?? "Doctor");
 
 const exportExcel = () => {
-  const rows = filteredAppointments.value;
+  const rows = appointments.value;
 
   const headers = [
     "Date",
@@ -226,62 +239,6 @@ const exportExcel = () => {
 
   URL.revokeObjectURL(url);
 };
-
-const filteredAppointments = computed(() => {
-  const employeeQuery = employeeFilter.value?.trim().toLowerCase() ?? "";
-  const patientQuery =
-    typeof patientFilter.value === "string"
-      ? patientFilter.value.trim().toLowerCase()
-      : patientFilter.value?.name?.trim().toLowerCase() ?? "";
-  const statusQuery = statusTagFilter.value;
-
-  const visitTypeQuery = visitTypeFilter.value?.trim().toLowerCase() ?? "";
-  const stateQuery = stateFilter.value?.trim().toLowerCase() ?? "";
-
-  const start = apiStart.value;
-  const end = apiEnd.value;
-
-  return appointments.value.filter((appointment) => {
-    if (start || end) {
-      const appointmentDate = normalizeAppointmentDate(appointment.date);
-      if (!appointmentDate) return false;
-      if (start && appointmentDate < start) return false;
-      if (end && appointmentDate > end) return false;
-    }
-    if (
-      statusQuery &&
-      normalizeStatus(appointment.status) !== normalizeStatus(statusQuery)
-    )
-      return false;
-
-    const doctorName = normalizeString(
-      appointment.doctor?.name ?? "",
-    ).toLowerCase();
-    const nurseName = normalizeString(
-      appointment.nurse?.name ?? "",
-    ).toLowerCase();
-    const patientName = normalizeString(
-      appointment.patient?.name ?? "",
-    ).toLowerCase();
-
-    if (
-      employeeQuery &&
-      !(doctorName.includes(employeeQuery) || nurseName.includes(employeeQuery))
-    )
-      return false;
-    if (patientQuery && !patientName.includes(patientQuery)) return false;
-
-    const visitType = normalizeString(
-      appointment.visit_type ?? "",
-    ).toLowerCase();
-    const state = normalizeString(appointment.state ?? "").toLowerCase();
-
-    if (visitTypeQuery && !visitType.includes(visitTypeQuery)) return false;
-    if (stateQuery && !state.includes(stateQuery)) return false;
-
-    return true;
-  });
-});
 
 const syncCalendarRange = (payload: { start: string; end: string }) => {
   const nextStart = parseIsoDate(payload.start);
@@ -385,6 +342,11 @@ const openDetails = (appointment: Appointment) => {
   isDetailsOpen.value = true;
 };
 
+const openLogPage = () => {
+  isDetailsOpen.value = false;
+  emit("open-log");
+};
+
 const canGoPrev = computed(
   () => (appointmentsResponse.value?.currentPage ?? 1) > 1,
 );
@@ -477,6 +439,19 @@ watch([apiStart, apiEnd], () => {
   page.value = 1;
 });
 
+watch(
+  [
+    employeeFilter,
+    patientFilter,
+    visitTypeFilter,
+    stateFilter,
+    statusTagFilter,
+  ],
+  () => {
+    page.value = 1;
+  },
+);
+
 watch(isDialogOpen, (value) => {
   if (!value) {
     editingAppointment.value = null;
@@ -503,6 +478,7 @@ const emit = defineEmits<{
   ): void;
   (event: "view-details", payload: Appointment): void;
   (event: "export-excel"): void;
+  (event: "open-log"): void;
 }>();
 </script>
 
@@ -518,8 +494,8 @@ const emit = defineEmits<{
         <AppointmentsFilters v-model:employee-filter="employeeFilter" v-model:patient-filter="patientFilter"
           v-model:visit-type-filter="visitTypeFilter" v-model:state-filter="stateFilter"
           v-model:status-tag-filter="statusTagFilter" v-model:start-date="startDate" v-model:end-date="endDate"
-          :employee-options="employeeOptions" :patient-options="patientNameOptions"
-          :visit-type-options="visitTypeOptions" :state-options="stateOptions" :quick-patient-label="quickPatientLabel"
+          :employee-options="employeeOptions" :patient-options="patientOptions"
+          :visit-type-options="visitTypeOptions" :quick-patient-label="quickPatientLabel"
           :quick-doctor-label="quickDoctorLabel" />
 
         <Tabs v-model:value="activeTab">
@@ -538,7 +514,7 @@ const emit = defineEmits<{
           <TabPanels :pt="tabPanelsPt">
             <TabPanel value="table">
               <div class="cc-table-card">
-                <AppointmentsTable :appointments="filteredAppointments" :is-loading="isLoading"
+                <AppointmentsTable :appointments="appointments" :is-loading="isLoading"
                   :status-options="statusOptions" :status-badge-class="statusBadgeClass"
                   @cell-edit-complete="handleCellEditComplete" @view-details="openDetails"
                   @export-excel="exportExcel" />
@@ -561,7 +537,7 @@ const emit = defineEmits<{
               </div>
             </TabPanel>
             <TabPanel value="calendar">
-              <AppointmentsCalendar :appointments="filteredAppointments" :is-loading="isLoading"
+              <AppointmentsCalendar :appointments="appointments" :is-loading="isLoading"
                 @range-change="syncCalendarRange" @edit="openEditDialog" @confirm-all="refreshAppointments"
                 @no-show="refreshAppointments" @cancel="refreshAppointments" />
             </TabPanel>
@@ -575,6 +551,10 @@ const emit = defineEmits<{
       :nurse-options="nurseOptions" :doctor-options="doctorOptions" :social-worker-options="socialWorkerOptions"
       :area-options="areaOptions" :visit-type-options="visitTypeOptions" :weekday-options="weekdayOptions"
       @save="handleSaveAppointment" />
-    <AppointmentDetailsDialog v-model="isDetailsOpen" :appointment="selectedAppointment" />
+    <AppointmentDetailsDialog
+      v-model="isDetailsOpen"
+      :appointment="selectedAppointment"
+      @log="openLogPage"
+    />
   </div>
 </template>

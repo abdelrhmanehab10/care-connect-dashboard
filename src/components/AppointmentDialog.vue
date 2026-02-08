@@ -18,10 +18,7 @@ import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
 import { Loader2 } from "lucide-vue-next";
-import {
-  type PatientOption,
-  type Weekday,
-} from "../data/options";
+import { type PatientOption, type Weekday } from "../data/options";
 import {
   autoCompletePt,
   datePickerPt,
@@ -31,7 +28,7 @@ import {
 import type { Appointment } from "../types";
 import type { CreateAppointmentPayload } from "../services/appointments";
 import { fetchAreas, type AreaOption } from "../services/areas";
-import { fetchVisitTypes, type VisitTypeOption } from "../services/visitTypes";
+import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
@@ -59,15 +56,8 @@ const props = withDefaults(
     errorMessage: null,
   },
 );
-const {
-  patientOptions,
-  nurseOptions,
-  doctorOptions,
-  socialWorkerOptions,
-  areaOptions,
-  visitTypeOptions,
-  weekdayOptions,
-} = toRefs(props);
+const { patientOptions, areaOptions, visitTypeOptions, weekdayOptions } =
+  toRefs(props);
 const dialogTitle = computed(() =>
   props.appointment ? "Edit Appointment" : "Add Appointment",
 );
@@ -80,7 +70,7 @@ const selectedPatient = ref<PatientOption | string | null>(null);
 const filteredPatients = ref<PatientOption[]>([]);
 const fetchedAreas = ref<AreaOption[]>([]);
 const isAreasLoading = ref(false);
-const fetchedVisitTypes = ref<VisitTypeOption[]>([]);
+const fetchedVisitTypes = ref<VisitType[]>([]);
 const isVisitTypesLoading = ref(false);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
@@ -90,6 +80,8 @@ const { run: runDoctorSearch, cancel: cancelDoctorSearch } =
   useDebouncedAsync(300);
 const { run: runSocialWorkerSearch, cancel: cancelSocialWorkerSearch } =
   useDebouncedAsync(300);
+const { run: runDriverSearch, cancel: cancelDriverSearch } =
+  useDebouncedAsync(300);
 const instructions = ref("");
 const hasAttemptedSubmit = ref(false);
 const nurseName = ref<string | null>(null);
@@ -98,9 +90,16 @@ const doctorName = ref<string | null>(null);
 const filteredDoctors = ref<string[]>([]);
 const socialWorkerName = ref<string | null>(null);
 const filteredSocialWorkers = ref<string[]>([]);
+const driverName = ref<string | null>(null);
+const filteredDrivers = ref<string[]>([]);
 const nurseAssignmentMode = ref<"primary" | "custom">("primary");
 const doctorAssignmentMode = ref<"primary" | "custom">("primary");
 const socialWorkerAssignmentMode = ref<"primary" | "custom">("primary");
+const driverAssignmentMode = ref<"primary" | "custom">("primary");
+const nurseScheduleType = ref<"same" | "custom">("same");
+const doctorScheduleType = ref<"same" | "custom">("same");
+const socialWorkerScheduleType = ref<"same" | "custom">("same");
+const driverScheduleType = ref<"same" | "custom">("same");
 const { handleSubmit } = useForm({
   validationSchema: toTypedSchema(z.object({})),
 });
@@ -115,21 +114,6 @@ const visit = reactive({
   type: "",
 });
 
-const showNurseSection = computed(() => {
-  return (
-    visit.type === "Initial Visit" ||
-    visit.type === "Follow Up" ||
-    visit.type === "Home Visit"
-  );
-});
-
-const showDoctorSection = computed(() => {
-  return visit.type === "Initial Visit" || visit.type === "Follow Up";
-});
-
-const showSocialWorkerSection = computed(() => {
-  return visit.type === "Initial Visit";
-});
 
 const nurseSchedule = reactive({
   startTime: null as Date | null,
@@ -142,6 +126,11 @@ const doctorSchedule = reactive({
 });
 
 const socialWorkerSchedule = reactive({
+  startTime: null as Date | null,
+  endTime: null as Date | null,
+});
+
+const driverSchedule = reactive({
   startTime: null as Date | null,
   endTime: null as Date | null,
 });
@@ -206,6 +195,14 @@ const socialWorkerRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
     endTime: null,
   },
 ]);
+const driverRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
+  {
+    id: `driver-row-${employeeRecurrenceRowId++}`,
+    day: getDefaultWeekday(),
+    startTime: null,
+    endTime: null,
+  },
+]);
 
 const isPatientOption = (value: unknown): value is PatientOption => {
   return (
@@ -231,16 +228,38 @@ const availableAreas = computed(() =>
   fetchedAreas.value.length ? fetchedAreas.value : fallbackAreas.value,
 );
 
-const fallbackVisitTypes = computed<VisitTypeOption[]>(() =>
+const fallbackVisitTypes = computed<VisitType[]>(() =>
   (visitTypeOptions.value ?? []).map((name) => ({
     id: name,
     name,
+    providers: [],
   })),
 );
 
 const availableVisitTypes = computed(() =>
-  fetchedVisitTypes.value.length ? fetchedVisitTypes.value : fallbackVisitTypes.value,
+  fetchedVisitTypes.value.length
+    ? fetchedVisitTypes.value
+    : fallbackVisitTypes.value,
 );
+
+const normalizeProvider = (value: string) => {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, "_");
+  return normalized.endsWith("s") ? normalized.slice(0, -1) : normalized;
+};
+const selectedVisitType = computed(
+  () =>
+    availableVisitTypes.value.find((type) => type.name === visit.type) ?? null,
+);
+const visitProviders = computed(() =>
+  (selectedVisitType.value?.providers ?? []).map(normalizeProvider),
+);
+const hasProvider = (provider: string) =>
+  visitProviders.value.includes(provider);
+
+const showNurseSection = computed(() => hasProvider("nurse"));
+const showDoctorSection = computed(() => hasProvider("doctor"));
+const showSocialWorkerSection = computed(() => hasProvider("social_worker"));
+const showDriverSection = computed(() => hasProvider("driver"));
 
 const resolveScheduleTimes = () => {
   const date = schedule.isRecurring
@@ -266,13 +285,20 @@ const validationSchema = z
     endTime: z.string(),
     nurseRequired: z.boolean(),
     nurseName: z.string().optional(),
+    nurseTimesRequired: z.boolean().optional(),
     nurseTimesValid: z.boolean().optional(),
     doctorRequired: z.boolean(),
     doctorName: z.string().optional(),
+    doctorTimesRequired: z.boolean().optional(),
     doctorTimesValid: z.boolean().optional(),
     socialWorkerRequired: z.boolean(),
     socialWorkerName: z.string().optional(),
+    socialWorkerTimesRequired: z.boolean().optional(),
     socialWorkerTimesValid: z.boolean().optional(),
+    driverRequired: z.boolean(),
+    driverName: z.string().optional(),
+    driverTimesRequired: z.boolean().optional(),
+    driverTimesValid: z.boolean().optional(),
   })
   .superRefine((values, ctx) => {
     if (!values.patientSelected) {
@@ -295,7 +321,9 @@ const validationSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["date"],
-        message: values.isRecurring ? "Start date is required." : "Date is required.",
+        message: values.isRecurring
+          ? "Start date is required."
+          : "Date is required.",
       });
     }
 
@@ -335,7 +363,7 @@ const validationSchema = z
       });
     }
 
-    if (values.nurseRequired && values.nurseTimesValid === false) {
+    if (values.nurseTimesRequired && values.nurseTimesValid === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["startTime"],
@@ -351,7 +379,7 @@ const validationSchema = z
       });
     }
 
-    if (values.doctorRequired && values.doctorTimesValid === false) {
+    if (values.doctorTimesRequired && values.doctorTimesValid === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["startTime"],
@@ -370,11 +398,30 @@ const validationSchema = z
       });
     }
 
-    if (values.socialWorkerRequired && values.socialWorkerTimesValid === false) {
+    if (
+      values.socialWorkerTimesRequired &&
+      values.socialWorkerTimesValid === false
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["startTime"],
         message: "Social worker start and end time are required.",
+      });
+    }
+
+    if (values.driverRequired && !(values.driverName?.trim() ?? "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["driver"],
+        message: "Driver is required.",
+      });
+    }
+
+    if (values.driverTimesRequired && values.driverTimesValid === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startTime"],
+        message: "Driver start and end time are required.",
       });
     }
   });
@@ -391,18 +438,42 @@ const hasValidRecurringTimes = (rows: EmployeeRecurrenceRow[]) =>
 const buildValidationPayload = () => {
   const { date, startTime, endTime } = resolveScheduleTimes();
   const isRecurring = schedule.isRecurring;
+  const nurseTimesRequired = isRecurring
+    ? showNurseSection.value && nurseScheduleType.value === "custom"
+    : showNurseSection.value && nurseAssignmentMode.value === "custom";
+  const doctorTimesRequired = isRecurring
+    ? showDoctorSection.value && doctorScheduleType.value === "custom"
+    : showDoctorSection.value && doctorAssignmentMode.value === "custom";
+  const socialWorkerTimesRequired = isRecurring
+    ? showSocialWorkerSection.value && socialWorkerScheduleType.value === "custom"
+    : showSocialWorkerSection.value &&
+      socialWorkerAssignmentMode.value === "custom";
+  const driverTimesRequired = isRecurring
+    ? showDriverSection.value && driverScheduleType.value === "custom"
+    : showDriverSection.value && driverAssignmentMode.value === "custom";
   const nurseTimesValid = isRecurring
-    ? hasValidRecurringTimes(nurseRecurrenceRows.value)
+    ? nurseScheduleType.value === "custom"
+      ? hasValidRecurringTimes(nurseRecurrenceRows.value)
+      : true
     : hasCompleteTimeRange(nurseSchedule.startTime, nurseSchedule.endTime);
   const doctorTimesValid = isRecurring
-    ? hasValidRecurringTimes(doctorRecurrenceRows.value)
+    ? doctorScheduleType.value === "custom"
+      ? hasValidRecurringTimes(doctorRecurrenceRows.value)
+      : true
     : hasCompleteTimeRange(doctorSchedule.startTime, doctorSchedule.endTime);
   const socialWorkerTimesValid = isRecurring
-    ? hasValidRecurringTimes(socialWorkerRecurrenceRows.value)
+    ? socialWorkerScheduleType.value === "custom"
+      ? hasValidRecurringTimes(socialWorkerRecurrenceRows.value)
+      : true
     : hasCompleteTimeRange(
         socialWorkerSchedule.startTime,
         socialWorkerSchedule.endTime,
       );
+  const driverTimesValid = isRecurring
+    ? driverScheduleType.value === "custom"
+      ? hasValidRecurringTimes(driverRecurrenceRows.value)
+      : true
+    : hasCompleteTimeRange(driverSchedule.startTime, driverSchedule.endTime);
   return {
     patientSelected: isPatientOption(selectedPatient.value),
     visitType: visit.type ?? "",
@@ -413,16 +484,24 @@ const buildValidationPayload = () => {
     nurseRequired:
       showNurseSection.value && nurseAssignmentMode.value === "custom",
     nurseName: nurseName.value ?? "",
+    nurseTimesRequired,
     nurseTimesValid,
     doctorRequired:
       showDoctorSection.value && doctorAssignmentMode.value === "custom",
     doctorName: doctorName.value ?? "",
+    doctorTimesRequired,
     doctorTimesValid,
     socialWorkerRequired:
       showSocialWorkerSection.value &&
       socialWorkerAssignmentMode.value === "custom",
     socialWorkerName: socialWorkerName.value ?? "",
+    socialWorkerTimesRequired,
     socialWorkerTimesValid,
+    driverRequired:
+      showDriverSection.value && driverAssignmentMode.value === "custom",
+    driverName: driverName.value ?? "",
+    driverTimesRequired,
+    driverTimesValid,
   };
 };
 
@@ -441,7 +520,6 @@ const validationErrors = computed(() => {
   }
   return errors;
 });
-
 
 const formatDate = (value: Date | null) => {
   if (!value) {
@@ -529,6 +607,7 @@ const resetForm = () => {
   cancelNurseSearch();
   cancelDoctorSearch();
   cancelSocialWorkerSearch();
+  cancelDriverSearch();
   hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
   filteredPatients.value = [];
@@ -538,12 +617,20 @@ const resetForm = () => {
   filteredDoctors.value = [];
   socialWorkerName.value = null;
   filteredSocialWorkers.value = [];
+  driverName.value = null;
+  filteredDrivers.value = [];
   nurseAssignmentMode.value = "primary";
   doctorAssignmentMode.value = "primary";
   socialWorkerAssignmentMode.value = "primary";
+  driverAssignmentMode.value = "primary";
+  nurseScheduleType.value = "same";
+  doctorScheduleType.value = "same";
+  socialWorkerScheduleType.value = "same";
+  driverScheduleType.value = "same";
   nurseName.value = null;
   doctorName.value = null;
   socialWorkerName.value = null;
+  driverName.value = null;
   address.area = "";
   address.city = "";
   address.street = "";
@@ -554,6 +641,8 @@ const resetForm = () => {
   doctorSchedule.endTime = null;
   socialWorkerSchedule.startTime = null;
   socialWorkerSchedule.endTime = null;
+  driverSchedule.startTime = null;
+  driverSchedule.endTime = null;
   nurseRecurrenceRows.value = [
     {
       id: `nurse-row-${employeeRecurrenceRowId++}`,
@@ -573,6 +662,14 @@ const resetForm = () => {
   socialWorkerRecurrenceRows.value = [
     {
       id: `social-row-${employeeRecurrenceRowId++}`,
+      day: getDefaultWeekday(),
+      startTime: null,
+      endTime: null,
+    },
+  ];
+  driverRecurrenceRows.value = [
+    {
+      id: `driver-row-${employeeRecurrenceRowId++}`,
       day: getDefaultWeekday(),
       startTime: null,
       endTime: null,
@@ -659,10 +756,14 @@ const applyAppointment = (appointment: Appointment) => {
   const nurseNameValue = appointment.nurse?.name?.trim() ?? "";
   nurseAssignmentMode.value = nurseNameValue ? "custom" : "primary";
   nurseName.value = nurseNameValue || null;
+  nurseScheduleType.value = "same";
 
   const doctorNameValue = appointment.doctor?.name?.trim() ?? "";
   doctorAssignmentMode.value = doctorNameValue ? "custom" : "primary";
   doctorName.value = doctorNameValue || null;
+  doctorScheduleType.value = "same";
+  socialWorkerScheduleType.value = "same";
+  driverScheduleType.value = "same";
 };
 
 watch(nurseAssignmentMode, (value) => {
@@ -716,6 +817,23 @@ watch(socialWorkerAssignmentMode, (value) => {
   }
 });
 
+watch(driverAssignmentMode, (value) => {
+  if (value === "primary") {
+    driverName.value = null;
+    filteredDrivers.value = [];
+    driverSchedule.startTime = null;
+    driverSchedule.endTime = null;
+    driverRecurrenceRows.value = [
+      {
+        id: `driver-row-${employeeRecurrenceRowId++}`,
+        day: getDefaultWeekday(),
+        startTime: null,
+        endTime: null,
+      },
+    ];
+  }
+});
+
 watch(
   () => [visible.value, props.appointment] as const,
   ([isVisible, appointment]) => {
@@ -741,7 +859,6 @@ onMounted(() => {
   void loadAreas();
   void loadVisitTypes();
 });
-
 
 const handleSave = () => {
   if (props.isSaving) {
@@ -775,19 +892,18 @@ const handleSave = () => {
   const trimmedInstructions = instructions.value.trim();
 
   const employeeSlots: CreateAppointmentPayload["employee_slots"] = {};
-  const shouldIncludeNurse =
-    showNurseSection.value && nurseAssignmentMode.value === "custom";
-  const shouldIncludeDoctor =
-    showDoctorSection.value && doctorAssignmentMode.value === "custom";
-  const shouldIncludeSocialWorker =
-    showSocialWorkerSection.value &&
-    socialWorkerAssignmentMode.value === "custom";
+  const shouldIncludeNurse = showNurseSection.value;
+  const shouldIncludeDoctor = showDoctorSection.value;
+  const shouldIncludeSocialWorker = showSocialWorkerSection.value;
+  const shouldIncludeDriver = showDriverSection.value;
 
   if (shouldIncludeNurse) {
     if (schedule.isRecurring) {
-      const slots = buildRecurringSlots(nurseRecurrenceRows.value);
-      if (slots.length) {
-        employeeSlots.nurse = slots;
+      if (nurseScheduleType.value === "custom") {
+        const slots = buildRecurringSlots(nurseRecurrenceRows.value);
+        if (slots.length) {
+          employeeSlots.nurse = slots;
+        }
       }
     } else {
       const nurseSlotStart = formatTime(nurseSchedule.startTime);
@@ -803,9 +919,11 @@ const handleSave = () => {
 
   if (shouldIncludeDoctor) {
     if (schedule.isRecurring) {
-      const slots = buildRecurringSlots(doctorRecurrenceRows.value);
-      if (slots.length) {
-        employeeSlots.doctor = slots;
+      if (doctorScheduleType.value === "custom") {
+        const slots = buildRecurringSlots(doctorRecurrenceRows.value);
+        if (slots.length) {
+          employeeSlots.doctor = slots;
+        }
       }
     } else {
       const doctorSlotStart = formatTime(doctorSchedule.startTime);
@@ -821,9 +939,11 @@ const handleSave = () => {
 
   if (shouldIncludeSocialWorker) {
     if (schedule.isRecurring) {
-      const slots = buildRecurringSlots(socialWorkerRecurrenceRows.value);
-      if (slots.length) {
-        employeeSlots.social_worker = slots;
+      if (socialWorkerScheduleType.value === "custom") {
+        const slots = buildRecurringSlots(socialWorkerRecurrenceRows.value);
+        if (slots.length) {
+          employeeSlots.social_worker = slots;
+        }
       }
     } else {
       const socialSlotStart = formatTime(socialWorkerSchedule.startTime);
@@ -832,6 +952,26 @@ const handleSave = () => {
         employeeSlots.social_worker = {
           start_time: socialSlotStart,
           end_time: socialSlotEnd,
+        };
+      }
+    }
+  }
+
+  if (shouldIncludeDriver) {
+    if (schedule.isRecurring) {
+      if (driverScheduleType.value === "custom") {
+        const slots = buildRecurringSlots(driverRecurrenceRows.value);
+        if (slots.length) {
+          employeeSlots.driver = slots;
+        }
+      }
+    } else {
+      const driverSlotStart = formatTime(driverSchedule.startTime);
+      const driverSlotEnd = formatTime(driverSchedule.endTime);
+      if (driverSlotStart && driverSlotEnd) {
+        employeeSlots.driver = {
+          start_time: driverSlotStart,
+          end_time: driverSlotEnd,
         };
       }
     }
@@ -853,22 +993,28 @@ const handleSave = () => {
       showNurseSection.value && nurseAssignmentMode.value === "primary"
         ? "1"
         : "0",
-    nurse_schedule_type: "same",
-    employee_slots: Object.keys(employeeSlots).length ? employeeSlots : undefined,
+    nurse_schedule_type: schedule.isRecurring ? nurseScheduleType.value : "same",
+    employee_slots: Object.keys(employeeSlots).length
+      ? employeeSlots
+      : undefined,
     main_doctor:
       showDoctorSection.value && doctorAssignmentMode.value === "primary"
         ? "1"
         : "0",
     doctor_id: "",
-    doctor_schedule_type: "same",
+    doctor_schedule_type: schedule.isRecurring
+      ? doctorScheduleType.value
+      : "same",
     main_social_worker:
       showSocialWorkerSection.value &&
       socialWorkerAssignmentMode.value === "primary"
         ? "1"
         : "0",
     social_worker_id: "",
-    social_worker_schedule_type: "same",
-    driver_schedule_type: "same",
+    social_worker_schedule_type: schedule.isRecurring
+      ? socialWorkerScheduleType.value
+      : "same",
+    driver_schedule_type: schedule.isRecurring ? driverScheduleType.value : "same",
     driver_id: "",
     instructions: trimmedInstructions,
   };
@@ -945,60 +1091,80 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
 
 const searchNurses = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredNurses.value = [...nurseOptions.value];
+  if (query.length < 2) {
+    cancelNurseSearch();
+    filteredNurses.value = [];
     return;
   }
 
   runNurseSearch(
     () => fetchEmployeesByTitle("nurse", query),
     (results) => {
-      filteredNurses.value =
-        results.length > 0 ? results : [...nurseOptions.value];
+      filteredNurses.value = results;
     },
     (error) => {
       console.error("Failed to load nurses.", error);
-      filteredNurses.value = [...nurseOptions.value];
+      filteredNurses.value = [];
     },
   );
 };
 
 const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredDoctors.value = [...doctorOptions.value];
+  if (query.length < 2) {
+    cancelDoctorSearch();
+    filteredDoctors.value = [];
     return;
   }
 
   runDoctorSearch(
     () => fetchEmployeesByTitle("doctor", query),
     (results) => {
-      filteredDoctors.value =
-        results.length > 0 ? results : [...doctorOptions.value];
+      filteredDoctors.value = results;
     },
     (error) => {
       console.error("Failed to load doctors.", error);
-      filteredDoctors.value = [...doctorOptions.value];
+      filteredDoctors.value = [];
     },
   );
 };
 
 const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredSocialWorkers.value = [...socialWorkerOptions.value];
+  if (query.length < 2) {
+    cancelSocialWorkerSearch();
+    filteredSocialWorkers.value = [];
     return;
   }
 
   runSocialWorkerSearch(
     () => fetchEmployeesByTitle("social_worker", query),
     (results) => {
-      filteredSocialWorkers.value =
-        results.length > 0 ? results : [...socialWorkerOptions.value];
+      filteredSocialWorkers.value = results;
     },
     (error) => {
       console.error("Failed to load social workers.", error);
-      filteredSocialWorkers.value = [...socialWorkerOptions.value];
+      filteredSocialWorkers.value = [];
+    },
+  );
+};
+
+const searchDrivers = (event: AutoCompleteCompleteEvent) => {
+  const query = event.query.trim().toLowerCase();
+  if (query.length < 2) {
+    cancelDriverSearch();
+    filteredDrivers.value = [];
+    return;
+  }
+
+  runDriverSearch(
+    () => fetchEmployeesByTitle("driver", query),
+    (results) => {
+      filteredDrivers.value = results;
+    },
+    (error) => {
+      console.error("Failed to load drivers.", error);
+      filteredDrivers.value = [];
     },
   );
 };
@@ -1035,189 +1201,135 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
         </div>
       </div>
       <fieldset :disabled="isBusy" class="cc-stack">
-      <div>
-        <label for="patient" class="cc-label cc-label-strong">Patient</label>
-        <AutoComplete
-          v-model="selectedPatient"
-          inputId="patient"
-          optionLabel="name"
-          :suggestions="filteredPatients"
-          :completeOnFocus="true"
-          :forceSelection="true"
-          appendTo="body"
-          panelClass="cc-autocomplete-panel"
-          :pt="autoCompletePt"
-          placeholder="Search by name or ID"
-          @complete="searchPatients"
-        >
-          <template #option="slotProps">
-            <div class="cc-row cc-row-between">
-              <span>{{ slotProps.option.name }}</span>
-            </div>
-          </template>
-        </AutoComplete>
-        <div
-          v-if="hasAttemptedSubmit && validationErrors.patient"
-          class="cc-help-text cc-help-text--error"
-        >
-          {{ validationErrors.patient }}
-        </div>
-      </div>
-
-      <div class="cc-panel">
-        <div class="cc-section-title">Address</div>
-        <div v-if="!isPatientSelected" class="cc-help-text">
-          Select a patient to enable address fields.
-        </div>
-        <fieldset :disabled="!isPatientSelected" class="cc-stack">
-          <div>
-            <label for="area" class="cc-label">Area</label>
-            <select id="area" v-model="address.area" class="cc-select">
-              <option value="" disabled>
-                {{ isAreasLoading ? "Loading areas..." : "Select area" }}
-              </option>
-              <option
-                v-for="area in availableAreas"
-                :key="area.id"
-                :value="area.id"
-              >
-                {{ area.name }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label for="city" class="cc-label">City</label>
-            <input
-              id="city"
-              v-model="address.city"
-              type="text"
-              class="cc-input"
-              placeholder="Enter city"
-            />
-          </div>
-          <div>
-            <label for="address" class="cc-label">Address</label>
-            <textarea
-              id="address"
-              v-model="address.street"
-              class="cc-textarea"
-              rows="3"
-              placeholder="Enter street address"
-            ></textarea>
-          </div>
-          <AppointmentMap :lat="24.7136" :lng="46.6753" :zoom="9" height="360px" />
-
-        </fieldset>
-      </div>
-
-      <div>
-        <label for="visitType" class="cc-label cc-label-strong"
-          >Visit type</label
-        >
-        <select id="visitType" v-model="visit.type" class="cc-select">
-          <option value="" disabled>
-            {{ isVisitTypesLoading ? "Loading visit types..." : "Select visit type" }}
-          </option>
-          <option
-            v-for="type in availableVisitTypes"
-            :key="type.id"
-            :value="type.name"
+        <div>
+          <label for="patient" class="cc-label cc-label-strong">Patient</label>
+          <AutoComplete
+            v-model="selectedPatient"
+            inputId="patient"
+            optionLabel="name"
+            :suggestions="filteredPatients"
+            :completeOnFocus="true"
+            :forceSelection="true"
+            appendTo="body"
+            panelClass="cc-autocomplete-panel"
+            :pt="autoCompletePt"
+            placeholder="Search by name or ID"
+            @complete="searchPatients"
           >
-            {{ type.name }}
-          </option>
-        </select>
-        <div
-          v-if="hasAttemptedSubmit && validationErrors.visitType"
-          class="cc-help-text cc-help-text--error"
-        >
-          {{ validationErrors.visitType }}
-        </div>
-      </div>
-
-      <div class="cc-panel">
-        <div class="cc-stack cc-stack-sm">
-          <div class="cc-section-title">Date &amp; time</div>
-          <div class="cc-row">
-            <label for="recurring" class="cc-label-inline">Is recurring?</label>
-
-            <ToggleSwitch
-              v-model="schedule.isRecurring"
-              inputId="recurring"
-              :pt="toggleSwitchPt"
-            />
+            <template #option="slotProps">
+              <div class="cc-row cc-row-between">
+                <span>{{ slotProps.option.name }}</span>
+              </div>
+            </template>
+          </AutoComplete>
+          <div
+            v-if="hasAttemptedSubmit && validationErrors.patient"
+            class="cc-help-text cc-help-text--error"
+          >
+            {{ validationErrors.patient }}
           </div>
         </div>
 
-        <div v-if="!schedule.isRecurring" class="cc-stack">
-          <div class="cc-grid">
-            <label for="appointmentDate" class="cc-label">Date</label>
-            <DatePicker
-              v-model="schedule.appointmentDate"
-              inputId="appointmentDate"
-              dateFormat="yy-mm-dd"
-              appendTo="body"
-              panelClass="cc-datepicker-panel"
-              :pt="datePickerPt"
+        <div class="cc-panel">
+          <div class="cc-section-title">Address</div>
+          <div v-if="!isPatientSelected" class="cc-help-text">
+            Select a patient to enable address fields.
+          </div>
+          <fieldset :disabled="!isPatientSelected" class="cc-stack">
+            <div>
+              <label for="area" class="cc-label">Area</label>
+              <select id="area" v-model="address.area" class="cc-select">
+                <option value="" disabled>
+                  {{ isAreasLoading ? "Loading areas..." : "Select area" }}
+                </option>
+                <option
+                  v-for="area in availableAreas"
+                  :key="area.id"
+                  :value="area.id"
+                >
+                  {{ area.name }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label for="city" class="cc-label">City</label>
+              <input
+                id="city"
+                v-model="address.city"
+                type="text"
+                class="cc-input"
+                placeholder="Enter city"
+              />
+            </div>
+            <div>
+              <label for="address" class="cc-label">Address</label>
+              <textarea
+                id="address"
+                v-model="address.street"
+                class="cc-textarea"
+                rows="3"
+                placeholder="Enter street address"
+              ></textarea>
+            </div>
+            <AppointmentMap
+              :lat="24.7136"
+              :lng="46.6753"
+              :zoom="9"
+              height="360px"
             />
-            <div
-              v-if="hasAttemptedSubmit && validationErrors.date"
-              class="cc-help-text cc-help-text--error"
+          </fieldset>
+        </div>
+
+        <div>
+          <label for="visitType" class="cc-label cc-label-strong"
+            >Visit type</label
+          >
+          <select id="visitType" v-model="visit.type" class="cc-select">
+            <option value="" disabled>
+              {{
+                isVisitTypesLoading
+                  ? "Loading visit types..."
+                  : "Select visit type"
+              }}
+            </option>
+            <option
+              v-for="type in availableVisitTypes"
+              :key="type.id"
+              :value="type.name"
             >
-              {{ validationErrors.date }}
-            </div>
-          </div>
-          <div class="cc-grid cc-grid-2">
-            <div>
-              <label class="cc-label" for="appointmentStartTime"
-                >Start time</label
-              >
-
-              <div class="input-group">
-                <input
-                  id="appointmentStartTime"
-                  type="time"
-                  class="form-control"
-                  v-model="schedule.appointmentStartTime"
-                />
-              </div>
-              <div
-                v-if="hasAttemptedSubmit && validationErrors.startTime"
-                class="cc-help-text cc-help-text--error"
-              >
-                {{ validationErrors.startTime }}
-              </div>
-            </div>
-
-            <div>
-              <label class="cc-label" for="appointmentEndTime">End time</label>
-
-              <div class="input-group">
-                <input
-                  id="appointmentEndTime"
-                  type="time"
-                  class="form-control"
-                  v-model="schedule.appointmentEndTime"
-                />
-              </div>
-              <div
-                v-if="hasAttemptedSubmit && validationErrors.endTime"
-                class="cc-help-text cc-help-text--error"
-              >
-                {{ validationErrors.endTime }}
-              </div>
-            </div>
+              {{ type.name }}
+            </option>
+          </select>
+          <div
+            v-if="hasAttemptedSubmit && validationErrors.visitType"
+            class="cc-help-text cc-help-text--error"
+          >
+            {{ validationErrors.visitType }}
           </div>
         </div>
 
-        <div v-else class="cc-stack">
-          <div class="cc-grid cc-grid-2">
-            <div>
-              <label for="recurringStartDate" class="cc-label"
-                >Start date</label
+        <div class="cc-panel">
+          <div class="cc-stack cc-stack-sm">
+            <div class="cc-section-title">Date &amp; time</div>
+            <div class="cc-row">
+              <label for="recurring" class="cc-label-inline"
+                >Is recurring?</label
               >
+
+              <ToggleSwitch
+                v-model="schedule.isRecurring"
+                inputId="recurring"
+                :pt="toggleSwitchPt"
+              />
+            </div>
+          </div>
+
+          <div v-if="!schedule.isRecurring" class="cc-stack">
+            <div class="cc-grid">
+              <label for="appointmentDate" class="cc-label">Date</label>
               <DatePicker
-                v-model="schedule.recurringStartDate"
-                inputId="recurringStartDate"
+                v-model="schedule.appointmentDate"
+                inputId="appointmentDate"
                 dateFormat="yy-mm-dd"
                 appendTo="body"
                 panelClass="cc-datepicker-panel"
@@ -1230,485 +1342,96 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                 {{ validationErrors.date }}
               </div>
             </div>
-            <div>
-              <label for="recurringEndDate" class="cc-label">End date</label>
-              <DatePicker
-                v-model="schedule.recurringEndDate"
-                inputId="recurringEndDate"
-                dateFormat="yy-mm-dd"
-                appendTo="body"
-                panelClass="cc-datepicker-panel"
-                :pt="datePickerPt"
-              />
-            </div>
-          </div>
-
-          <div class="cc-stack cc-stack-sm">
-            <!-- Rows -->
-            <div
-              v-for="row in recurrenceRows"
-              :key="row.id"
-              class="cc-grid cc-grid-recurrence"
-            >
+            <div class="cc-grid cc-grid-2">
               <div>
-                <label :for="`day-${row.id}`" class="cc-label">Day</label>
-                <select
-                  :id="`day-${row.id}`"
-                  v-model="row.day"
-                  class="cc-select"
+                <label class="cc-label" for="appointmentStartTime"
+                  >Start time</label
                 >
-                  <option v-for="day in weekdayOptions" :key="day" :value="day">
-                    {{ day }}
-                  </option>
-                </select>
-              </div>
 
-              <div>
-                <label :for="`start-${row.id}`" class="cc-label"
-                  >Start Time</label
+                <div class="input-group">
+                  <input
+                    id="appointmentStartTime"
+                    type="time"
+                    class="form-control"
+                    v-model="schedule.appointmentStartTime"
+                  />
+                </div>
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.startTime"
+                  class="cc-help-text cc-help-text--error"
                 >
-                <input
-                  :id="`start-${row.id}`"
-                  type="time"
-                  class="cc-input"
-                  v-model="row.startTime"
-                />
+                  {{ validationErrors.startTime }}
+                </div>
               </div>
 
               <div>
-                <label :for="`end-${row.id}`" class="cc-label">End Time</label>
-                <input
-                  :id="`end-${row.id}`"
-                  type="time"
-                  class="cc-input"
-                  v-model="row.endTime"
-                />
-              </div>
-
-              <!-- Delete button on the right -->
-              <div class="cc-delete-col">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-danger cc-btn-square"
-                  :disabled="recurrenceRows.length === 1"
-                  @click="removeRecurrenceRow(row.id)"
-                  aria-label="Remove row"
-                  title="Remove"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            <!-- Add button full width under -->
-            <button
-              type="button"
-              class="plus-btn cc-btn-add-row"
-              @click="addRecurrenceRow"
-            >
-              +
-            </button>
-            <div
-              v-if="hasAttemptedSubmit && validationErrors.startTime"
-              class="cc-help-text cc-help-text--error"
-            >
-              {{ validationErrors.startTime }}
-            </div>
-            <div
-              v-if="hasAttemptedSubmit && validationErrors.endTime"
-              class="cc-help-text cc-help-text--error"
-            >
-              {{ validationErrors.endTime }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showNurseSection" class="cc-panel">
-        <div class="cc-section-title">Nurse</div>
-        <div class="cc-stack">
-          <div class="cc-row cc-row-wrap">
-            <label class="cc-row cc-stack-sm">
-              <input
-                v-model="nurseAssignmentMode"
-                type="radio"
-                name="nurseAssignmentMode"
-                value="primary"
-              />
-              <span class="cc-label-inline">Primary nurse</span>
-            </label>
-            <label class="cc-row cc-stack-sm">
-              <input
-                v-model="nurseAssignmentMode"
-                type="radio"
-                name="nurseAssignmentMode"
-                value="custom"
-              />
-              <span class="cc-label-inline">Custom nurse</span>
-            </label>
-          </div>
-          <div v-if="nurseAssignmentMode === 'custom'" class="cc-stack">
-            <div class="cc-grid">
-              <label for="nurseName" class="cc-label">Nurse name</label>
-              <AutoComplete
-                v-model="nurseName"
-                inputId="nurseName"
-                :suggestions="filteredNurses"
-                :completeOnFocus="true"
-                :forceSelection="true"
-                appendTo="body"
-                panelClass="cc-autocomplete-panel"
-                :pt="autoCompletePt"
-                placeholder="Search nurse"
-                @complete="searchNurses"
-              />
-              <div
-                v-if="hasAttemptedSubmit && validationErrors.nurse"
-                class="cc-help-text cc-help-text--error"
-              >
-                {{ validationErrors.nurse }}
-              </div>
-            </div>
-            <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
-              <div>
-                <label for="nurseStartTime" class="cc-label">Start time</label>
-                <DatePicker
-                  v-model="nurseSchedule.startTime"
-                  inputId="nurseStartTime"
-                  timeOnly
-                  hourFormat="24"
-                  appendTo="body"
-                  panelClass="cc-datepicker-panel cc-time-panel"
-                  :pt="datePickerPt"
-                />
-              </div>
-              <div>
-                <label for="nurseEndTime" class="cc-label">End time</label>
-                <DatePicker
-                  v-model="nurseSchedule.endTime"
-                  inputId="nurseEndTime"
-                  timeOnly
-                  hourFormat="24"
-                  appendTo="body"
-                  panelClass="cc-datepicker-panel cc-time-panel"
-                  :pt="datePickerPt"
-                />
-              </div>
-            </div>
-            <div v-else class="cc-stack cc-stack-sm">
-              <div
-                v-for="row in nurseRecurrenceRows"
-                :key="row.id"
-                class="cc-grid cc-grid-4 cc-grid-align-end"
-              >
-                <div>
-                  <label :for="`nurse-day-${row.id}`" class="cc-label"
-                    >Day</label
-                  >
-                  <select
-                    :id="`nurse-day-${row.id}`"
-                    v-model="row.day"
-                    class="cc-select"
-                  >
-                    <option
-                      v-for="day in weekdayOptions"
-                      :key="day"
-                      :value="day"
-                    >
-                      {{ day }}
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label :for="`nurse-start-${row.id}`" class="cc-label">
-                    Start time
-                  </label>
-                  <DatePicker
-                    v-model="row.startTime"
-                    :inputId="`nurse-start-${row.id}`"
-                    timeOnly
-                    hourFormat="24"
-                    appendTo="body"
-                    panelClass="cc-datepicker-panel cc-time-panel"
-                    :pt="datePickerPt"
-                  />
-                </div>
-                <div>
-                  <label :for="`nurse-end-${row.id}`" class="cc-label"
-                    >End time</label
-                  >
-                  <DatePicker
-                    v-model="row.endTime"
-                    :inputId="`nurse-end-${row.id}`"
-                    timeOnly
-                    hourFormat="24"
-                    appendTo="body"
-                    panelClass="cc-datepicker-panel cc-time-panel"
-                    :pt="datePickerPt"
-                  />
-                </div>
-                <div class="cc-row cc-row-stretch">
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                    @click="addEmployeeRecurrenceRow(nurseRecurrenceRows)"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                    :disabled="nurseRecurrenceRows.length === 1"
-                    @click="
-                      removeEmployeeRecurrenceRow(nurseRecurrenceRows, row.id)
-                    "
-                  >
-                    -
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showDoctorSection" class="cc-panel">
-        <div class="cc-section-title">Doctor</div>
-        <div class="cc-stack">
-          <div class="cc-row cc-row-wrap">
-            <label class="cc-row cc-stack-sm">
-              <input
-                v-model="doctorAssignmentMode"
-                type="radio"
-                name="doctorAssignmentMode"
-                value="primary"
-              />
-              <span class="cc-label-inline">Primary doctor</span>
-            </label>
-            <label class="cc-row cc-stack-sm">
-              <input
-                v-model="doctorAssignmentMode"
-                type="radio"
-                name="doctorAssignmentMode"
-                value="custom"
-              />
-              <span class="cc-label-inline">Custom doctor</span>
-            </label>
-          </div>
-          <div v-if="doctorAssignmentMode === 'custom'" class="cc-stack">
-            <div class="cc-grid">
-              <label for="doctorName" class="cc-label">Doctor name</label>
-              <AutoComplete
-                v-model="doctorName"
-                inputId="doctorName"
-                :suggestions="filteredDoctors"
-                :completeOnFocus="true"
-                :forceSelection="true"
-                appendTo="body"
-                panelClass="cc-autocomplete-panel"
-                :pt="autoCompletePt"
-                placeholder="Search doctor"
-                @complete="searchDoctors"
-              />
-              <div
-                v-if="hasAttemptedSubmit && validationErrors.doctor"
-                class="cc-help-text cc-help-text--error"
-              >
-                {{ validationErrors.doctor }}
-              </div>
-            </div>
-            <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
-              <div>
-                <label for="doctorStartTime" class="cc-label">Start time</label>
-                <DatePicker
-                  v-model="doctorSchedule.startTime"
-                  inputId="doctorStartTime"
-                  timeOnly
-                  hourFormat="24"
-                  appendTo="body"
-                  panelClass="cc-datepicker-panel cc-time-panel"
-                  :pt="datePickerPt"
-                />
-              </div>
-              <div>
-                <label for="doctorEndTime" class="cc-label">End time</label>
-                <DatePicker
-                  v-model="doctorSchedule.endTime"
-                  inputId="doctorEndTime"
-                  timeOnly
-                  hourFormat="24"
-                  appendTo="body"
-                  panelClass="cc-datepicker-panel cc-time-panel"
-                  :pt="datePickerPt"
-                />
-              </div>
-            </div>
-            <div v-else class="cc-stack cc-stack-sm">
-              <div
-                v-for="row in doctorRecurrenceRows"
-                :key="row.id"
-                class="cc-grid cc-grid-4 cc-grid-align-end"
-              >
-                <div>
-                  <label :for="`doctor-day-${row.id}`" class="cc-label"
-                    >Day</label
-                  >
-                  <select
-                    :id="`doctor-day-${row.id}`"
-                    v-model="row.day"
-                    class="cc-select"
-                  >
-                    <option
-                      v-for="day in weekdayOptions"
-                      :key="day"
-                      :value="day"
-                    >
-                      {{ day }}
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label :for="`doctor-start-${row.id}`" class="cc-label">
-                    Start time
-                  </label>
-                  <DatePicker
-                    v-model="row.startTime"
-                    :inputId="`doctor-start-${row.id}`"
-                    timeOnly
-                    hourFormat="24"
-                    appendTo="body"
-                    panelClass="cc-datepicker-panel cc-time-panel"
-                    :pt="datePickerPt"
-                  />
-                </div>
-                <div>
-                  <label :for="`doctor-end-${row.id}`" class="cc-label"
-                    >End time</label
-                  >
-                  <DatePicker
-                    v-model="row.endTime"
-                    :inputId="`doctor-end-${row.id}`"
-                    timeOnly
-                    hourFormat="24"
-                    appendTo="body"
-                    panelClass="cc-datepicker-panel cc-time-panel"
-                    :pt="datePickerPt"
-                  />
-                </div>
-                <div class="cc-row cc-row-stretch">
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                    @click="addEmployeeRecurrenceRow(doctorRecurrenceRows)"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                    :disabled="doctorRecurrenceRows.length === 1"
-                    @click="
-                      removeEmployeeRecurrenceRow(doctorRecurrenceRows, row.id)
-                    "
-                  >
-                    -
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="showSocialWorkerSection" class="cc-panel">
-        <div class="cc-section-title">Social worker</div>
-        <div class="cc-stack">
-          <div class="cc-row cc-row-wrap">
-            <label class="cc-row cc-stack-sm">
-              <input
-                v-model="socialWorkerAssignmentMode"
-                type="radio"
-                name="socialWorkerAssignmentMode"
-                value="primary"
-              />
-              <span class="cc-label-inline">Primary social worker</span>
-            </label>
-            <label class="cc-row cc-stack-sm">
-              <input
-                v-model="socialWorkerAssignmentMode"
-                type="radio"
-                name="socialWorkerAssignmentMode"
-                value="custom"
-              />
-              <span class="cc-label-inline">Custom social worker</span>
-            </label>
-          </div>
-          <div v-if="socialWorkerAssignmentMode === 'custom'" class="cc-stack">
-            <div class="cc-grid">
-              <label for="socialWorkerName" class="cc-label">
-                Social worker name
-              </label>
-              <AutoComplete
-                v-model="socialWorkerName"
-                inputId="socialWorkerName"
-                :suggestions="filteredSocialWorkers"
-                :completeOnFocus="true"
-                :forceSelection="true"
-                appendTo="body"
-                panelClass="cc-autocomplete-panel"
-                :pt="autoCompletePt"
-                placeholder="Search social worker"
-                @complete="searchSocialWorkers"
-              />
-              <div
-                v-if="hasAttemptedSubmit && validationErrors.socialWorker"
-                class="cc-help-text cc-help-text--error"
-              >
-                {{ validationErrors.socialWorker }}
-              </div>
-            </div>
-            <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
-              <div>
-                <label for="socialWorkerStartTime" class="cc-label">
-                  Start time
-                </label>
-                <DatePicker
-                  v-model="socialWorkerSchedule.startTime"
-                  inputId="socialWorkerStartTime"
-                  timeOnly
-                  hourFormat="24"
-                  appendTo="body"
-                  panelClass="cc-datepicker-panel cc-time-panel"
-                  :pt="datePickerPt"
-                />
-              </div>
-              <div>
-                <label for="socialWorkerEndTime" class="cc-label"
+                <label class="cc-label" for="appointmentEndTime"
                   >End time</label
                 >
+
+                <div class="input-group">
+                  <input
+                    id="appointmentEndTime"
+                    type="time"
+                    class="form-control"
+                    v-model="schedule.appointmentEndTime"
+                  />
+                </div>
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.endTime"
+                  class="cc-help-text cc-help-text--error"
+                >
+                  {{ validationErrors.endTime }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="cc-stack">
+            <div class="cc-grid cc-grid-2">
+              <div>
+                <label for="recurringStartDate" class="cc-label"
+                  >Start date</label
+                >
                 <DatePicker
-                  v-model="socialWorkerSchedule.endTime"
-                  inputId="socialWorkerEndTime"
-                  timeOnly
-                  hourFormat="24"
+                  v-model="schedule.recurringStartDate"
+                  inputId="recurringStartDate"
+                  dateFormat="yy-mm-dd"
                   appendTo="body"
-                  panelClass="cc-datepicker-panel cc-time-panel"
+                  panelClass="cc-datepicker-panel"
+                  :pt="datePickerPt"
+                />
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.date"
+                  class="cc-help-text cc-help-text--error"
+                >
+                  {{ validationErrors.date }}
+                </div>
+              </div>
+              <div>
+                <label for="recurringEndDate" class="cc-label">End date</label>
+                <DatePicker
+                  v-model="schedule.recurringEndDate"
+                  inputId="recurringEndDate"
+                  dateFormat="yy-mm-dd"
+                  appendTo="body"
+                  panelClass="cc-datepicker-panel"
                   :pt="datePickerPt"
                 />
               </div>
             </div>
-            <div v-else class="cc-stack cc-stack-sm">
+
+            <div class="cc-stack cc-stack-sm">
+              <!-- Rows -->
               <div
-                v-for="row in socialWorkerRecurrenceRows"
+                v-for="row in recurrenceRows"
                 :key="row.id"
-                class="cc-grid cc-grid-4 cc-grid-align-end"
+                class="cc-grid cc-grid-recurrence"
               >
                 <div>
-                  <label :for="`social-day-${row.id}`" class="cc-label"
-                    >Day</label
-                  >
+                  <label :for="`day-${row.id}`" class="cc-label">Day</label>
                   <select
-                    :id="`social-day-${row.id}`"
+                    :id="`day-${row.id}`"
                     v-model="row.day"
                     class="cc-select"
                   >
@@ -1721,13 +1444,143 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                     </option>
                   </select>
                 </div>
+
                 <div>
-                  <label :for="`social-start-${row.id}`" class="cc-label">
-                    Start time
-                  </label>
-                  <DatePicker
+                  <label :for="`start-${row.id}`" class="cc-label"
+                    >Start Time</label
+                  >
+                  <input
+                    :id="`start-${row.id}`"
+                    type="time"
+                    class="cc-input"
                     v-model="row.startTime"
-                    :inputId="`social-start-${row.id}`"
+                  />
+                </div>
+
+                <div>
+                  <label :for="`end-${row.id}`" class="cc-label"
+                    >End Time</label
+                  >
+                  <input
+                    :id="`end-${row.id}`"
+                    type="time"
+                    class="cc-input"
+                    v-model="row.endTime"
+                  />
+                </div>
+
+                <!-- Delete button on the right -->
+                <div class="cc-delete-col">
+                  <button
+                    type="button"
+                    class="cc-btn cc-btn-danger cc-btn-square"
+                    :disabled="recurrenceRows.length === 1"
+                    @click="removeRecurrenceRow(row.id)"
+                    aria-label="Remove row"
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <!-- Add button full width under -->
+              <button
+                type="button"
+                class="plus-btn cc-btn-add-row"
+                @click="addRecurrenceRow"
+              >
+                +
+              </button>
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.startTime"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.startTime }}
+              </div>
+              <div
+                v-if="hasAttemptedSubmit && validationErrors.endTime"
+                class="cc-help-text cc-help-text--error"
+              >
+                {{ validationErrors.endTime }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="showNurseSection" class="cc-panel">
+          <div class="cc-section-title">Nurse</div>
+          <div class="cc-stack">
+            <div class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="nurseAssignmentMode"
+                  type="radio"
+                  name="nurseAssignmentMode"
+                  value="primary"
+                />
+                <span class="cc-label-inline">Primary nurse</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="nurseAssignmentMode"
+                  type="radio"
+                  name="nurseAssignmentMode"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Cover by nurse</span>
+              </label>
+            </div>
+            <div v-if="schedule.isRecurring" class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="nurseScheduleType"
+                  type="radio"
+                  name="nurseScheduleType"
+                  value="same"
+                />
+                <span class="cc-label-inline">Same schedule</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="nurseScheduleType"
+                  type="radio"
+                  name="nurseScheduleType"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Custom schedule</span>
+              </label>
+            </div>
+            <div class="cc-stack">
+              <div v-if="nurseAssignmentMode === 'custom'" class="cc-grid">
+                <label for="nurseName" class="cc-label">Nurse name</label>
+                <AutoComplete
+                  v-model="nurseName"
+                  inputId="nurseName"
+                  :suggestions="filteredNurses"
+                  :completeOnFocus="true"
+                  :forceSelection="true"
+                  appendTo="body"
+                  panelClass="cc-autocomplete-panel"
+                  :pt="autoCompletePt"
+                  placeholder="Search nurse"
+                  @complete="searchNurses"
+                />
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.nurse"
+                  class="cc-help-text cc-help-text--error"
+                >
+                  {{ validationErrors.nurse }}
+                </div>
+              </div>
+              <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
+                <div>
+                  <label for="nurseStartTime" class="cc-label"
+                    >Start time</label
+                  >
+                  <DatePicker
+                    v-model="nurseSchedule.startTime"
+                    inputId="nurseStartTime"
                     timeOnly
                     hourFormat="24"
                     appendTo="body"
@@ -1736,12 +1589,10 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                   />
                 </div>
                 <div>
-                  <label :for="`social-end-${row.id}`" class="cc-label"
-                    >End time</label
-                  >
+                  <label for="nurseEndTime" class="cc-label">End time</label>
                   <DatePicker
-                    v-model="row.endTime"
-                    :inputId="`social-end-${row.id}`"
+                    v-model="nurseSchedule.endTime"
+                    inputId="nurseEndTime"
                     timeOnly
                     hourFormat="24"
                     appendTo="body"
@@ -1749,54 +1600,639 @@ const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
                     :pt="datePickerPt"
                   />
                 </div>
-                <div class="cc-row cc-row-stretch">
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                    @click="
-                      addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)
-                    "
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                    :disabled="socialWorkerRecurrenceRows.length === 1"
-                    @click="
-                      removeEmployeeRecurrenceRow(
-                        socialWorkerRecurrenceRows,
-                        row.id,
-                      )
-                    "
-                  >
-                    -
-                  </button>
+              </div>
+              <div
+                v-else-if="nurseScheduleType === 'custom'"
+                class="cc-stack cc-stack-sm"
+              >
+                <div
+                  v-for="row in nurseRecurrenceRows"
+                  :key="row.id"
+                  class="cc-grid cc-grid-4 cc-grid-align-end"
+                >
+                  <div>
+                    <label :for="`nurse-day-${row.id}`" class="cc-label"
+                      >Day</label
+                    >
+                    <select
+                      :id="`nurse-day-${row.id}`"
+                      v-model="row.day"
+                      class="cc-select"
+                    >
+                      <option
+                        v-for="day in weekdayOptions"
+                        :key="day"
+                        :value="day"
+                      >
+                        {{ day }}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label :for="`nurse-start-${row.id}`" class="cc-label">
+                      Start time
+                    </label>
+                    <DatePicker
+                      v-model="row.startTime"
+                      :inputId="`nurse-start-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div>
+                    <label :for="`nurse-end-${row.id}`" class="cc-label"
+                      >End time</label
+                    >
+                    <DatePicker
+                      v-model="row.endTime"
+                      :inputId="`nurse-end-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div class="cc-row cc-row-stretch">
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      @click="addEmployeeRecurrenceRow(nurseRecurrenceRows)"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                      :disabled="nurseRecurrenceRows.length === 1"
+                      @click="
+                        removeEmployeeRecurrenceRow(nurseRecurrenceRows, row.id)
+                      "
+                    >
+                      -
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div>
-        <label for="instructions" class="cc-label cc-label-strong">
-          Instructions
-        </label>
-        <textarea
-          id="instructions"
-          v-model="instructions"
-          class="cc-textarea"
-          rows="3"
-          placeholder="Add special instructions or notes"
-        ></textarea>
-      </div>
-      <div
-        v-if="props.errorMessage"
-        class="cc-help-text cc-help-text--error"
-      >
-        {{ props.errorMessage }}
-      </div>
+        <div v-if="showDoctorSection" class="cc-panel">
+          <div class="cc-section-title">Doctor</div>
+          <div class="cc-stack">
+            <div class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="doctorAssignmentMode"
+                  type="radio"
+                  name="doctorAssignmentMode"
+                  value="primary"
+                />
+                <span class="cc-label-inline">Primary doctor</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="doctorAssignmentMode"
+                  type="radio"
+                  name="doctorAssignmentMode"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Cover by doctor</span>
+              </label>
+            </div>
+            <div v-if="schedule.isRecurring" class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="doctorScheduleType"
+                  type="radio"
+                  name="doctorScheduleType"
+                  value="same"
+                />
+                <span class="cc-label-inline">Same schedule</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="doctorScheduleType"
+                  type="radio"
+                  name="doctorScheduleType"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Custom schedule</span>
+              </label>
+            </div>
+            <div class="cc-stack">
+              <div v-if="doctorAssignmentMode === 'custom'" class="cc-grid">
+                <label for="doctorName" class="cc-label">Doctor name</label>
+                <AutoComplete
+                  v-model="doctorName"
+                  inputId="doctorName"
+                  :suggestions="filteredDoctors"
+                  :completeOnFocus="true"
+                  :forceSelection="true"
+                  appendTo="body"
+                  panelClass="cc-autocomplete-panel"
+                  :pt="autoCompletePt"
+                  placeholder="Search doctor"
+                  @complete="searchDoctors"
+                />
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.doctor"
+                  class="cc-help-text cc-help-text--error"
+                >
+                  {{ validationErrors.doctor }}
+                </div>
+              </div>
+              <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
+                <div>
+                  <label for="doctorStartTime" class="cc-label"
+                    >Start time</label
+                  >
+                  <DatePicker
+                    v-model="doctorSchedule.startTime"
+                    inputId="doctorStartTime"
+                    timeOnly
+                    hourFormat="24"
+                    appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel"
+                    :pt="datePickerPt"
+                  />
+                </div>
+                <div>
+                  <label for="doctorEndTime" class="cc-label">End time</label>
+                  <DatePicker
+                    v-model="doctorSchedule.endTime"
+                    inputId="doctorEndTime"
+                    timeOnly
+                    hourFormat="24"
+                    appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel"
+                    :pt="datePickerPt"
+                  />
+                </div>
+              </div>
+              <div
+                v-else-if="doctorScheduleType === 'custom'"
+                class="cc-stack cc-stack-sm"
+              >
+                <div
+                  v-for="row in doctorRecurrenceRows"
+                  :key="row.id"
+                  class="cc-grid cc-grid-4 cc-grid-align-end"
+                >
+                  <div>
+                    <label :for="`doctor-day-${row.id}`" class="cc-label"
+                      >Day</label
+                    >
+                    <select
+                      :id="`doctor-day-${row.id}`"
+                      v-model="row.day"
+                      class="cc-select"
+                    >
+                      <option
+                        v-for="day in weekdayOptions"
+                        :key="day"
+                        :value="day"
+                      >
+                        {{ day }}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label :for="`doctor-start-${row.id}`" class="cc-label">
+                      Start time
+                    </label>
+                    <DatePicker
+                      v-model="row.startTime"
+                      :inputId="`doctor-start-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div>
+                    <label :for="`doctor-end-${row.id}`" class="cc-label"
+                      >End time</label
+                    >
+                    <DatePicker
+                      v-model="row.endTime"
+                      :inputId="`doctor-end-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div class="cc-row cc-row-stretch">
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      @click="addEmployeeRecurrenceRow(doctorRecurrenceRows)"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                      :disabled="doctorRecurrenceRows.length === 1"
+                      @click="
+                        removeEmployeeRecurrenceRow(
+                          doctorRecurrenceRows,
+                          row.id,
+                        )
+                      "
+                    >
+                      -
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="showSocialWorkerSection" class="cc-panel">
+          <div class="cc-section-title">Social worker</div>
+          <div class="cc-stack">
+            <div class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="socialWorkerAssignmentMode"
+                  type="radio"
+                  name="socialWorkerAssignmentMode"
+                  value="primary"
+                />
+                <span class="cc-label-inline">Primary social worker</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="socialWorkerAssignmentMode"
+                  type="radio"
+                  name="socialWorkerAssignmentMode"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Cover by social worker</span>
+              </label>
+            </div>
+            <div v-if="schedule.isRecurring" class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="socialWorkerScheduleType"
+                  type="radio"
+                  name="socialWorkerScheduleType"
+                  value="same"
+                />
+                <span class="cc-label-inline">Same schedule</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="socialWorkerScheduleType"
+                  type="radio"
+                  name="socialWorkerScheduleType"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Custom schedule</span>
+              </label>
+            </div>
+            <div class="cc-stack">
+              <div
+                v-if="socialWorkerAssignmentMode === 'custom'"
+                class="cc-grid"
+              >
+                <label for="socialWorkerName" class="cc-label">
+                  Social worker name
+                </label>
+                <AutoComplete
+                  v-model="socialWorkerName"
+                  inputId="socialWorkerName"
+                  :suggestions="filteredSocialWorkers"
+                  :completeOnFocus="true"
+                  :forceSelection="true"
+                  appendTo="body"
+                  panelClass="cc-autocomplete-panel"
+                  :pt="autoCompletePt"
+                  placeholder="Search social worker"
+                  @complete="searchSocialWorkers"
+                />
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.socialWorker"
+                  class="cc-help-text cc-help-text--error"
+                >
+                  {{ validationErrors.socialWorker }}
+                </div>
+              </div>
+              <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
+                <div>
+                  <label for="socialWorkerStartTime" class="cc-label">
+                    Start time
+                  </label>
+                  <DatePicker
+                    v-model="socialWorkerSchedule.startTime"
+                    inputId="socialWorkerStartTime"
+                    timeOnly
+                    hourFormat="24"
+                    appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel"
+                    :pt="datePickerPt"
+                  />
+                </div>
+                <div>
+                  <label for="socialWorkerEndTime" class="cc-label"
+                    >End time</label
+                  >
+                  <DatePicker
+                    v-model="socialWorkerSchedule.endTime"
+                    inputId="socialWorkerEndTime"
+                    timeOnly
+                    hourFormat="24"
+                    appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel"
+                    :pt="datePickerPt"
+                  />
+                </div>
+              </div>
+              <div
+                v-else-if="socialWorkerScheduleType === 'custom'"
+                class="cc-stack cc-stack-sm"
+              >
+                <div
+                  v-for="row in socialWorkerRecurrenceRows"
+                  :key="row.id"
+                  class="cc-grid cc-grid-4 cc-grid-align-end"
+                >
+                  <div>
+                    <label :for="`social-day-${row.id}`" class="cc-label"
+                      >Day</label
+                    >
+                    <select
+                      :id="`social-day-${row.id}`"
+                      v-model="row.day"
+                      class="cc-select"
+                    >
+                      <option
+                        v-for="day in weekdayOptions"
+                        :key="day"
+                        :value="day"
+                      >
+                        {{ day }}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label :for="`social-start-${row.id}`" class="cc-label">
+                      Start time
+                    </label>
+                    <DatePicker
+                      v-model="row.startTime"
+                      :inputId="`social-start-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div>
+                    <label :for="`social-end-${row.id}`" class="cc-label"
+                      >End time</label
+                    >
+                    <DatePicker
+                      v-model="row.endTime"
+                      :inputId="`social-end-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div class="cc-row cc-row-stretch">
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      @click="
+                        addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)
+                      "
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                      :disabled="socialWorkerRecurrenceRows.length === 1"
+                      @click="
+                        removeEmployeeRecurrenceRow(
+                          socialWorkerRecurrenceRows,
+                          row.id,
+                        )
+                      "
+                    >
+                      -
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="showDriverSection" class="cc-panel">
+          <div class="cc-section-title">Driver</div>
+          <div class="cc-stack">
+            <div class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="driverAssignmentMode"
+                  type="radio"
+                  name="driverAssignmentMode"
+                  value="primary"
+                />
+                <span class="cc-label-inline">Primary driver</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="driverAssignmentMode"
+                  type="radio"
+                  name="driverAssignmentMode"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Cover by driver</span>
+              </label>
+            </div>
+            <div v-if="schedule.isRecurring" class="cc-row cc-row-wrap">
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="driverScheduleType"
+                  type="radio"
+                  name="driverScheduleType"
+                  value="same"
+                />
+                <span class="cc-label-inline">Same schedule</span>
+              </label>
+              <label class="cc-row cc-stack-sm">
+                <input
+                  v-model="driverScheduleType"
+                  type="radio"
+                  name="driverScheduleType"
+                  value="custom"
+                />
+                <span class="cc-label-inline">Custom schedule</span>
+              </label>
+            </div>
+            <div class="cc-stack">
+              <div v-if="driverAssignmentMode === 'custom'" class="cc-grid">
+                <label for="driverName" class="cc-label">Driver name</label>
+                <AutoComplete
+                  v-model="driverName"
+                  inputId="driverName"
+                  :suggestions="filteredDrivers"
+                  :completeOnFocus="true"
+                  :forceSelection="true"
+                  appendTo="body"
+                  panelClass="cc-autocomplete-panel"
+                  :pt="autoCompletePt"
+                  placeholder="Search driver"
+                  @complete="searchDrivers"
+                />
+                <div
+                  v-if="hasAttemptedSubmit && validationErrors.driver"
+                  class="cc-help-text cc-help-text--error"
+                >
+                  {{ validationErrors.driver }}
+                </div>
+              </div>
+              <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
+                <div>
+                  <label for="driverStartTime" class="cc-label">
+                    Start time
+                  </label>
+                  <DatePicker
+                    v-model="driverSchedule.startTime"
+                    inputId="driverStartTime"
+                    timeOnly
+                    hourFormat="24"
+                    appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel"
+                    :pt="datePickerPt"
+                  />
+                </div>
+                <div>
+                  <label for="driverEndTime" class="cc-label">End time</label>
+                  <DatePicker
+                    v-model="driverSchedule.endTime"
+                    inputId="driverEndTime"
+                    timeOnly
+                    hourFormat="24"
+                    appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel"
+                    :pt="datePickerPt"
+                  />
+                </div>
+              </div>
+              <div
+                v-else-if="driverScheduleType === 'custom'"
+                class="cc-stack cc-stack-sm"
+              >
+                <div
+                  v-for="row in driverRecurrenceRows"
+                  :key="row.id"
+                  class="cc-grid cc-grid-4 cc-grid-align-end"
+                >
+                  <div>
+                    <label :for="`driver-day-${row.id}`" class="cc-label">
+                      Day
+                    </label>
+                    <select
+                      :id="`driver-day-${row.id}`"
+                      v-model="row.day"
+                      class="cc-select"
+                    >
+                      <option
+                        v-for="day in weekdayOptions"
+                        :key="day"
+                        :value="day"
+                      >
+                        {{ day }}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label :for="`driver-start-${row.id}`" class="cc-label">
+                      Start time
+                    </label>
+                    <DatePicker
+                      v-model="row.startTime"
+                      :inputId="`driver-start-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div>
+                    <label :for="`driver-end-${row.id}`" class="cc-label">
+                      End time
+                    </label>
+                    <DatePicker
+                      v-model="row.endTime"
+                      :inputId="`driver-end-${row.id}`"
+                      timeOnly
+                      hourFormat="24"
+                      appendTo="body"
+                      panelClass="cc-datepicker-panel cc-time-panel"
+                      :pt="datePickerPt"
+                    />
+                  </div>
+                  <div class="cc-row cc-row-stretch">
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      @click="addEmployeeRecurrenceRow(driverRecurrenceRows)"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
+                      :disabled="driverRecurrenceRows.length === 1"
+                      @click="
+                        removeEmployeeRecurrenceRow(
+                          driverRecurrenceRows,
+                          row.id,
+                        )
+                      "
+                    >
+                      -
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label for="instructions" class="cc-label cc-label-strong">
+            Instructions
+          </label>
+          <textarea
+            id="instructions"
+            v-model="instructions"
+            class="cc-textarea"
+            rows="3"
+            placeholder="Add special instructions or notes"
+          ></textarea>
+        </div>
+        <div v-if="props.errorMessage" class="cc-help-text cc-help-text--error">
+          {{ props.errorMessage }}
+        </div>
       </fieldset>
     </form>
 

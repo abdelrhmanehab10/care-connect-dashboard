@@ -7,6 +7,10 @@ const visible = defineModel<boolean>({ required: true });
 const props = defineProps<{
   appointment: Appointment | null;
 }>();
+const emit = defineEmits<{
+  (event: "check-in"): void;
+  (event: "log"): void;
+}>();
 
 const displayValue = (value: string | null | undefined) => value ?? "-";
 </script>
@@ -69,13 +73,25 @@ const displayValue = (value: string | null | undefined) => value ?? "-";
     </div>
 
     <template #footer>
-      <button
-        type="button"
-        class="cc-btn bg-danger"
-        @click="visible = false"
-      >
-        Close
-      </button>
+      <div class="cc-btn-group">
+        <button
+          type="button"
+          class="cc-btn cc-btn-outline-success"
+          @click="emit('check-in')"
+        >
+          Check in
+        </button>
+        <button type="button" class="cc-btn cc-btn-outline" @click="emit('log')">
+          Log
+        </button>
+        <button
+          type="button"
+          class="cc-btn bg-danger"
+          @click="visible = false"
+        >
+          Close
+        </button>
+      </div>
     </template>
   </Dialog>
 </template>

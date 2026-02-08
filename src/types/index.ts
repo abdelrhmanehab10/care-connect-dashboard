@@ -34,7 +34,17 @@ type Confirmation = {
   updated_at: string;
 };
 
+type CareMember = {
+  employee: {
+    id: number;
+    name: string;
+  };
+  role: string;
+  start_time: string;
+  end_time: string;
+};
+
 export type AppointmentDetails = Appointment & {
   confirmation: Confirmation[];
-  care_team: [];
+  care_team: CareMember[];
 };

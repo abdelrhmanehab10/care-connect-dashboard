@@ -5,6 +5,13 @@ export type AppointmentsQueryParams = {
   page?: number;
   start?: string;
   end?: string;
+  status?: string;
+  employee?: string;
+  patient?: string;
+  patient_id?: string;
+  visit_type?: string;
+  visit_type_id?: string;
+  state?: string;
 };
 
 export type AppointmentsResponse = {
@@ -22,6 +29,13 @@ export type AppointmentDetailsResponse = {
   data: AppointmentDetails;
   status: string;
   message: string;
+};
+
+export type AppointmentStatusOption = {
+  key: string;
+  value: string;
+  level: number;
+  is_final: boolean;
 };
 
 export type CreateAppointmentPayload = {
@@ -70,21 +84,48 @@ export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
 export const fetchAppointments = async (
   params: AppointmentsQueryParams,
 ): Promise<AppointmentsResponse> => {
-  const response = await http.post(
-    "/api/vue/appointments/list",
-    {
-      start: params.start ?? "",
-      end: params.end ?? "",
-      view_pagination: true,
+  const body: Record<string, string | boolean | undefined> = {
+    start: params.start ?? "",
+    end: params.end ?? "",
+    view_pagination: true,
+  };
+
+  if (params.status) body.status = params.status;
+  if (params.employee) body.employee = params.employee;
+  if (params.patient) body.patient = params.patient;
+  if (params.patient_id) body.patient_id = params.patient_id;
+  if (params.visit_type) body.visit_type = params.visit_type;
+  if (params.visit_type_id) body.visit_type_id = params.visit_type_id;
+  if (params.state) body.state = params.state;
+
+  const response = await http.post("/api/vue/appointments/list", body, {
+    params: {
+      page: params.page ?? 1,
     },
-    {
-      params: {
-        page: params.page ?? 1,
-      },
-    },
-  );
+  });
 
   return response.data;
+};
+
+export const fetchAppointmentStatuses = async (): Promise<
+  AppointmentStatusOption[]
+> => {
+  const response = await http.get("/api/vue/appointments/status-list");
+  const payload = response.data;
+
+  if (Array.isArray(payload)) {
+    return payload as AppointmentStatusOption[];
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data as AppointmentStatusOption[];
+  }
+
+  if (Array.isArray(payload?.data?.data)) {
+    return payload.data.data as AppointmentStatusOption[];
+  }
+
+  return [];
 };
 
 export const fetchAppointmentDetails = async (

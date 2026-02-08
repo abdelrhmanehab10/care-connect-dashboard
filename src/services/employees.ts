@@ -1,6 +1,6 @@
 import { http } from "../lib/api";
 
-export type EmployeeTitle = "nurse" | "doctor" | "social_worker";
+export type EmployeeTitle = "nurse" | "doctor" | "social_worker" | "driver";
 
 type EmployeePayload = {
   id?: number | string | null;
