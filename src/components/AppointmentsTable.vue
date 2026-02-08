@@ -28,7 +28,7 @@ type StaffMember = Appointment["doctor"];
 type Patient = Appointment["patient"];
 
 const ensurePatient = (value: Patient | null | undefined): Patient =>
-  value ?? { id: 0, name: "", date_of_birth: "" };
+  value ?? { id: 0, name: "", date_of_birth: "" , };
 
 const ensureStaffMember = (
   value: StaffMember | null | undefined,

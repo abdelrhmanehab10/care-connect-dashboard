@@ -4,6 +4,7 @@ export type Appointment = {
     id: number;
     name: string;
     date_of_birth: string;
+    phone:string;
   };
   start_time: string;
   end_time: string;
