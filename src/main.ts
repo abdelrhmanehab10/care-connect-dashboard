@@ -17,6 +17,7 @@ import './Styles/main.scss'
 import './style.css'
 
 import App from './App.vue'
+import AppointmentMap from './components/AppointmentMap.vue'
 
 const app = createApp(App)
 
@@ -29,5 +30,6 @@ const vuetify = createVuetify({
 app.use(PrimeVue, { unstyled: true })
 app.use(VueQueryPlugin, { queryClient })
 app.use(vuetify)
+app.component('AppointmentMap', AppointmentMap)
 
 app.mount('#app')

@@ -32,7 +32,6 @@ import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
-import AppointmentMap from "./AppointmentMap.vue";
 
 const visible = defineModel<boolean>({ required: true });
 const props = withDefaults(
