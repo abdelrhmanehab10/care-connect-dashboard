@@ -197,6 +197,12 @@ const isSameDay = (left: Date, right: Date) =>
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate();
 
+const isTodayActive = computed(() => {
+  if (!startDate.value || !endDate.value) return false;
+  const now = new Date();
+  return isSameDay(startDate.value, now) && isSameDay(endDate.value, now);
+});
+
 const isThisWeekActive = computed(() => {
   if (!startDate.value || !endDate.value) return false;
   const now = new Date();
@@ -211,6 +217,18 @@ const toggleStatusTag = (status: AppointmentStatus) => {
   statusTagFilter.value = statusTagFilter.value === status ? null : status;
 };
 
+const toggleToday = () => {
+  if (isTodayActive.value) {
+    startDate.value = null;
+    endDate.value = null;
+    return;
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  startDate.value = today;
+  endDate.value = new Date(today);
+};
+
 const toggleThisWeek = () => {
   if (isThisWeekActive.value) {
     startDate.value = null;
@@ -220,6 +238,36 @@ const toggleThisWeek = () => {
   const now = new Date();
   startDate.value = startOfWeek(now);
   endDate.value = endOfWeek(now);
+};
+
+const normalizeStateValue = (value: string) => value.trim().toLowerCase();
+
+const toggleStateFilter = (value: string) => {
+  const normalized = normalizeStateValue(value);
+  const current = stateFilter.value;
+  const currentValue = current
+    ? normalizeStateValue(current.value ?? current.key ?? "")
+    : "";
+  if (currentValue === normalized) {
+    stateFilter.value = null;
+    return;
+  }
+  const match = stateOptions.value.find((option) => {
+    return (
+      normalizeStateValue(option.value) === normalized ||
+      normalizeStateValue(option.key) === normalized
+    );
+  });
+  if (!match) {
+    stateFilter.value = {
+      key: value,
+      value,
+      level: 0,
+      is_final: false,
+    };
+    return;
+  }
+  stateFilter.value = match;
 };
 
 const toggleQuickPatient = () => {
@@ -385,14 +433,17 @@ watch(
 <template>
   <div class="border p-3 rounded mb-2">
     <AppointmentCards
+      :is-today-active="isTodayActive"
       :is-this-week-active="isThisWeekActive"
       :status-tag-filter="statusTagFilter"
       :quick-patient-label="quickPatientLabel"
       :quick-doctor-label="quickDoctorLabel"
       :patient-filter="patientFilter"
       :employee-filter="employeeFilter"
+      @toggle-today="toggleToday"
       @toggle-week="toggleThisWeek"
       @toggle-status="toggleStatusTag"
+      @filter-state="toggleStateFilter"
       @toggle-patient="toggleQuickPatient"
       @toggle-doctor="toggleQuickDoctor"
     />

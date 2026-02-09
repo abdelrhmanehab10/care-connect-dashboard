@@ -4,8 +4,10 @@ import AppointmentsPage from "./pages/AppointmentsPage.vue";
 import LogPage from "./pages/LogPage.vue";
 
 const activePage = ref<"appointments" | "logs">("appointments");
+const logAppointmentId = ref<number | null>(null);
 
-const openLogPage = () => {
+const openLogPage = (appointmentId: number) => {
+  logAppointmentId.value = appointmentId;
   activePage.value = "logs";
 };
 
@@ -15,6 +17,13 @@ const openAppointmentsPage = () => {
 </script>
 
 <template>
-  <AppointmentsPage v-if="activePage === 'appointments'" @open-log="openLogPage" />
-  <LogPage v-else @back="openAppointmentsPage" />
+  <AppointmentsPage
+    v-if="activePage === 'appointments'"
+    @open-log="openLogPage"
+  />
+  <LogPage
+    v-else
+    :appointment-id="logAppointmentId"
+    @back="openAppointmentsPage"
+  />
 </template>

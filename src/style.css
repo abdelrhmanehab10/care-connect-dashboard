@@ -951,6 +951,29 @@ body {
 .cc-calendar .v-calendar-weekly__body {
   overflow: hidden;
 }
+
+.cc-calendar--month .v-calendar-weekly {
+  height: auto;
+  min-height: 0;
+}
+
+.cc-calendar--month .v-calendar-weekly__body {
+  overflow: visible;
+}
+
+.cc-calendar--month .v-calendar-weekly__week {
+  flex: 0 0 auto;
+  height: auto;
+}
+
+.cc-calendar--month .v-calendar-weekly__day {
+  overflow: visible;
+  padding-bottom: 0.35rem;
+}
+
+.cc-calendar--month .v-calendar-weekly__day-label {
+  margin-bottom: 0.25rem;
+}
 .v-calendar-daily__head{
   background: aliceblue;
 }

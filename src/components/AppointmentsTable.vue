@@ -107,10 +107,11 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
 const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
   isLoading: boolean;
+  detailsLoadingId?: number | null;
   statusOptions: ReadonlyArray<AppointmentStatus>;
   statusBadgeClass: (status: AppointmentStatus) => string;
 }>();
-const { isLoading } = toRefs(props);
+const { isLoading, detailsLoadingId } = toRefs(props);
 
 
 
@@ -604,9 +605,13 @@ const emit = defineEmits<{
       <Column header="Actions" style="width: 8.5rem">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
-          <button v-else type="button" class="cc-icon-btn cc-icon-btn-outline" aria-label="View details"
+          <button v-else type="button" class="cc-icon-btn cc-icon-btn-outline"
+            :disabled="detailsLoadingId === data.id"
+            :aria-label="detailsLoadingId === data.id ? 'Loading details' : 'View details'"
             @click="emit('view-details', data)">
-            <Eye class="cc-icon" aria-hidden="true" />
+            <i v-if="detailsLoadingId === data.id" class="fa-solid fa-spinner fa-spin cc-icon"
+              aria-hidden="true"></i>
+            <Eye v-else class="cc-icon" aria-hidden="true" />
           </button>
         </template>
       </Column>

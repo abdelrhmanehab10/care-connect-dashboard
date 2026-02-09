@@ -741,6 +741,13 @@ const applyAppointment = (appointment: Appointment) => {
   resetForm();
   selectedPatient.value = resolveAppointmentPatient(appointment);
 
+  const patientAddress = appointment.patient_address;
+  if (patientAddress) {
+    address.area = String(patientAddress.area_id ?? "");
+    address.city = patientAddress.city ?? "";
+    address.street = patientAddress.address ?? "";
+  }
+
   visit.type = appointment.visit_type ?? "";
   schedule.isRecurring = false;
   schedule.appointmentDate = parseDateOnly(appointment.date);
@@ -764,6 +771,52 @@ const applyAppointment = (appointment: Appointment) => {
   doctorScheduleType.value = "same";
   socialWorkerScheduleType.value = "same";
   driverScheduleType.value = "same";
+
+  const normalizeRole = (role: string) =>
+    role.trim().toLowerCase().replace(/\s+/g, "_");
+  const careTeam = appointment.care_team ?? [];
+  const findCareMember = (role: string) =>
+    careTeam.find(
+      (member) => normalizeRole(member.role ?? "") === normalizeRole(role),
+    );
+  const mapCareTime = (
+    member: (typeof careTeam)[number] | undefined,
+    scheduleTarget: { startTime: Date | null; endTime: Date | null },
+  ) => {
+    if (!member) return;
+    scheduleTarget.startTime = parseDateTime(
+      appointment.date,
+      member.start_time,
+    );
+    scheduleTarget.endTime = parseDateTime(appointment.date, member.end_time);
+  };
+
+  const nurseMember = findCareMember("nurse");
+  const doctorMember = findCareMember("doctor");
+  const socialWorkerMember = findCareMember("social_worker");
+  const driverMember = findCareMember("driver");
+
+  mapCareTime(nurseMember, nurseSchedule);
+  mapCareTime(doctorMember, doctorSchedule);
+  mapCareTime(socialWorkerMember, socialWorkerSchedule);
+  mapCareTime(driverMember, driverSchedule);
+
+  if (!nurseName.value && nurseMember?.employee?.name) {
+    nurseAssignmentMode.value = "custom";
+    nurseName.value = nurseMember.employee.name;
+  }
+  if (!doctorName.value && doctorMember?.employee?.name) {
+    doctorAssignmentMode.value = "custom";
+    doctorName.value = doctorMember.employee.name;
+  }
+  if (!socialWorkerName.value && socialWorkerMember?.employee?.name) {
+    socialWorkerAssignmentMode.value = "custom";
+    socialWorkerName.value = socialWorkerMember.employee.name;
+  }
+  if (!driverName.value && driverMember?.employee?.name) {
+    driverAssignmentMode.value = "custom";
+    driverName.value = driverMember.employee.name;
+  }
 };
 
 watch(nurseAssignmentMode, (value) => {
