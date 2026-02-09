@@ -33,7 +33,7 @@ const emit = defineEmits<{
     payload: {
       start: string;
       end: string;
-      viewType: "week" | "day";
+      viewType: "week" | "day" | "month";
       focus: string;
     },
   ): void;
@@ -58,6 +58,12 @@ const endOfWeek = (value: Date) => {
   date.setDate(date.getDate() + 6);
   return date;
 };
+
+const startOfMonth = (value: Date) =>
+  new Date(value.getFullYear(), value.getMonth(), 1);
+
+const endOfMonth = (value: Date) =>
+  new Date(value.getFullYear(), value.getMonth() + 1, 0);
 
 const sourceAppointments = computed(() => props.appointments);
 
@@ -162,7 +168,12 @@ const formatTimeRange = (appointment: Appointment) => {
 };
 
 const focus = ref<string>(getInitialFocus(sourceAppointments.value));
-const viewType = ref<"week" | "day">("week");
+const viewType = ref<"week" | "day" | "month">("week");
+const calendarHeight = computed(() =>
+  viewType.value === "month" ? undefined : 640,
+);
+const eventHeight = computed(() => (viewType.value === "month" ? 96 : 52));
+const showEventMore = computed(() => viewType.value !== "month");
 const confirmingIds = ref<number[]>([]);
 const noShowIds = ref<number[]>([]);
 const cancelIds = ref<number[]>([]);
@@ -259,10 +270,15 @@ const handleCancelAppointment = async (appointment: Appointment) => {
 
 const syncRange = () => {
   const focusedDate = parseFocusDate(focus.value);
-  const rangeStart =
-    viewType.value === "week" ? startOfWeek(focusedDate) : focusedDate;
-  const rangeEnd =
-    viewType.value === "week" ? endOfWeek(focusedDate) : focusedDate;
+  let rangeStart = focusedDate;
+  let rangeEnd = focusedDate;
+  if (viewType.value === "week") {
+    rangeStart = startOfWeek(focusedDate);
+    rangeEnd = endOfWeek(focusedDate);
+  } else if (viewType.value === "month") {
+    rangeStart = startOfMonth(focusedDate);
+    rangeEnd = endOfMonth(focusedDate);
+  }
   emit("range-change", {
     start: toIsoDate(rangeStart),
     end: toIsoDate(rangeEnd),
@@ -306,7 +322,6 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
 
 const setToday = () => {
   focus.value = toIsoDate(new Date());
-  viewType.value = "week";
 };
 
 const viewDay = (_event: Event, timestamp: { date: string }) => {
@@ -321,6 +336,10 @@ const viewMore = (_event: Event, timestamp: { date: string }) => {
 
 const viewWeek = () => {
   viewType.value = "week";
+};
+
+const viewMonth = () => {
+  viewType.value = "month";
 };
 
 const parseFocusDate = (value: string) => {
@@ -344,11 +363,37 @@ const shiftFocus = (days: number) => {
   focus.value = toIsoDate(date);
 };
 
+const shiftFocusByMonth = (months: number) => {
+  const date = parseFocusDate(focus.value);
+  if (Number.isNaN(date.getTime())) {
+    focus.value = toIsoDate(new Date());
+    return;
+  }
+
+  const dayOfMonth = date.getDate();
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const lastDay = new Date(
+    target.getFullYear(),
+    target.getMonth() + 1,
+    0,
+  ).getDate();
+  target.setDate(Math.min(dayOfMonth, lastDay));
+  focus.value = toIsoDate(target);
+};
+
 const goPrev = () => {
+  if (viewType.value === "month") {
+    shiftFocusByMonth(-1);
+    return;
+  }
   shiftFocus(viewType.value === "week" ? -7 : -1);
 };
 
 const goNext = () => {
+  if (viewType.value === "month") {
+    shiftFocusByMonth(1);
+    return;
+  }
   shiftFocus(viewType.value === "week" ? 7 : 1);
 };
 
@@ -400,6 +445,14 @@ watch([focus, viewType], () => {
           <button
             type="button"
             class="cc-btn cc-btn-outline cc-btn-sm scheduler"
+            :class="{ 'is-active': viewType === 'month' }"
+            @click="viewMonth"
+          >
+            Month
+          </button>
+          <button
+            type="button"
+            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
             :class="{ 'is-active': viewType === 'day' }"
             @click="viewType = 'day'"
           >
@@ -417,11 +470,12 @@ watch([focus, viewType], () => {
         v-model="focus"
         :type="viewType"
         :events="events"
-        :height="640"
+        :height="calendarHeight"
         :showWeek="false"
-        :eventHeight="52"
+        :eventHeight="eventHeight"
+        :eventMore="showEventMore"
         :event-color="neutralEventColor"
-        class="cc-calendar"
+        :class="['cc-calendar', `cc-calendar--${viewType}`]"
         @click:date="viewDay"
         @click:more="viewMore"
       >

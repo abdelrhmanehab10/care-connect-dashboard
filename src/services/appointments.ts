@@ -31,11 +31,48 @@ export type AppointmentDetailsResponse = {
   message: string;
 };
 
+export type AppointmentLogEntry = {
+  employee: string;
+  patient: string;
+  action: string;
+  time: string;
+};
+
+export type AppointmentLogResponse = {
+  data: AppointmentLogEntry[];
+  status: string;
+  message: string;
+};
+
 export type AppointmentStatusOption = {
   key: string;
   value: string;
   level: number;
   is_final: boolean;
+};
+
+export type AppointmentCardsStatusCount = {
+  status: string;
+  name: string;
+  count: number;
+};
+
+export type AppointmentCardsPeriods = {
+  today: number;
+  this_week: number;
+  this_month: number;
+};
+
+export type AppointmentCardsData = {
+  total: number;
+  by_status: AppointmentCardsStatusCount[];
+  periods: AppointmentCardsPeriods;
+};
+
+export type AppointmentCardsResponse = {
+  data: AppointmentCardsData;
+  status: string;
+  message: string;
 };
 
 export type CreateAppointmentPayload = {
@@ -96,7 +133,7 @@ export const fetchAppointments = async (
   if (params.patient_id) body.patient_id = params.patient_id;
   if (params.visit_type) body.visit_type = params.visit_type;
   if (params.visit_type_id) body.visit_type_id = params.visit_type_id;
-  if (params.state) body.state = params.state;
+  if (params.state) body.status = params.state;
 
   const response = await http.post("/api/vue/appointments/list", body, {
     params: {
@@ -128,6 +165,16 @@ export const fetchAppointmentStatuses = async (): Promise<
   return [];
 };
 
+export const fetchAppointmentCards =
+  async (): Promise<AppointmentCardsData> => {
+    const response = await http.get("/api/vue/appointments/cards");
+    const payload = response.data;
+    if (payload?.data) {
+      return payload.data as AppointmentCardsData;
+    }
+    return payload as AppointmentCardsData;
+  };
+
 export const fetchAppointmentDetails = async (
   appointmentId: number,
 ): Promise<AppointmentDetails> => {
@@ -136,6 +183,20 @@ export const fetchAppointmentDetails = async (
   );
   const payload = response.data?.data ?? response.data;
   return payload as AppointmentDetails;
+};
+
+export const fetchAppointmentLog = async (
+  appointmentId: number,
+): Promise<AppointmentLogEntry[]> => {
+  const response = await http.get(`/vue/appointments/log/${appointmentId}`);
+  const payload = response.data;
+  if (Array.isArray(payload?.data)) {
+    return payload.data as AppointmentLogEntry[];
+  }
+  if (Array.isArray(payload)) {
+    return payload as AppointmentLogEntry[];
+  }
+  return [];
 };
 
 export const createAppointment = async (

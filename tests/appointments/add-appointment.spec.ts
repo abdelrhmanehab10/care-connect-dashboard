@@ -8,7 +8,11 @@ vi.mock("../../src/services/areas", () => ({
 
 vi.mock("../../src/services/visitTypes", () => ({
   fetchVisitTypes: vi.fn().mockResolvedValue([
-    { id: "2", name: "Initial Visit" },
+    {
+      id: "2",
+      name: "Initial Visit",
+      providers: ["nurses", "doctors", "social_workers"],
+    },
   ]),
 }));
 
@@ -176,6 +180,7 @@ describe("AppointmentDialog add appointment", () => {
       },
     ];
     vm.doctorAssignmentMode = "custom";
+    vm.doctorScheduleType = "custom";
     vm.doctorName = "Doctor A";
     vm.doctorRecurrenceRows = [
       { id: "row-1", day: "Monday", startTime: new Date("2026-01-31T08:00:00"), endTime: new Date("2026-01-31T09:00:00") },
@@ -244,6 +249,7 @@ describe("AppointmentDialog add appointment", () => {
       },
     ];
     vm.socialWorkerAssignmentMode = "custom";
+    vm.socialWorkerScheduleType = "custom";
     vm.socialWorkerName = "Social Worker A";
     vm.socialWorkerRecurrenceRows = [
       { id: "row-1", day: "Monday", startTime: new Date("2026-01-31T08:00:00"), endTime: null },

@@ -1,37 +1,45 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { fetchAppointmentLog, type AppointmentLogEntry } from "../services/appointments";
 
 const emit = defineEmits<{
   (event: "back"): void;
 }>();
 
-type LogEntry = {
-  employee: string;
-  patient: string;
-  action: string;
-  timestamp: string;
+const props = defineProps<{
+  appointmentId: number | null;
+}>();
+
+const logs = ref<AppointmentLogEntry[]>([]);
+const isLoading = ref(false);
+const errorMessage = ref<string | null>(null);
+
+const loadLogs = async (appointmentId: number | null) => {
+  if (!appointmentId) {
+    logs.value = [];
+    errorMessage.value = "Select an appointment to view its log.";
+    return;
+  }
+  isLoading.value = true;
+  errorMessage.value = null;
+  try {
+    logs.value = await fetchAppointmentLog(appointmentId);
+  } catch (error) {
+    console.error("Failed to load appointment log.", error);
+    logs.value = [];
+    errorMessage.value = "Failed to load appointment log.";
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-const logs = ref<LogEntry[]>([
-  {
-    employee: "Nadia Shah",
-    patient: "Isabel Ortiz",
-    action: "Checked in",
-    timestamp: "2026-02-05 09:12",
+watch(
+  () => props.appointmentId,
+  (value) => {
+    void loadLogs(value);
   },
-  {
-    employee: "Aaron Miles",
-    patient: "Daniel Park",
-    action: "Updated visit notes",
-    timestamp: "2026-02-05 09:34",
-  },
-  {
-    employee: "Priya Desai",
-    patient: "Maria Gomez",
-    action: "Rescheduled appointment",
-    timestamp: "2026-02-05 10:02",
-  },
-]);
+  { immediate: true },
+);
 
 const logRows = computed(() =>
   logs.value.map((entry, index) => ({
@@ -66,7 +74,17 @@ const logRows = computed(() =>
                 </tr>
               </thead>
               <tbody class="cc-table-body">
-                <tr v-if="logRows.length === 0">
+                <tr v-if="isLoading">
+                  <td colspan="5" class="cc-help-text">
+                    Loading log entries...
+                  </td>
+                </tr>
+                <tr v-else-if="errorMessage">
+                  <td colspan="5" class="cc-help-text">
+                    {{ errorMessage }}
+                  </td>
+                </tr>
+                <tr v-else-if="logRows.length === 0">
                   <td colspan="5" class="cc-help-text">
                     No log entries yet.
                   </td>
@@ -76,7 +94,7 @@ const logRows = computed(() =>
                   <td>{{ row.employee }}</td>
                   <td>{{ row.patient }}</td>
                   <td>{{ row.action }}</td>
-                  <td>{{ row.timestamp }}</td>
+                  <td>{{ row.time }}</td>
                 </tr>
               </tbody>
             </table>
