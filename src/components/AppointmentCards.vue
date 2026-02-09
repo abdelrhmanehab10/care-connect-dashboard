@@ -7,7 +7,6 @@ interface Card {
   icon: string;
   theme: string;
 }
-
 const cards = ref<Card[]>([
   {
     title: "Total Appointments Today",
