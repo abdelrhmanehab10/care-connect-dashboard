@@ -37,7 +37,7 @@ type NormalizedStatusOption = {
 type StatusOptionForRow = NormalizedStatusOption & { disabled?: boolean };
 
 const ensurePatient = (value: Patient | null | undefined): Patient =>
-  value ?? { id: 0, name: "", date_of_birth: "" , };
+  value ?? { id: 0, name: "", date_of_birth: "", phone: "" };
 
 const ensureStaffMember = (
   value: StaffMember | null | undefined,
@@ -82,10 +82,15 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
           typeof value.date_of_birth === "string"
             ? value.date_of_birth
             : data.patient?.date_of_birth ?? "";
+        const phone =
+          typeof (value as { phone?: unknown }).phone === "string"
+            ? (value as { phone?: string }).phone ?? ""
+            : data.patient?.phone ?? "";
         data.patient = {
           id: normalizePatientId(value.id ?? data.patient?.id ?? 0),
           name,
           date_of_birth: dateOfBirth,
+          phone,
         };
         return;
       }
