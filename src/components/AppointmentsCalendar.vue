@@ -128,12 +128,19 @@ const getInitialFocus = (appointments: ReadonlyArray<Appointment>): string => {
 };
 
 const normalizeStatus = (status: string | null | undefined) =>
-  status?.trim().toLowerCase() ?? "";
+  status?.trim().toLowerCase().replace(/[\s-]+/g, "_") ?? "";
 
 const statusToColor = (status: AppointmentStatus | string) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
+    case "patient_confirmed":
       return "green";
+    case "canceled":
+    case "cancelled":
+    case "no_show":
+      return "red";
+    case "waiting":
+    case "rescheduled":
     case "completed":
       return "blue";
     case "new":
@@ -146,11 +153,18 @@ const statusToColor = (status: AppointmentStatus | string) => {
 const statusBadgeClass = (status: AppointmentStatus | string) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
+    case "patient_confirmed":
       return "cc-badge--success";
-    case "completed":
-      return "cc-badge--neutral";
+    case "canceled":
+    case "cancelled":
+    case "no_show":
+      return "cc-badge--danger";
+    case "waiting":
+    case "rescheduled":
     case "new":
       return "cc-badge--warning";
+    case "completed":
+      return "cc-badge--neutral";
     default:
       return "cc-badge--neutral";
   }

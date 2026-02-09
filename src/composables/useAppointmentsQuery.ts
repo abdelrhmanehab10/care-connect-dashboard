@@ -18,16 +18,23 @@ type UseAppointmentsQueryParams = {
 };
 
 const normalizeStatus = (status: string | null | undefined) =>
-  status?.trim().toLowerCase() ?? "";
+  status?.trim().toLowerCase().replace(/[\s-]+/g, "_") ?? "";
 
 export const statusBadgeClass = (status: AppointmentStatus | string) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
+    case "patient_confirmed":
       return "cc-badge--success";
-    case "completed":
-      return "cc-badge--neutral";
+    case "canceled":
+    case "cancelled":
+    case "no_show":
+      return "cc-badge--danger";
+    case "waiting":
+    case "rescheduled":
     case "new":
       return "cc-badge--warning";
+    case "completed":
+      return "cc-badge--neutral";
     default:
       return "cc-badge--neutral";
   }

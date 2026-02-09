@@ -19,6 +19,7 @@ import {
   type AppointmentStatus,
   type PatientOption,
 } from "../data/options";
+import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { fetchEmployeesByTitle } from "../services/employees";
@@ -26,6 +27,14 @@ import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 type StaffMember = Appointment["doctor"];
 type Patient = Appointment["patient"];
+type StatusOptionInput = AppointmentStatus | AppointmentStatusOption;
+type NormalizedStatusOption = {
+  key: string;
+  label: string;
+  level: number;
+  isFinal: boolean;
+};
+type StatusOptionForRow = NormalizedStatusOption & { disabled?: boolean };
 
 const ensurePatient = (value: Patient | null | undefined): Patient =>
   value ?? { id: 0, name: "", date_of_birth: "" , };
@@ -108,7 +117,7 @@ const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
   isLoading: boolean;
   detailsLoadingId?: number | null;
-  statusOptions: ReadonlyArray<AppointmentStatus>;
+  statusOptions: ReadonlyArray<AppointmentStatus | AppointmentStatusOption>;
   statusBadgeClass: (status: AppointmentStatus) => string;
 }>();
 const { isLoading, detailsLoadingId } = toRefs(props);
@@ -263,6 +272,149 @@ const formatTime = (value: string | null | undefined) => {
   return `${hours}:${minutes}`;
 };
 
+const normalizeStatusKey = (value: unknown) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+const statusLevelLookup: Record<string, number> = {
+  new: 1,
+  waiting: 1,
+  confirmed: 2,
+  patient_confirmed: 2,
+  rescheduled: 2,
+  canceled: 3,
+  cancelled: 3,
+  completed: 3,
+  no_show: 3,
+};
+
+const fallbackStatusMeta = (value: unknown) => {
+  const normalized = normalizeStatusKey(value);
+  const level = statusLevelLookup[normalized] ?? 1;
+  return { level, isFinal: level >= 3 };
+};
+
+const baseStatusOptions = computed<NormalizedStatusOption[]>(() => {
+  const options: NormalizedStatusOption[] = [];
+  for (const option of props.statusOptions as ReadonlyArray<StatusOptionInput>) {
+    if (typeof option === "string") {
+      const key = option.trim();
+      if (!key) continue;
+      const meta = fallbackStatusMeta(key);
+      options.push({
+        key,
+        label: option,
+        level: meta.level,
+        isFinal: meta.isFinal,
+      });
+      continue;
+    }
+
+    const key = String(option.key ?? option.value ?? "").trim();
+    if (!key) continue;
+    const label = String(option.value ?? option.key ?? key);
+    const meta = fallbackStatusMeta(key);
+    const level =
+      typeof option.level === "number" && Number.isFinite(option.level)
+        ? option.level
+        : meta.level;
+    const isFinal =
+      typeof option.is_final === "boolean" ? option.is_final : meta.isFinal;
+    options.push({
+      key,
+      label,
+      level,
+      isFinal,
+    });
+  }
+
+  return options;
+});
+
+const statusOptionsMap = computed(() => {
+  const map = new Map<string, NormalizedStatusOption>();
+  for (const option of baseStatusOptions.value) {
+    map.set(normalizeStatusKey(option.key), option);
+  }
+  return map;
+});
+
+const getStatusOption = (value: unknown) =>
+  statusOptionsMap.value.get(normalizeStatusKey(value)) ?? null;
+
+const buildFallbackStatusOption = (
+  value: unknown,
+): NormalizedStatusOption | null => {
+  const key = String(value ?? "").trim();
+  if (!key) return null;
+  const meta = fallbackStatusMeta(key);
+  return {
+    key,
+    label: key,
+    level: meta.level,
+    isFinal: meta.isFinal,
+  };
+};
+
+const getStatusLevel = (value: unknown) =>
+  getStatusOption(value)?.level ?? fallbackStatusMeta(value).level;
+
+const isFinalStatus = (value: unknown) => {
+  const option = getStatusOption(value);
+  if (option) {
+    return option.isFinal || option.level >= 3;
+  }
+  return fallbackStatusMeta(value).isFinal;
+};
+
+const getStatusOptionsForRow = (
+  currentValue: unknown,
+): StatusOptionForRow[] => {
+  const currentOption =
+    getStatusOption(currentValue) ?? buildFallbackStatusOption(currentValue);
+
+  if (isFinalStatus(currentValue)) {
+    return currentOption ? [{ ...currentOption, disabled: true }] : [];
+  }
+
+  const currentLevel = getStatusLevel(currentValue);
+  const candidates =
+    currentLevel >= 2
+      ? baseStatusOptions.value.filter(
+          (option) => option.isFinal || option.level >= 3,
+        )
+      : baseStatusOptions.value;
+
+  if (!currentOption) {
+    return candidates;
+  }
+
+  const hasCurrent = candidates.some(
+    (option) =>
+      normalizeStatusKey(option.key) === normalizeStatusKey(currentOption.key),
+  );
+
+  if (hasCurrent) {
+    return candidates;
+  }
+
+  return [{ ...currentOption, disabled: true }, ...candidates];
+};
+
+const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
+  const fromKey = normalizeStatusKey(from);
+  const toKey = normalizeStatusKey(to);
+  if (!fromKey || fromKey === toKey) return true;
+  if (isFinalStatus(from)) return false;
+  const fromLevel = getStatusLevel(from);
+  if (fromLevel >= 2) {
+    return isFinalStatus(to);
+  }
+  return true;
+};
+
 
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
 
@@ -289,7 +441,18 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
 const handleCellEditComplete = (
   event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
-  editSnapshots.delete(snapshotKey(event.data, event.field));
+  const key = snapshotKey(event.data, event.field);
+  const previousValue = editSnapshots.get(key);
+
+  if (event.field === "status" && previousValue !== undefined) {
+    if (!isStatusTransitionAllowed(previousValue, event.data.status)) {
+      setFieldValue(event.data, event.field, previousValue);
+      editSnapshots.delete(key);
+      return;
+    }
+  }
+
+  editSnapshots.delete(key);
   emit("cell-edit-complete", event);
 };
 const emit = defineEmits<{
@@ -432,20 +595,23 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <select v-model="data.status" class="cc-select cc-select-sm" @keydown="
+                <select v-model="data.status" class="cc-select cc-select-sm" :disabled="isFinalStatus(data.status)"
+                  @keydown="
                   handleEditorKeydown(
                     $event,
                     editorSaveCallback,
                     editorCancelCallback,
                   )
                   ">
-                  <option v-for="status in statusOptions" :key="status" :value="status">
-                    {{ status }}
+                  <option v-for="status in getStatusOptionsForRow(data.status)" :key="status.key" :value="status.key"
+                    :disabled="status.disabled">
+                    {{ status.label }}
                   </option>
                 </select>
               </div>
               <div class="cc-cell-edit-actions">
                 <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  :disabled="isFinalStatus(data.status)"
                   @click.stop="editorSaveCallback($event)">
                   Save
                 </button>
