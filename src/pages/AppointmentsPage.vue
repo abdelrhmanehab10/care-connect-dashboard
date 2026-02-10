@@ -288,31 +288,24 @@ const syncCalendarRange = (payload: { start: string; end: string }) => {
 };
 
 const resolveInlineAddress = (appointment: Appointment) => {
-  const source = appointment as Appointment & {
-    area_id?: string | number | null;
-    city?: string | null;
-    address?: string | null;
-    patient?: {
-      area_id?: string | number | null;
-      city?: string | null;
-      address?: string | null;
-      street?: string | null;
-    };
-  };
+  const address = String(appointment.patient_address?.address ?? "").trim();
+  const latRaw = appointment.patient_address?.lat;
+  const lngRaw = appointment.patient_address?.lng;
+  const lat =
+    typeof latRaw === "number" ? latRaw : Number(String(latRaw ?? "").trim());
+  const lng =
+    typeof lngRaw === "number" ? lngRaw : Number(String(lngRaw ?? "").trim());
+  const hasLat = Number.isFinite(lat);
+  const hasLng = Number.isFinite(lng);
 
-  const areaId = source.area_id ?? source.patient?.area_id ?? "";
-  const city = source.city ?? source.patient?.city ?? "";
-  const address =
-    source.address ?? source.patient?.address ?? source.patient?.street ?? "";
-
-  if (!areaId && !city && !address) {
+  if (!address && !hasLat && !hasLng) {
     return null;
   }
 
   return {
-    area_id: String(areaId ?? "").trim(),
-    city: String(city ?? "").trim(),
-    address: String(address ?? "").trim(),
+    address,
+    lat: hasLat ? String(lat) : "",
+    lng: hasLng ? String(lng) : "",
   };
 };
 

@@ -1012,8 +1012,22 @@ const handleSave = () => {
     }
   }
 
+  const resolvedLocation = mapLocation.value ?? defaultMapLocation;
+  const locationAddress = resolvedLocation.address ?? "";
+  const locationLat = Number.isFinite(resolvedLocation.lat)
+    ? String(resolvedLocation.lat)
+    : "";
+  const locationLng = Number.isFinite(resolvedLocation.lng)
+    ? String(resolvedLocation.lng)
+    : "";
+
   const payload: CreateAppointmentPayload = {
     patient_id: selectedPatient.value.id,
+    new_address: {
+      address: locationAddress,
+      lat: locationLat,
+      lng: locationLng,
+    },
     visit_type_id: visitTypeId,
     is_recurring: schedule.isRecurring ? "1" : "0",
     date: formattedDate,
@@ -1271,8 +1285,9 @@ console.log(filteredPatients.value);
         <div class="cc-panel">
           <div class="cc-section-title">Address</div>
           <AppointmentMap
-            :lat="24.7136"
-            :lng="46.6753"
+            v-model="mapLocation"
+            :lat="defaultMapLocation.lat"
+            :lng="defaultMapLocation.lng"
             :zoom="9"
             height="360px"
           />

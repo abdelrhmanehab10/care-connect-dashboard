@@ -194,7 +194,7 @@ const props = defineProps<{
   statusBadgeClass: (status: AppointmentStatus) => string;
   visitTypeOptions: ReadonlyArray<string>;
 }>();
-const { isLoading, detailsLoadingId, visitTypeOptions } = toRefs(props);
+const { isLoading, detailsLoadingId } = toRefs(props);
 
 const filteredPatients = ref<PatientOption[]>([]);
 const filteredNurses = ref<EmployeeOption[]>([]);
@@ -931,6 +931,7 @@ const emit = defineEmits<{
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
                   forceSelection
+                  :disabled="!hasStaffName(data.social_worker)"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -958,6 +959,7 @@ const emit = defineEmits<{
                 <button
                   type="button"
                   class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  :disabled="!hasStaffName(data.social_worker)"
                   @click.stop="editorSaveCallback($event)"
                 >
                   Save
