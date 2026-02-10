@@ -116,6 +116,7 @@ type EmployeeRecurringSlot = {
 
 export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
   nurse_id?: string;
+  status?: string;
 };
 
 export const fetchAppointments = async (

@@ -20,7 +20,7 @@ export type CareMember = {
 export type Appointment = {
   id: number;
   patient: {
-    id: number;
+    id: number | string;
     name: string;
     date_of_birth: string;
     phone: string;

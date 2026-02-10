@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
 import Button from "primevue/button";
 import Tab from "primevue/tab";
 import TabList from "primevue/tablist";
@@ -7,6 +8,7 @@ import TabPanel from "primevue/tabpanel";
 import TabPanels from "primevue/tabpanels";
 import Tabs from "primevue/tabs";
 import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
+import { useToast } from "primevue/usetoast";
 import AppointmentsFilters from "../components/AppointmentsFilters.vue";
 import AppointmentDialog from "../components/AppointmentDialog.vue";
 import AppointmentDetailsDialog from "../components/AppointmentDetailsDialog.vue";
@@ -48,6 +50,8 @@ const isEditLoading = ref(false);
 const isSaving = ref(false);
 const saveError = ref<string | null>(null);
 const isInlineSaving = ref(false);
+const queryClient = useQueryClient();
+const toast = useToast();
 const visitTypes = ref<VisitType[]>([]);
 
 const employeeFilter = ref<string | null>(null);
@@ -60,7 +64,19 @@ const patientFilter = ref<PatientOption | null>(null);
 const statusTagFilter = ref<AppointmentStatus | null>(null);
 
 // Added options list to avoid missing data errors.
-const visitTypeOptions = ["Routine", "Urgent", "Home Visit", "Clinic Visit"];
+const visitTypeOptions = computed(() => {
+  const options: string[] = [];
+  const seen = new Set<string>();
+
+  for (const type of visitTypes.value) {
+    const name = String(type?.name ?? "").trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    options.push(name);
+  }
+
+  return options;
+});
 
 const visitTypeFilter = ref<string | null>(null);
 const stateFilter = ref<AppointmentStatusOption | null>(null);
@@ -286,29 +302,19 @@ const buildInlineUpdatePayload = (
 ): UpdateAppointmentPayload => {
   const visitTypeId = appointment.visit_type
     ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
-    : undefined;
+    : "";
   const payload: UpdateAppointmentPayload = {
     patient_id: String(appointment.patient?.id ?? ""),
-    visit_type_id: visitTypeId,
+    visit_type_id: visitTypeId || "",
     date: normalizeAppointmentDate(appointment.date) || appointment.date,
     start_time: appointment.start_time ?? "",
     end_time: appointment.end_time ?? "",
     is_recurring: "0",
+    status: appointment.status ?? "",
+    doctor_id: String(appointment.doctor?.id ?? ""),
+    nurse_id: String(appointment.nurse?.id ?? ""),
+    social_worker_id: String(appointment.social_worker?.id ?? ""),
   };
-
-  const doctorId = appointment.doctor?.id;
-  const nurseId = appointment.nurse?.id;
-  const socialWorkerId = appointment.social_worker?.id ?? null;
-
-  if (doctorId) {
-    payload.doctor_id = String(doctorId);
-  }
-  if (nurseId) {
-    payload.nurse_id = String(nurseId);
-  }
-  if (socialWorkerId) {
-    payload.social_worker_id = String(socialWorkerId);
-  }
 
   const address = resolveInlineAddress(appointment);
   if (address) {
@@ -318,15 +324,121 @@ const buildInlineUpdatePayload = (
   return payload;
 };
 
+const applyInlineEditChange = (
+  appointment: Appointment,
+  field: string,
+  value: unknown,
+): Appointment => {
+  const updated: Appointment = { ...appointment };
+
+  switch (field) {
+    case "patient.name": {
+      if (value && typeof value === "object") {
+        const typed = value as { id?: string | number | null; name?: string };
+        const id = String(typed.id ?? "").trim();
+        const name = String(typed.name ?? "").trim();
+        updated.patient = {
+          ...updated.patient,
+          id,
+          name: name || updated.patient?.name || "",
+          date_of_birth: updated.patient?.date_of_birth ?? "",
+          phone: updated.patient?.phone ?? "",
+        };
+        return updated;
+      }
+      updated.patient = {
+        ...updated.patient,
+        id: "",
+        name: String(value ?? "").trim(),
+        date_of_birth: updated.patient?.date_of_birth ?? "",
+        phone: updated.patient?.phone ?? "",
+      };
+      return updated;
+    }
+    case "status":
+      updated.status = String(value ?? "");
+      return updated;
+    case "date":
+      updated.date = String(value ?? "");
+      return updated;
+    case "start_time":
+      updated.start_time = String(value ?? "");
+      return updated;
+    case "end_time":
+      updated.end_time = String(value ?? "");
+      return updated;
+    case "visit_type":
+      updated.visit_type = String(value ?? "");
+      return updated;
+    case "nurse.name":
+      updated.nurse = { ...updated.nurse, name: String(value ?? "") };
+      return updated;
+    case "doctor.name":
+      updated.doctor = { ...updated.doctor, name: String(value ?? "") };
+      return updated;
+    case "social_worker.name":
+      updated.social_worker = {
+        ...updated.social_worker,
+        id: updated.social_worker?.id ?? 0,
+        name: String(value ?? ""),
+      };
+      return updated;
+    default:
+      return updated;
+  }
+};
+
+const applyOptimisticUpdate = (updated: Appointment) => {
+  queryClient.setQueriesData({ queryKey: ["appointments"] }, (oldData) => {
+    if (!oldData || typeof oldData !== "object") return oldData;
+    const typed = oldData as { data?: Appointment[] };
+    if (!Array.isArray(typed.data)) return oldData;
+    const next = typed.data.map((item) =>
+      item.id === updated.id
+        ? {
+            ...item,
+            ...updated,
+            patient: updated.patient ?? item.patient,
+            doctor: updated.doctor ?? item.doctor,
+            nurse: updated.nurse ?? item.nurse,
+            social_worker: updated.social_worker ?? item.social_worker,
+          }
+        : item,
+    );
+    return { ...typed, data: next };
+  });
+};
+
+const restoreOptimisticSnapshot = (snapshot: Array<[unknown, unknown]>) => {
+  snapshot.forEach(([key, data]) => {
+    queryClient.setQueryData(key as any, data);
+  });
+};
+
 const handleInlineUpdate = async (appointment: Appointment): Promise<void> => {
   if (!appointment?.id || isInlineSaving.value) return;
   isInlineSaving.value = true;
+  const snapshot = queryClient.getQueriesData({ queryKey: ["appointments"] });
+  applyOptimisticUpdate(appointment);
   try {
     const payload = buildInlineUpdatePayload(appointment);
     await updateAppointment(appointment.id, payload);
+    toast.add({
+      severity: "success",
+      summary: "Appointment updated",
+      detail: "Changes saved successfully.",
+      life: 3000,
+    });
     refreshAppointments();
   } catch (error) {
     console.error("Failed to update appointment.", error);
+    restoreOptimisticSnapshot(snapshot);
+    toast.add({
+      severity: "error",
+      summary: "Update failed",
+      detail: "Could not save changes. Please try again.",
+      life: 4000,
+    });
     refreshAppointments();
   } finally {
     isInlineSaving.value = false;
@@ -336,7 +448,9 @@ const handleInlineUpdate = async (appointment: Appointment): Promise<void> => {
 const handleCellEditComplete = (
   event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
-  void handleInlineUpdate(event.data);
+  const base = event.newData ?? event.data;
+  const updated = applyInlineEditChange(base, event.field, event.newValue);
+  void handleInlineUpdate(updated);
 };
 
 const openDetails = async (appointment: Appointment) => {
@@ -551,6 +665,7 @@ const emit = defineEmits<{
                   :details-loading-id="detailsLoadingId"
                   :status-options="statusOptions"
                   :status-badge-class="statusBadgeClass"
+                  :visit-type-options="visitTypeOptions"
                   @cell-edit-complete="handleCellEditComplete"
                   @view-details="openDetails"
                   @export-excel="exportExcel"

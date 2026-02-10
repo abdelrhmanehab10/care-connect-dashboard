@@ -29,8 +29,7 @@ export const fetchPatientAutocomplete = async (
       const typed = item as PatientAutocompleteItem;
       const id = String(typed.id ?? "").trim();
       const name =
-        String(typed.name ?? "").trim() ||
-        String(typed.text ?? "").trim();
+        String(typed.name ?? "").trim() || String(typed.text ?? "").trim();
 
       if (!id || !name) {
         return null;

@@ -113,7 +113,6 @@ const visit = reactive({
   type: "",
 });
 
-
 const nurseSchedule = reactive({
   startTime: null as Date | null,
   endTime: null as Date | null,
@@ -444,7 +443,8 @@ const buildValidationPayload = () => {
     ? showDoctorSection.value && doctorScheduleType.value === "custom"
     : showDoctorSection.value && doctorAssignmentMode.value === "custom";
   const socialWorkerTimesRequired = isRecurring
-    ? showSocialWorkerSection.value && socialWorkerScheduleType.value === "custom"
+    ? showSocialWorkerSection.value &&
+      socialWorkerScheduleType.value === "custom"
     : showSocialWorkerSection.value &&
       socialWorkerAssignmentMode.value === "custom";
   const driverTimesRequired = isRecurring
@@ -1045,7 +1045,9 @@ const handleSave = () => {
       showNurseSection.value && nurseAssignmentMode.value === "primary"
         ? "1"
         : "0",
-    nurse_schedule_type: schedule.isRecurring ? nurseScheduleType.value : "same",
+    nurse_schedule_type: schedule.isRecurring
+      ? nurseScheduleType.value
+      : "same",
     employee_slots: Object.keys(employeeSlots).length
       ? employeeSlots
       : undefined,
@@ -1066,7 +1068,9 @@ const handleSave = () => {
     social_worker_schedule_type: schedule.isRecurring
       ? socialWorkerScheduleType.value
       : "same",
-    driver_schedule_type: schedule.isRecurring ? driverScheduleType.value : "same",
+    driver_schedule_type: schedule.isRecurring
+      ? driverScheduleType.value
+      : "same",
     driver_id: "",
     instructions: trimmedInstructions,
   };
@@ -1270,7 +1274,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
           >
             <template #option="slotProps">
               <div class="cc-row cc-row-between">
-                <span>{{ slotProps.option.name }}</span>
+                <span>{{ slotProps.option.text }}</span>
               </div>
             </template>
           </AutoComplete>

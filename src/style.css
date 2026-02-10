@@ -1321,6 +1321,63 @@ body {
   z-index: 20000 !important;
 }
 
+.p-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 20050;
+  pointer-events: none;
+}
+
+.p-toast-message {
+  pointer-events: auto;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left-width: 4px;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  padding: 0.75rem 0.9rem;
+  min-width: 260px;
+  max-width: 360px;
+  color: #0f172a;
+}
+
+.p-toast-message-content {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.p-toast-summary {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.p-toast-detail {
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.p-toast-message-success {
+  border-left-color: #0f766e;
+}
+
+.p-toast-message-error {
+  border-left-color: #b91c1c;
+}
+
+.p-toast-message-warn {
+  border-left-color: #c2410c;
+}
+
+.p-toast-message-info {
+  border-left-color: #2563eb;
+}
+
 @media (max-width: 960px) {
   .cc-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));

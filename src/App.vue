@@ -17,6 +17,7 @@ const openAppointmentsPage = () => {
 </script>
 
 <template>
+  <Toast position="top-right" />
   <AppointmentsPage
     v-if="activePage === 'appointments'"
     @open-log="openLogPage"

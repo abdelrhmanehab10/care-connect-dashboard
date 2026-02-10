@@ -15,7 +15,6 @@ import {
   doctorOptions,
   nurseOptions,
   socialWorkerOptions,
-  visitTypeOptions,
   type AppointmentStatus,
   type PatientOption,
 } from "../data/options";
@@ -37,7 +36,7 @@ type NormalizedStatusOption = {
 type StatusOptionForRow = NormalizedStatusOption & { disabled?: boolean };
 
 const ensurePatient = (value: Patient | null | undefined): Patient =>
-  value ?? { id: 0, name: "", date_of_birth: "", phone: "" };
+  value ?? { id: "", name: "", date_of_birth: "", phone: "" };
 
 const ensureStaffMember = (
   value: StaffMember | null | undefined,
@@ -50,12 +49,14 @@ const isPatientLike = (value: unknown): value is {
 } =>
   typeof value === "object" && value !== null && "name" in value;
 
-const normalizePatientId = (value: unknown) => {
+const normalizePatientId = (value: unknown): string | number => {
   if (typeof value === "number") {
     return value;
   }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  return "";
 };
 
 const getFieldValue = (data: Appointment, field: string) => {
@@ -87,7 +88,7 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
             ? (value as { phone?: string }).phone ?? ""
             : data.patient?.phone ?? "";
         data.patient = {
-          id: normalizePatientId(value.id ?? data.patient?.id ?? 0),
+          id: normalizePatientId(value.id),
           name,
           date_of_birth: dateOfBirth,
           phone,
@@ -97,6 +98,9 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
       data.patient = ensurePatient(data.patient);
       data.patient.name =
         typeof value === "string" ? value : String(value ?? "");
+      data.patient.id = "";
+      data.patient.date_of_birth = "";
+      data.patient.phone = "";
       return;
     case "nurse.name":
       data.nurse = ensureStaffMember(data.nurse);
@@ -124,8 +128,9 @@ const props = defineProps<{
   detailsLoadingId?: number | null;
   statusOptions: ReadonlyArray<AppointmentStatus | AppointmentStatusOption>;
   statusBadgeClass: (status: AppointmentStatus) => string;
+  visitTypeOptions: ReadonlyArray<string>;
 }>();
-const { isLoading, detailsLoadingId } = toRefs(props);
+const { isLoading, detailsLoadingId, visitTypeOptions } = toRefs(props);
 
 
 
@@ -521,10 +526,13 @@ const emit = defineEmits<{
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete :modelValue="data.patient ?? null" :suggestions="filteredPatients" optionLabel="name"
-                  :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
+                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                  panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search patient"
                   @update:modelValue="
                     setFieldValue(data, 'patient.name', $event)
+                    " @option-select="
+                    setFieldValue(data, 'patient.name', $event.value)
                     " @complete="searchPatients" @keydown="
                     handleEditorKeydown(
                       $event,

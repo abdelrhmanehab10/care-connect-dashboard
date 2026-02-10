@@ -1,6 +1,8 @@
 import { createApp } from 'vue'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
+import Toast from 'primevue/toast'
 import { createVuetify } from 'vuetify'
 import { VCalendar } from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -28,8 +30,10 @@ const vuetify = createVuetify({
 })
 
 app.use(PrimeVue, { unstyled: true })
+app.use(ToastService)
 app.use(VueQueryPlugin, { queryClient })
 app.use(vuetify)
+app.component('Toast', Toast)
 app.component('AppointmentMap', AppointmentMap)
 
 app.mount('#app')
