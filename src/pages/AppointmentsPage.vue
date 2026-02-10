@@ -83,6 +83,17 @@ const stateFilter = ref<AppointmentStatusOption | null>(null);
 
 const startDate = ref<Date | null>(null);
 const endDate = ref<Date | null>(null);
+const dateFilterSource = ref<"calendar" | "filters" | null>(null);
+
+const setStartDateFromFilter = (value: Date | null) => {
+  dateFilterSource.value = "filters";
+  startDate.value = value;
+};
+
+const setEndDateFromFilter = (value: Date | null) => {
+  dateFilterSource.value = "filters";
+  endDate.value = value;
+};
 
 const formatDate = (value: Date) => {
   const year = value.getFullYear();
@@ -264,6 +275,10 @@ const syncCalendarRange = (payload: { start: string; end: string }) => {
   if (!nextStart || !nextEnd) {
     return;
   }
+  if (dateFilterSource.value === "filters" && startDate.value && endDate.value) {
+    return;
+  }
+  dateFilterSource.value = "calendar";
   startDate.value = nextStart;
   endDate.value = nextEnd;
 };
@@ -632,8 +647,10 @@ const emit = defineEmits<{
           v-model:visit-type-filter="visitTypeFilter"
           v-model:state-filter="stateFilter"
           v-model:status-tag-filter="statusTagFilter"
-          v-model:start-date="startDate"
-          v-model:end-date="endDate"
+          :start-date="startDate"
+          :end-date="endDate"
+          @update:start-date="setStartDateFromFilter"
+          @update:end-date="setEndDateFromFilter"
           :employee-options="employeeOptions"
           :patient-options="patientOptions"
           :visit-type-options="visitTypeOptions"
@@ -700,6 +717,8 @@ const emit = defineEmits<{
               <AppointmentsCalendar
                 :appointments="appointments"
                 :is-loading="isLoading"
+                :range-start="apiStart"
+                :range-end="apiEnd"
                 @range-change="syncCalendarRange"
                 @edit="openEditDialog"
                 @confirm-all="refreshAppointments"

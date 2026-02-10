@@ -101,3 +101,20 @@ export const tabViewPt = {
     content: { class: "cc-tab-content" },
   },
 } as const;
+
+export const toastPt = {
+  root: { class: "cc-toast" },
+  message: ({ props }: { props: { message?: { severity?: string } } }) => ({
+    class: [
+      "cc-toast-message",
+      props.message?.severity ? `cc-toast-${props.message.severity}` : "",
+    ],
+  }),
+  messageContent: { class: "cc-toast-content" },
+  messageIcon: { class: "cc-toast-icon" },
+  messageText: { class: "cc-toast-text" },
+  summary: { class: "cc-toast-summary" },
+  detail: { class: "cc-toast-detail" },
+  closeButton: { class: "cc-toast-close" },
+  closeIcon: { class: "cc-toast-close-icon" },
+} as const;

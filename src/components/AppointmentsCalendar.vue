@@ -22,6 +22,8 @@ type AppointmentCalendarEvent = {
 const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
   isLoading: boolean;
+  rangeStart?: string;
+  rangeEnd?: string;
 }>();
 const emit = defineEmits<{
   (event: "edit", appointment: Appointment): void;
@@ -108,14 +110,16 @@ const normalizeDate = (value: string | null | undefined) => {
   return "";
 };
 
-const getInitialFocus = (appointments: ReadonlyArray<Appointment>): string => {
+const getEarliestAppointmentFocus = (
+  appointments: ReadonlyArray<Appointment>,
+): string => {
   const dates = appointments
     .map((appointment) => normalizeDate(appointment.date))
     .filter((date) => date.length > 0);
 
   const [first, ...rest] = dates;
   if (!first) {
-    return toIsoDate(new Date());
+    return "";
   }
 
   let earliest = first;
@@ -181,8 +185,33 @@ const formatTimeRange = (appointment: Appointment) => {
   return "All day";
 };
 
-const focus = ref<string>(getInitialFocus(sourceAppointments.value));
+const focus = ref<string>(
+  getEarliestAppointmentFocus(sourceAppointments.value) || toIsoDate(new Date()),
+);
 const viewType = ref<"week" | "day" | "month">("week");
+
+const resolveRangeFocus = (rangeStart: string, rangeEnd: string) => {
+  const today = toIsoDate(new Date());
+  if (today >= rangeStart && today <= rangeEnd) {
+    return today;
+  }
+  return rangeStart;
+};
+
+watch(
+  [() => props.rangeStart, () => props.rangeEnd, sourceAppointments],
+  ([rangeStart, rangeEnd, appointments]) => {
+    const normalizedStart = normalizeDate(rangeStart);
+    const normalizedEnd = normalizeDate(rangeEnd);
+    if (!normalizedStart || !normalizedEnd) {
+      return;
+    }
+    const appointmentFocus = getEarliestAppointmentFocus(appointments);
+    focus.value =
+      appointmentFocus || resolveRangeFocus(normalizedStart, normalizedEnd);
+  },
+  { immediate: true },
+);
 const calendarHeight = computed(() =>
   viewType.value === "month" ? undefined : 640,
 );

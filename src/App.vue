@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import AppointmentsPage from "./pages/AppointmentsPage.vue";
 import LogPage from "./pages/LogPage.vue";
+import { toastPt } from "./ui/primevuePt";
 
 const activePage = ref<"appointments" | "logs">("appointments");
 const logAppointmentId = ref<number | null>(null);
@@ -17,7 +18,7 @@ const openAppointmentsPage = () => {
 </script>
 
 <template>
-  <Toast position="top-right" />
+  <Toast position="top-right" :pt="toastPt" />
   <AppointmentsPage
     v-if="activePage === 'appointments'"
     @open-log="openLogPage"
