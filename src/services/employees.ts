@@ -25,9 +25,7 @@ const toEmployeeOption = (item: EmployeePayload): EmployeeOption | null => {
   const name = toEmployeeName(item);
   const rawId = item.id ?? item.employee_id;
   const id =
-    typeof rawId === "number"
-      ? rawId
-      : Number(String(rawId ?? "").trim());
+    typeof rawId === "number" ? rawId : Number(String(rawId ?? "").trim());
   if (!name || !Number.isFinite(id) || id <= 0) {
     return null;
   }

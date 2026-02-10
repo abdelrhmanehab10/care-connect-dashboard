@@ -98,6 +98,10 @@ const socialWorkerName = ref<string | null>(null);
 const filteredSocialWorkers = ref<string[]>([]);
 const driverName = ref<string | null>(null);
 const filteredDrivers = ref<string[]>([]);
+const primaryNurseName = ref<string | null>(null);
+const primaryDoctorName = ref<string | null>(null);
+const primarySocialWorkerName = ref<string | null>(null);
+const primaryDriverName = ref<string | null>(null);
 const nurseAssignmentMode = ref<"primary" | "custom">("primary");
 const doctorAssignmentMode = ref<"primary" | "custom">("primary");
 const socialWorkerAssignmentMode = ref<"primary" | "custom">("primary");
@@ -244,6 +248,58 @@ const showNurseSection = computed(() => hasProvider("nurse"));
 const showDoctorSection = computed(() => hasProvider("doctor"));
 const showSocialWorkerSection = computed(() => hasProvider("social_worker"));
 const showDriverSection = computed(() => hasProvider("driver"));
+
+const formatPrimaryLabel = (label: string, name: string | null) =>
+  name ? `${label} (${name})` : label;
+
+const primaryNurseLabel = computed(() =>
+  formatPrimaryLabel("Primary nurse", primaryNurseName.value),
+);
+const primaryDoctorLabel = computed(() =>
+  formatPrimaryLabel("Primary doctor", primaryDoctorName.value),
+);
+const primarySocialWorkerLabel = computed(() =>
+  formatPrimaryLabel("Primary social worker", primarySocialWorkerName.value),
+);
+const primaryDriverLabel = computed(() =>
+  formatPrimaryLabel("Primary driver", primaryDriverName.value),
+);
+
+const normalizeRole = (role: string) =>
+  role.trim().toLowerCase().replace(/\s+/g, "_");
+
+const isPrimaryFlag = (value: unknown) =>
+  value === 1 || value === "1" || value === true;
+
+const resolvePrimaryStaffName = (
+  appointment: Appointment,
+  role: "nurse" | "doctor" | "social_worker" | "driver",
+) => {
+  const patient = (appointment as Appointment & { patient?: any }).patient;
+  const fromPatient =
+    role === "nurse"
+      ? patient?.primary_nurse?.name ?? patient?.primary_leader_nurse?.name
+      : role === "doctor"
+        ? patient?.primary_doctor?.name
+        : role === "social_worker"
+          ? patient?.primary_social_worker?.name
+          : patient?.primary_driver?.name;
+  const fromAppointment =
+    role === "nurse"
+      ? appointment.nurse?.name
+      : role === "doctor"
+        ? appointment.doctor?.name
+        : role === "social_worker"
+          ? appointment.social_worker?.name
+          : "";
+  const careTeamName = (appointment.care_team ?? []).find(
+    (member) => normalizeRole(member.role ?? "") === role,
+  )?.employee?.name;
+  const candidates = [fromPatient, fromAppointment, careTeamName]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
+  return candidates[0] ?? "";
+};
 
 const resolveScheduleTimes = () => {
   const date = schedule.isRecurring
@@ -645,10 +701,14 @@ const resetForm = () => {
   filteredNurses.value = [];
   doctorName.value = null;
   filteredDoctors.value = [];
-  socialWorkerName.value = null;
-  filteredSocialWorkers.value = [];
-  driverName.value = null;
-  filteredDrivers.value = [];
+    socialWorkerName.value = null;
+    filteredSocialWorkers.value = [];
+    driverName.value = null;
+    filteredDrivers.value = [];
+    primaryNurseName.value = null;
+    primaryDoctorName.value = null;
+    primarySocialWorkerName.value = null;
+    primaryDriverName.value = null;
   nurseAssignmentMode.value = "primary";
   doctorAssignmentMode.value = "primary";
   socialWorkerAssignmentMode.value = "primary";
@@ -657,10 +717,14 @@ const resetForm = () => {
   doctorScheduleType.value = "same";
   socialWorkerScheduleType.value = "same";
   driverScheduleType.value = "same";
-  nurseName.value = null;
-  doctorName.value = null;
-  socialWorkerName.value = null;
-  driverName.value = null;
+    nurseName.value = null;
+    doctorName.value = null;
+    socialWorkerName.value = null;
+    driverName.value = null;
+    primaryNurseName.value = null;
+    primaryDoctorName.value = null;
+    primarySocialWorkerName.value = null;
+    primaryDriverName.value = null;
   visit.type = "";
   nurseSchedule.startTime = null;
   nurseSchedule.endTime = null;
@@ -767,19 +831,68 @@ const applyAppointment = (appointment: Appointment) => {
   schedule.appointmentEndTime = normalizeTimeInput(appointment.end_time);
 
   const nurseNameValue = appointment.nurse?.name?.trim() ?? "";
-  nurseAssignmentMode.value = nurseNameValue ? "custom" : "primary";
-  nurseName.value = nurseNameValue || null;
+  const doctorNameValue = appointment.doctor?.name?.trim() ?? "";
+  const socialWorkerNameValue = appointment.social_worker?.name?.trim() ?? "";
+  const driverNameValue =
+    (appointment as Appointment & { driver?: { name?: string | null } }).driver
+      ?.name?.trim() ?? "";
+
+  primaryNurseName.value =
+    resolvePrimaryStaffName(appointment, "nurse") || null;
+  primaryDoctorName.value =
+    resolvePrimaryStaffName(appointment, "doctor") || null;
+  primarySocialWorkerName.value =
+    resolvePrimaryStaffName(appointment, "social_worker") || null;
+  primaryDriverName.value =
+    resolvePrimaryStaffName(appointment, "driver") || null;
+
+  const isPrimaryNurse = isPrimaryFlag(
+    (appointment as Appointment & { main_nurse?: unknown }).main_nurse,
+  );
+  nurseAssignmentMode.value = isPrimaryNurse
+    ? "primary"
+    : nurseNameValue
+      ? "custom"
+      : "primary";
+  nurseName.value = isPrimaryNurse ? null : nurseNameValue || null;
   nurseScheduleType.value = "same";
 
-  const doctorNameValue = appointment.doctor?.name?.trim() ?? "";
-  doctorAssignmentMode.value = doctorNameValue ? "custom" : "primary";
-  doctorName.value = doctorNameValue || null;
+  const isPrimaryDoctor = isPrimaryFlag(
+    (appointment as Appointment & { main_doctor?: unknown }).main_doctor,
+  );
+  doctorAssignmentMode.value = isPrimaryDoctor
+    ? "primary"
+    : doctorNameValue
+      ? "custom"
+      : "primary";
+  doctorName.value = isPrimaryDoctor ? null : doctorNameValue || null;
   doctorScheduleType.value = "same";
+
+  const isPrimarySocialWorker = isPrimaryFlag(
+    (appointment as Appointment & { main_social_worker?: unknown })
+      .main_social_worker,
+  );
+  socialWorkerAssignmentMode.value = isPrimarySocialWorker
+    ? "primary"
+    : socialWorkerNameValue
+      ? "custom"
+      : "primary";
+  socialWorkerName.value = isPrimarySocialWorker
+    ? null
+    : socialWorkerNameValue || null;
   socialWorkerScheduleType.value = "same";
+
+  const isPrimaryDriver = isPrimaryFlag(
+    (appointment as Appointment & { main_driver?: unknown }).main_driver,
+  );
+  driverAssignmentMode.value = isPrimaryDriver
+    ? "primary"
+    : driverNameValue
+      ? "custom"
+      : "primary";
+  driverName.value = isPrimaryDriver ? null : driverNameValue || null;
   driverScheduleType.value = "same";
 
-  const normalizeRole = (role: string) =>
-    role.trim().toLowerCase().replace(/\s+/g, "_");
   const careTeam = appointment.care_team ?? [];
   const findCareMember = (role: string) =>
     careTeam.find(
@@ -807,19 +920,23 @@ const applyAppointment = (appointment: Appointment) => {
   mapCareTime(socialWorkerMember, socialWorkerSchedule);
   mapCareTime(driverMember, driverSchedule);
 
-  if (!nurseName.value && nurseMember?.employee?.name) {
+  if (!isPrimaryNurse && !nurseName.value && nurseMember?.employee?.name) {
     nurseAssignmentMode.value = "custom";
     nurseName.value = nurseMember.employee.name;
   }
-  if (!doctorName.value && doctorMember?.employee?.name) {
+  if (!isPrimaryDoctor && !doctorName.value && doctorMember?.employee?.name) {
     doctorAssignmentMode.value = "custom";
     doctorName.value = doctorMember.employee.name;
   }
-  if (!socialWorkerName.value && socialWorkerMember?.employee?.name) {
+  if (
+    !isPrimarySocialWorker &&
+    !socialWorkerName.value &&
+    socialWorkerMember?.employee?.name
+  ) {
     socialWorkerAssignmentMode.value = "custom";
     socialWorkerName.value = socialWorkerMember.employee.name;
   }
-  if (!driverName.value && driverMember?.employee?.name) {
+  if (!isPrimaryDriver && !driverName.value && driverMember?.employee?.name) {
     driverAssignmentMode.value = "custom";
     driverName.value = driverMember.employee.name;
   }
@@ -1551,7 +1668,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
                   name="nurseAssignmentMode"
                   value="primary"
                 />
-                <span class="cc-label-inline">Primary nurse</span>
+                <span class="cc-label-inline">{{ primaryNurseLabel }}</span>
               </label>
               <label class="cc-row cc-stack-sm">
                 <input
@@ -1724,7 +1841,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
                   name="doctorAssignmentMode"
                   value="primary"
                 />
-                <span class="cc-label-inline">Primary doctor</span>
+                <span class="cc-label-inline">{{ primaryDoctorLabel }}</span>
               </label>
               <label class="cc-row cc-stack-sm">
                 <input
@@ -1900,7 +2017,9 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
                   name="socialWorkerAssignmentMode"
                   value="primary"
                 />
-                <span class="cc-label-inline">Primary social worker</span>
+                <span class="cc-label-inline">
+                  {{ primarySocialWorkerLabel }}
+                </span>
               </label>
               <label class="cc-row cc-stack-sm">
                 <input
@@ -2085,7 +2204,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
                   name="driverAssignmentMode"
                   value="primary"
                 />
-                <span class="cc-label-inline">Primary driver</span>
+                <span class="cc-label-inline">{{ primaryDriverLabel }}</span>
               </label>
               <label class="cc-row cc-stack-sm">
                 <input
