@@ -29,7 +29,6 @@ import {
 } from "../composables/useAppointmentsQuery";
 import type { Appointment } from "../types";
 import {
-  areaOptions,
   doctorOptions,
   nurseOptions,
   patientOptions as patientOptionsData,
@@ -272,6 +271,9 @@ const exportExcel = () => {
 };
 
 const syncCalendarRange = (payload: { start: string; end: string }) => {
+  if (activeTab.value !== "calendar") {
+    return;
+  }
   const nextStart = parseIsoDate(payload.start);
   const nextEnd = parseIsoDate(payload.end);
   if (!nextStart || !nextEnd) {
@@ -655,6 +657,12 @@ watch([apiStart, apiEnd], () => {
   page.value = 1;
 });
 
+watch(activeTab, (value) => {
+  if (value === "calendar") {
+    dateFilterSource.value = null;
+  }
+});
+
 watch(
   [
     employeeFilter,
@@ -811,7 +819,6 @@ const emit = defineEmits<{
       :nurse-options="nurseOptions"
       :doctor-options="doctorOptions"
       :social-worker-options="socialWorkerOptions"
-      :area-options="areaOptions"
       :visit-type-options="visitTypeOptions"
       :weekday-options="weekdayOptions"
       @save="handleSaveAppointment"

@@ -78,9 +78,9 @@ export type AppointmentCardsResponse = {
 export type CreateAppointmentPayload = {
   patient_id: string;
   new_address: {
-    area_id: string;
-    city: string;
     address: string;
+    lat: string;
+    lng: string;
   };
   visit_type_id: string;
   is_recurring: "0" | "1";

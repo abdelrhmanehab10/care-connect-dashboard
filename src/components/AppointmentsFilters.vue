@@ -22,6 +22,7 @@ const props = defineProps<{
   visitTypeOptions: string[];
   quickPatientLabel: string;
   quickDoctorLabel: string;
+  isCalendarView?: boolean;
 }>();
 
 const employeeFilter = defineModel<string | null>("employeeFilter", {
@@ -71,6 +72,7 @@ const isStatesBusy = computed(
 );
 
 const stateOptions = computed(() => appointmentStatuses.value);
+const isCalendarView = computed(() => Boolean(props.isCalendarView));
 
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
@@ -354,9 +356,26 @@ const loadVisitTypes = async () => {
   }
 };
 
+const setDefaultTodayRange = () => {
+  if (startDate.value || endDate.value) return;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  startDate.value = today;
+  endDate.value = new Date(today);
+};
+
 onMounted(() => {
+  if (!isCalendarView.value) {
+    setDefaultTodayRange();
+  }
   void loadEmployees();
   void loadVisitTypes();
+});
+
+watch(isCalendarView, (value) => {
+  if (!value) {
+    setDefaultTodayRange();
+  }
 });
 
 watch(
@@ -440,6 +459,7 @@ watch(
       :quick-doctor-label="quickDoctorLabel"
       :patient-filter="patientFilter"
       :employee-filter="employeeFilter"
+      :is-disabled="isCalendarView"
       @toggle-today="toggleToday"
       @toggle-week="toggleThisWeek"
       @toggle-status="toggleStatusTag"
@@ -498,6 +518,7 @@ watch(
           panelClass="cc-datepicker-panel"
           :pt="datePickerPt"
           placeholder="Start date"
+          :disabled="isCalendarView"
         />
       </div>
       <div class="col-md-2">
@@ -510,6 +531,7 @@ watch(
           panelClass="cc-datepicker-panel"
           :pt="datePickerPt"
           placeholder="End date"
+          :disabled="isCalendarView"
         />
       </div>
       <div class="col-md-2">

@@ -16,7 +16,7 @@ interface Card {
   filter: CardFilter;
 }
 
-defineProps<{
+const props = defineProps<{
   isTodayActive?: boolean;
   isThisWeekActive?: boolean;
   statusTagFilter?: AppointmentStatus | null;
@@ -24,6 +24,7 @@ defineProps<{
   quickDoctorLabel?: string;
   patientFilter?: PatientOption | null;
   employeeFilter?: string | null;
+  isDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -36,6 +37,8 @@ const emit = defineEmits<{
 }>();
 
 const { cards: cardsData } = useAppointmentCardsQuery();
+
+const isDisabled = computed(() => Boolean(props.isDisabled));
 
 const statusCounts = computed(() => {
   const map = new Map<string, number>();
@@ -97,6 +100,7 @@ const cards = computed<Card[]>(() => {
 });
 
 const handleCardClick = (card: Card) => {
+  if (isDisabled.value) return;
   if (card.filter.type === "period") {
     if (card.filter.value === "today") {
       emit("toggle-today");
@@ -115,9 +119,10 @@ const handleCardClick = (card: Card) => {
     <div class="col-12 col-md-3" v-for="card in cards" :key="card.id">
       <div
         class="card-box stat-card"
-        :class="card.theme"
+        :class="[card.theme, { 'is-disabled': isDisabled }]"
         role="button"
-        tabindex="0"
+        :tabindex="isDisabled ? -1 : 0"
+        :aria-disabled="isDisabled"
         @click="handleCardClick(card)"
         @keydown.enter="handleCardClick(card)"
         @keydown.space.prevent="handleCardClick(card)"
@@ -135,3 +140,10 @@ const handleCardClick = (card: Card) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.stat-card.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+</style>

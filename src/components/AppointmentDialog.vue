@@ -27,7 +27,6 @@ import {
 } from "../ui/primevuePt";
 import type { Appointment } from "../types";
 import type { CreateAppointmentPayload } from "../services/appointments";
-import { fetchAreas, type AreaOption } from "../services/areas";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
@@ -42,7 +41,6 @@ const props = withDefaults(
     nurseOptions: readonly string[];
     doctorOptions: readonly string[];
     socialWorkerOptions: readonly string[];
-    areaOptions: readonly string[];
     visitTypeOptions: readonly string[];
     weekdayOptions: readonly Weekday[];
     isSaving?: boolean;
@@ -55,8 +53,7 @@ const props = withDefaults(
     errorMessage: null,
   },
 );
-const { patientOptions, areaOptions, visitTypeOptions, weekdayOptions } =
-  toRefs(props);
+const { patientOptions, visitTypeOptions, weekdayOptions } = toRefs(props);
 const dialogTitle = computed(() =>
   props.appointment ? "Edit Appointment" : "Add Appointment",
 );
@@ -65,12 +62,22 @@ const emit = defineEmits<{
   save: [payload: CreateAppointmentPayload];
 }>();
 
+type LocationValue = {
+  lat: number;
+  lng: number;
+  address?: string;
+};
+
+const defaultMapLocation: LocationValue = {
+  lat: 24.7136,
+  lng: 46.6753,
+};
+
 const selectedPatient = ref<PatientOption | string | null>(null);
 const filteredPatients = ref<PatientOption[]>([]);
-const fetchedAreas = ref<AreaOption[]>([]);
-const isAreasLoading = ref(false);
 const fetchedVisitTypes = ref<VisitType[]>([]);
 const isVisitTypesLoading = ref(false);
+const mapLocation = ref<LocationValue | null>(null);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
 const { run: runNurseSearch, cancel: cancelNurseSearch } =
@@ -101,12 +108,6 @@ const socialWorkerScheduleType = ref<"same" | "custom">("same");
 const driverScheduleType = ref<"same" | "custom">("same");
 const { handleSubmit } = useForm({
   validationSchema: toTypedSchema(z.object({})),
-});
-
-const address = reactive({
-  area: "",
-  city: "",
-  street: "",
 });
 
 const visit = reactive({
@@ -210,21 +211,6 @@ const isPatientOption = (value: unknown): value is PatientOption => {
     typeof (value as PatientOption).id === "string"
   );
 };
-
-const isPatientSelected = computed(() =>
-  isPatientOption(selectedPatient.value),
-);
-
-const fallbackAreas = computed<AreaOption[]>(() =>
-  (areaOptions.value ?? []).map((name) => ({
-    id: name,
-    name,
-  })),
-);
-
-const availableAreas = computed(() =>
-  fetchedAreas.value.length ? fetchedAreas.value : fallbackAreas.value,
-);
 
 const fallbackVisitTypes = computed<VisitType[]>(() =>
   (visitTypeOptions.value ?? []).map((name) => ({
@@ -601,6 +587,26 @@ const parseDateTime = (
   return parseDateOnly(normalizedDate);
 };
 
+const resolveAppointmentLocation = (
+  appointment: Appointment | null,
+): LocationValue => {
+  const address = appointment?.patient_address?.address ?? "";
+  const latRaw = appointment?.patient_address?.lat;
+  const lngRaw = appointment?.patient_address?.lng;
+  const lat =
+    typeof latRaw === "number" ? latRaw : Number(String(latRaw ?? "").trim());
+  const lng =
+    typeof lngRaw === "number" ? lngRaw : Number(String(lngRaw ?? "").trim());
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return {
+      lat,
+      lng,
+      address: address || undefined,
+    };
+  }
+  return { ...defaultMapLocation };
+};
+
 const resetForm = () => {
   cancelPatientSearch();
   cancelNurseSearch();
@@ -630,9 +636,6 @@ const resetForm = () => {
   doctorName.value = null;
   socialWorkerName.value = null;
   driverName.value = null;
-  address.area = "";
-  address.city = "";
-  address.street = "";
   visit.type = "";
   nurseSchedule.startTime = null;
   nurseSchedule.endTime = null;
@@ -681,6 +684,7 @@ const resetForm = () => {
   schedule.recurringStartDate = null;
   schedule.recurringEndDate = null;
   instructions.value = "";
+  mapLocation.value = { ...defaultMapLocation };
   recurrenceRowId = 1;
   recurrenceRows.value = [
     {
@@ -712,18 +716,6 @@ const resolveAppointmentPatient = (
   return patientMatch ?? null;
 };
 
-const loadAreas = async () => {
-  isAreasLoading.value = true;
-  try {
-    fetchedAreas.value = await fetchAreas();
-  } catch (error) {
-    console.error("Failed to load areas.", error);
-    fetchedAreas.value = [];
-  } finally {
-    isAreasLoading.value = false;
-  }
-};
-
 const loadVisitTypes = async () => {
   isVisitTypesLoading.value = true;
   try {
@@ -739,13 +731,7 @@ const loadVisitTypes = async () => {
 const applyAppointment = (appointment: Appointment) => {
   resetForm();
   selectedPatient.value = resolveAppointmentPatient(appointment);
-
-  const patientAddress = appointment.patient_address;
-  if (patientAddress) {
-    address.area = String(patientAddress.area_id ?? "");
-    address.city = patientAddress.city ?? "";
-    address.street = patientAddress.address ?? "";
-  }
+  mapLocation.value = resolveAppointmentLocation(appointment);
 
   visit.type = appointment.visit_type ?? "";
   schedule.isRecurring = false;
@@ -908,7 +894,6 @@ watch(visible, (value) => {
 });
 
 onMounted(() => {
-  void loadAreas();
   void loadVisitTypes();
 });
 
@@ -939,8 +924,6 @@ const handleSave = () => {
     availableVisitTypes.value.find((type) => type.name === visit.type)?.id ??
     "";
 
-  const trimmedCity = address.city.trim();
-  const trimmedAddress = address.street.trim();
   const trimmedInstructions = instructions.value.trim();
 
   const employeeSlots: CreateAppointmentPayload["employee_slots"] = {};
@@ -1031,11 +1014,6 @@ const handleSave = () => {
 
   const payload: CreateAppointmentPayload = {
     patient_id: selectedPatient.value.id,
-    new_address: {
-      area_id: address.area,
-      city: trimmedCity,
-      address: trimmedAddress,
-    },
     visit_type_id: visitTypeId,
     is_recurring: schedule.isRecurring ? "1" : "0",
     date: formattedDate,
@@ -1292,52 +1270,12 @@ console.log(filteredPatients.value);
 
         <div class="cc-panel">
           <div class="cc-section-title">Address</div>
-          <div v-if="!isPatientSelected" class="cc-help-text">
-            Select a patient to enable address fields.
-          </div>
-          <fieldset :disabled="!isPatientSelected" class="cc-stack">
-            <div>
-              <label for="area" class="cc-label">Area</label>
-              <select id="area" v-model="address.area" class="cc-select">
-                <option value="" disabled>
-                  {{ isAreasLoading ? "Loading areas..." : "Select area" }}
-                </option>
-                <option
-                  v-for="area in availableAreas"
-                  :key="area.id"
-                  :value="area.id"
-                >
-                  {{ area.name }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label for="city" class="cc-label">City</label>
-              <input
-                id="city"
-                v-model="address.city"
-                type="text"
-                class="cc-input"
-                placeholder="Enter city"
-              />
-            </div>
-            <div>
-              <label for="address" class="cc-label">Address</label>
-              <textarea
-                id="address"
-                v-model="address.street"
-                class="cc-textarea"
-                rows="3"
-                placeholder="Enter street address"
-              ></textarea>
-            </div>
-            <AppointmentMap
-              :lat="24.7136"
-              :lng="46.6753"
-              :zoom="9"
-              height="360px"
-            />
-          </fieldset>
+          <AppointmentMap
+            :lat="24.7136"
+            :lng="46.6753"
+            :zoom="9"
+            height="360px"
+          />
         </div>
 
         <div>

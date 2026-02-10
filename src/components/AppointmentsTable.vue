@@ -60,6 +60,13 @@ const isStaffLike = (
   name?: unknown;
 } => typeof value === "object" && value !== null && "name" in value;
 
+const hasStaffName = (value: StaffMember | null | undefined) =>
+  Boolean(
+    value &&
+      typeof value.name === "string" &&
+      value.name.trim(),
+  );
+
 const normalizePatientId = (value: unknown): string | number => {
   if (typeof value === "number") {
     return value;
@@ -802,6 +809,7 @@ const emit = defineEmits<{
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
                   forceSelection
+                  :disabled="!hasStaffName(data.nurse)"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -827,6 +835,7 @@ const emit = defineEmits<{
                 <button
                   type="button"
                   class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  :disabled="!hasStaffName(data.nurse)"
                   @click.stop="editorSaveCallback($event)"
                 >
                   Save
@@ -860,6 +869,7 @@ const emit = defineEmits<{
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
                   forceSelection
+                  :disabled="!hasStaffName(data.doctor)"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -887,6 +897,7 @@ const emit = defineEmits<{
                 <button
                   type="button"
                   class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  :disabled="!hasStaffName(data.doctor)"
                   @click.stop="editorSaveCallback($event)"
                 >
                   Save
@@ -968,49 +979,6 @@ const emit = defineEmits<{
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
           <span v-else>{{ data.visit_type ?? "-" }}</span>
-        </template>
-        <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
-          <Transition name="cc-cell-edit" appear>
-            <div class="cc-cell-edit">
-              <div class="cc-cell-edit-fields">
-                <select
-                  v-model="data.visit_type"
-                  class="cc-select cc-select-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                >
-                  <option
-                    v-for="type in visitTypeOptions"
-                    :key="type"
-                    :value="type"
-                  >
-                    {{ type }}
-                  </option>
-                </select>
-              </div>
-              <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </Transition>
         </template>
       </Column>
 

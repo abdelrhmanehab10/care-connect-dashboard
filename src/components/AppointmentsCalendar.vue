@@ -440,9 +440,13 @@ const goNext = () => {
   shiftFocus(viewType.value === "week" ? 7 : 1);
 };
 
-watch([focus, viewType], () => {
-  syncRange();
-});
+watch(
+  [focus, viewType],
+  () => {
+    syncRange();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
