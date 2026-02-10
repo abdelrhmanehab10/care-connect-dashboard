@@ -351,6 +351,30 @@ const formatTime = (value: string | null | undefined) => {
   return `${hours}:${minutes}`;
 };
 
+const normalizeDateInput = (value: string | null | undefined) => {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const match = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (match) {
+    const month = match[1]?.padStart(2, "0") ?? "";
+    const day = match[2]?.padStart(2, "0") ?? "";
+    const year = match[3] ?? "";
+    return year && month && day ? `${year}-${month}-${day}` : "";
+  }
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  return "";
+};
+
 const normalizeStatusKey = (value: unknown) =>
   String(value ?? "")
     .trim()
@@ -584,9 +608,12 @@ const emit = defineEmits<{
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
                 <input
-                  v-model="data.date"
+                  :value="normalizeDateInput(data.date)"
                   type="date"
                   class="cc-input cc-input-sm"
+                  @input="
+                    data.date = ($event.target as HTMLInputElement).value
+                  "
                   @keydown="
                     handleEditorKeydown(
                       $event,
