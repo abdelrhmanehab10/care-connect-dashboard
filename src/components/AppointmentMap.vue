@@ -82,6 +82,16 @@ const updateSelection = (
   options: { emit?: boolean; pan?: boolean } = {},
 ) => {
   selected.value = value;
+  if (searchEl.value) {
+    const address = value.address?.trim();
+    if (address) {
+      searchEl.value.value = address;
+    } else if (Number.isFinite(value.lat) && Number.isFinite(value.lng)) {
+      searchEl.value.value = `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}`;
+    } else {
+      searchEl.value.value = "";
+    }
+  }
   if (markerInstance.value) {
     markerInstance.value.setPosition({ lat: value.lat, lng: value.lng });
   }

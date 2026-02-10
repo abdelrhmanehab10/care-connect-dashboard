@@ -146,8 +146,8 @@ type EmployeeRowsLike = EmployeeRecurrenceRow[] | Ref<EmployeeRecurrenceRow[]>;
 const schedule = reactive({
   isRecurring: false,
   appointmentDate: null as Date | null,
-  appointmentStartTime: null as Date | null,
-  appointmentEndTime: null as Date | null,
+  appointmentStartTime: null as string | null,
+  appointmentEndTime: null as string | null,
   recurringStartDate: null as Date | null,
   recurringEndDate: null as Date | null,
 });
@@ -410,8 +410,10 @@ const validationSchema = z
     }
   });
 
-const hasCompleteTimeRange = (start: Date | null, end: Date | null) =>
-  Boolean(formatTime(start) && formatTime(end));
+const hasCompleteTimeRange = (
+  start: Date | string | null,
+  end: Date | string | null,
+) => Boolean(formatTime(start) && formatTime(end));
 
 const hasValidRecurringTimes = (rows: EmployeeRecurrenceRow[]) =>
   rows.every(
@@ -517,13 +519,36 @@ const formatDate = (value: Date | null) => {
   return `${year}-${month}-${day}`;
 };
 
-const formatTime = (value: Date | null) => {
+const formatTime = (value: Date | string | null) => {
   if (!value) {
     return "";
   }
-
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+    const [, rawHours = "", rawMinutes = ""] = match ?? [];
+    if (!rawHours || !rawMinutes) return "";
+    const hours = rawHours.padStart(2, "0");
+    const minutes = rawMinutes;
+    return `${hours}:${minutes}`;
+  }
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return "";
+  }
   const hours = String(value.getHours()).padStart(2, "0");
   const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const normalizeTimeInput = (value: string | null | undefined) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  const [, rawHours = "", rawMinutes = ""] = match ?? [];
+  if (!rawHours || !rawMinutes) return null;
+  const hours = rawHours.padStart(2, "0");
+  const minutes = rawMinutes;
   return `${hours}:${minutes}`;
 };
 
@@ -736,14 +761,10 @@ const applyAppointment = (appointment: Appointment) => {
   visit.type = appointment.visit_type ?? "";
   schedule.isRecurring = false;
   schedule.appointmentDate = parseDateOnly(appointment.date);
-  schedule.appointmentStartTime = parseDateTime(
-    appointment.date,
+  schedule.appointmentStartTime = normalizeTimeInput(
     appointment.start_time,
   );
-  schedule.appointmentEndTime = parseDateTime(
-    appointment.date,
-    appointment.end_time,
-  );
+  schedule.appointmentEndTime = normalizeTimeInput(appointment.end_time);
 
   const nurseNameValue = appointment.nurse?.name?.trim() ?? "";
   nurseAssignmentMode.value = nurseNameValue ? "custom" : "primary";
@@ -1128,8 +1149,6 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
   runPatientSearch(
     () => fetchPatientAutocomplete(query),
     (results) => {
-      console.log(results);
-
       filteredPatients.value = results;
     },
     (error) => {
@@ -1219,7 +1238,6 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
   );
 };
 
-console.log(filteredPatients.value);
 </script>
 <template>
   <Dialog
@@ -1290,6 +1308,7 @@ console.log(filteredPatients.value);
             :lng="defaultMapLocation.lng"
             :zoom="9"
             height="360px"
+            @selected="mapLocation = $event"
           />
         </div>
 

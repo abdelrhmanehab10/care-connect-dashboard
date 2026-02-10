@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs } from "vue";
+import { computed, ref, toRefs, watch } from "vue";
 import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
@@ -11,13 +11,7 @@ import type {
   DataTableCellEditInitEvent,
 } from "primevue/datatable";
 import type { Appointment } from "../types";
-import {
-  doctorOptions,
-  nurseOptions,
-  socialWorkerOptions,
-  type AppointmentStatus,
-  type PatientOption,
-} from "../data/options";
+import type { AppointmentStatus, PatientOption } from "../data/options";
 import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
@@ -66,6 +60,42 @@ const hasStaffName = (value: StaffMember | null | undefined) =>
       typeof value.name === "string" &&
       value.name.trim(),
   );
+const displayStaffName = (value: StaffMember | null | undefined) =>
+  value?.name?.trim() || "-";
+
+const getStaffForField = (data: Appointment, field: string) => {
+  switch (field) {
+    case "nurse.name":
+      return data.nurse ?? null;
+    case "doctor.name":
+      return data.doctor ?? null;
+    case "social_worker.name":
+      return data.social_worker ?? null;
+    default:
+      return null;
+  }
+};
+
+const isStaffEditBlocked = (data: Appointment, field: string) =>
+  ["nurse.name", "doctor.name", "social_worker.name"].includes(field) &&
+  !hasStaffName(getStaffForField(data, field));
+
+const blockEditIfMissing = (
+  event: Event,
+  value: StaffMember | null | undefined,
+) => {
+  if (!hasStaffName(value)) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }
+};
+const blockEditIfFinalStatus = (event: Event, status: unknown) => {
+  if (isFinalStatus(status)) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+};
 
 const normalizePatientId = (value: unknown): string | number => {
   if (typeof value === "number") {
@@ -91,6 +121,12 @@ const normalizeStaffId = (value: unknown): number => {
 
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
 const editDrafts = new Map<string, unknown>();
+const editSnapshots = new Map<string, unknown>();
+
+const closeCellEditor = () => {
+  if (typeof document === "undefined") return;
+  document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+};
 
 const getFieldValue = (data: Appointment, field: string) => {
   switch (field) {
@@ -181,7 +217,31 @@ const applyFieldValue = (
   }
 };
 
+const isOptionValue = (value: unknown) =>
+  typeof value === "object" && value !== null && "name" in value;
+
+const shouldIgnoreStringDraft = (
+  field: string,
+  value: unknown,
+  data: Appointment,
+) => {
+  if (typeof value !== "string") return false;
+  if (!value.trim()) return false;
+  if (
+    !["patient.name", "nurse.name", "doctor.name", "social_worker.name"].includes(
+      field,
+    )
+  ) {
+    return false;
+  }
+  const draft = editDrafts.get(snapshotKey(data, field));
+  return isOptionValue(draft);
+};
+
 const setFieldValue = (data: Appointment, field: string, value: unknown) => {
+  if (shouldIgnoreStringDraft(field, value, data)) {
+    return;
+  }
   editDrafts.set(snapshotKey(data, field), value);
   applyFieldValue(data, field, value);
 };
@@ -196,6 +256,29 @@ const props = defineProps<{
 }>();
 const { isLoading, detailsLoadingId } = toRefs(props);
 
+const cloneAppointment = (appointment: Appointment): Appointment => ({
+  ...appointment,
+  patient: { ...ensurePatient(appointment.patient) },
+  nurse: { ...ensureStaffMember(appointment.nurse) },
+  doctor: { ...ensureStaffMember(appointment.doctor) },
+  social_worker: appointment.social_worker
+    ? { ...appointment.social_worker }
+    : appointment.social_worker ?? null,
+  patient_address: appointment.patient_address
+    ? { ...appointment.patient_address }
+    : appointment.patient_address,
+});
+
+const editableAppointments = ref<Appointment[]>([]);
+
+watch(
+  () => props.appointments,
+  (items) => {
+    editableAppointments.value = items.map(cloneAppointment);
+  },
+  { immediate: true, deep: true },
+);
+
 const filteredPatients = ref<PatientOption[]>([]);
 const filteredNurses = ref<EmployeeOption[]>([]);
 const filteredDoctors = ref<EmployeeOption[]>([]);
@@ -205,19 +288,6 @@ const { run: runPatientSearch, cancel: cancelPatientSearch } =
 const { run: runNurseSearch } = useDebouncedAsync(300);
 const { run: runDoctorSearch } = useDebouncedAsync(300);
 const { run: runSocialWorkerSearch } = useDebouncedAsync(300);
-const editSnapshots = new Map<string, unknown>();
-const fallbackNurseOptions = nurseOptions.map((name) => ({
-  id: 0,
-  name,
-}));
-const fallbackDoctorOptions = doctorOptions.map((name) => ({
-  id: 0,
-  name,
-}));
-const fallbackSocialWorkerOptions = socialWorkerOptions.map((name) => ({
-  id: 0,
-  name,
-}));
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
     id: -(index + 1),
@@ -246,8 +316,9 @@ const loadingRows = computed(() =>
   })),
 );
 const displayAppointments = computed(() =>
-  isLoading.value ? loadingRows.value : props.appointments,
+  isLoading.value ? loadingRows.value : editableAppointments.value,
 );
+const staffCellBodyStyle = { padding: "0" } as const;
 const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 
 const searchPatients = (event: AutoCompleteCompleteEvent) => {
@@ -272,45 +343,54 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
 
 const searchNurses = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
+  if (query.length < 2) {
+    filteredNurses.value = [];
+    return;
+  }
   runNurseSearch(
     () => fetchEmployeeOptionsByTitle("nurse", query),
     (results) => {
-      filteredNurses.value =
-        results.length > 0 ? results : [...fallbackNurseOptions];
+      filteredNurses.value = results;
     },
     (error) => {
       console.error("Failed to load nurses.", error);
-      filteredNurses.value = [...fallbackNurseOptions];
+      filteredNurses.value = [];
     },
   );
 };
 
 const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
+  if (query.length < 2) {
+    filteredDoctors.value = [];
+    return;
+  }
   runDoctorSearch(
     () => fetchEmployeeOptionsByTitle("doctor", query),
     (results) => {
-      filteredDoctors.value =
-        results.length > 0 ? results : [...fallbackDoctorOptions];
+      filteredDoctors.value = results;
     },
     (error) => {
       console.error("Failed to load doctors.", error);
-      filteredDoctors.value = [...fallbackDoctorOptions];
+      filteredDoctors.value = [];
     },
   );
 };
 
 const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
+  if (query.length < 2) {
+    filteredSocialWorkers.value = [];
+    return;
+  }
   runSocialWorkerSearch(
     () => fetchEmployeeOptionsByTitle("social_worker", query),
     (results) => {
-      filteredSocialWorkers.value =
-        results.length > 0 ? results : [...fallbackSocialWorkerOptions];
+      filteredSocialWorkers.value = results;
     },
     (error) => {
       console.error("Failed to load social workers.", error);
-      filteredSocialWorkers.value = [...fallbackSocialWorkerOptions];
+      filteredSocialWorkers.value = [];
     },
   );
 };
@@ -526,6 +606,22 @@ const isStatusLocked = (data: Appointment) => {
 };
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
+  if (event.field === "status" && isStatusLocked(event.data)) {
+    const originalEvent = event.originalEvent as Event | undefined;
+    originalEvent?.preventDefault?.();
+    originalEvent?.stopPropagation?.();
+    setTimeout(closeCellEditor, 0);
+    return;
+  }
+
+  if (isStaffEditBlocked(event.data, event.field)) {
+    const originalEvent = event.originalEvent as Event | undefined;
+    originalEvent?.preventDefault?.();
+    originalEvent?.stopPropagation?.();
+    setTimeout(closeCellEditor, 0);
+    return;
+  }
+
   const key = snapshotKey(event.data, event.field);
   if (editSnapshots.has(key)) {
     return;
@@ -549,6 +645,13 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
 const handleCellEditComplete = (
   event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
+  if (isStaffEditBlocked(event.data, event.field)) {
+    const key = snapshotKey(event.data, event.field);
+    editSnapshots.delete(key);
+    editDrafts.delete(key);
+    return;
+  }
+
   const key = snapshotKey(event.data, event.field);
   const previousValue = editSnapshots.get(key);
 
@@ -564,12 +667,12 @@ const handleCellEditComplete = (
   const draftValue = editDrafts.get(key);
   if (draftValue !== undefined) {
     applyFieldValue(event.data, event.field, draftValue);
-    if (event.newData) {
-      applyFieldValue(event.newData as Appointment, event.field, draftValue);
-    }
     event.newValue = draftValue;
     editDrafts.delete(key);
   }
+
+  // Ensure consumers see the same mutated row for nested edits.
+  (event as DataTableCellEditCompleteEvent<Appointment>).newData = event.data;
 
   editSnapshots.delete(key);
   emit("cell-edit-complete", event);
@@ -768,6 +871,7 @@ const emit = defineEmits<{
             v-else
             class="cc-badge"
             :class="statusBadgeClass(data.status as AppointmentStatus)"
+            @click="blockEditIfFinalStatus($event, data.status)"
           >
             {{ data.status ?? "-" }}
           </span>
@@ -820,14 +924,20 @@ const emit = defineEmits<{
         </template>
       </Column>
 
-      <Column field="nurse.name" header="Nurse">
+      <Column field="nurse.name" header="Nurse" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.nurse?.name ?? "-" }}</span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockEditIfMissing($event, data.nurse)"
+            @click="blockEditIfMissing($event, data.nurse)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+            <span v-else>{{ displayStaffName(data.nurse) }}</span>
+          </div>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
-            <div class="cc-cell-edit">
+            <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
                   :modelValue="data.nurse ?? null"
@@ -836,7 +946,6 @@ const emit = defineEmits<{
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
                   forceSelection
-                  :disabled="!hasStaffName(data.nurse)"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -862,7 +971,6 @@ const emit = defineEmits<{
                 <button
                   type="button"
                   class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  :disabled="!hasStaffName(data.nurse)"
                   @click.stop="editorSaveCallback($event)"
                 >
                   Save
@@ -880,14 +988,20 @@ const emit = defineEmits<{
         </template>
       </Column>
 
-      <Column field="doctor.name" header="Doctor">
+      <Column field="doctor.name" header="Doctor" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.doctor?.name ?? "-" }}</span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockEditIfMissing($event, data.doctor)"
+            @click="blockEditIfMissing($event, data.doctor)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+            <span v-else>{{ displayStaffName(data.doctor) }}</span>
+          </div>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
-            <div class="cc-cell-edit">
+            <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
                   :modelValue="data.doctor ?? null"
@@ -896,7 +1010,6 @@ const emit = defineEmits<{
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
                   forceSelection
-                  :disabled="!hasStaffName(data.doctor)"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -924,7 +1037,6 @@ const emit = defineEmits<{
                 <button
                   type="button"
                   class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  :disabled="!hasStaffName(data.doctor)"
                   @click.stop="editorSaveCallback($event)"
                 >
                   Save
@@ -942,14 +1054,24 @@ const emit = defineEmits<{
         </template>
       </Column>
 
-      <Column field="social_worker.name" header="Social worker">
+      <Column
+        field="social_worker.name"
+        header="Social worker"
+        :bodyStyle="staffCellBodyStyle"
+      >
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.social_worker?.name ?? "-" }}</span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockEditIfMissing($event, data.social_worker)"
+            @click="blockEditIfMissing($event, data.social_worker)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+            <span v-else>{{ displayStaffName(data.social_worker) }}</span>
+          </div>
         </template>
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
-            <div class="cc-cell-edit">
+            <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
                 <AutoComplete
                   :modelValue="data.social_worker ?? null"
@@ -958,7 +1080,6 @@ const emit = defineEmits<{
                   :completeOnFocus="true"
                   :autoOptionFocus="true"
                   forceSelection
-                  :disabled="!hasStaffName(data.social_worker)"
                   appendTo="self"
                   panelClass="cc-autocomplete-panel"
                   inputClass="cc-input cc-input-sm"
@@ -986,7 +1107,6 @@ const emit = defineEmits<{
                 <button
                   type="button"
                   class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  :disabled="!hasStaffName(data.social_worker)"
                   @click.stop="editorSaveCallback($event)"
                 >
                   Save
@@ -1036,3 +1156,18 @@ const emit = defineEmits<{
     </DataTable>
   </div>
 </template>
+
+<style scoped>
+.cc-cell-block {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
+  box-sizing: border-box;
+}
+
+.cc-staff-edit {
+  padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
+  box-sizing: border-box;
+}
+</style>

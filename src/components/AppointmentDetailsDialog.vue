@@ -194,9 +194,9 @@ const handleCancel = async () => {
     <template #header>
       <div class="cc-head">
         <div class="cc-head-top">
-          <router-link class="cc-title cc-link">
+          <span class="cc-title cc-link">
             {{ patientName() }}
-          </router-link>
+          </span>
 
           <div class="cc-head-actions">
             <span :class="statusClass(displayStatus)">

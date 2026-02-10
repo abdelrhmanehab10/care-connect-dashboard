@@ -289,6 +289,9 @@ const syncCalendarRange = (payload: { start: string; end: string }) => {
 
 const resolveInlineAddress = (appointment: Appointment) => {
   const address = String(appointment.patient_address?.address ?? "").trim();
+  if (!address) {
+    return null;
+  }
   const latRaw = appointment.patient_address?.lat;
   const lngRaw = appointment.patient_address?.lng;
   const lat =
@@ -297,10 +300,6 @@ const resolveInlineAddress = (appointment: Appointment) => {
     typeof lngRaw === "number" ? lngRaw : Number(String(lngRaw ?? "").trim());
   const hasLat = Number.isFinite(lat);
   const hasLng = Number.isFinite(lng);
-
-  if (!address && !hasLat && !hasLng) {
-    return null;
-  }
 
   return {
     address,
@@ -738,7 +737,7 @@ const emit = defineEmits<{
             <button
               type="button"
               class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light"
-              @click="emit('export-excel')"
+              @click="exportExcel"
             >
               Export Excel
             </button>
@@ -756,7 +755,6 @@ const emit = defineEmits<{
                   :visit-type-options="visitTypeOptions"
                   @cell-edit-complete="handleCellEditComplete"
                   @view-details="openDetails"
-                  @export-excel="exportExcel"
                 />
                 <div class="cc-table-footer">
                   <div class="cc-help-text">
