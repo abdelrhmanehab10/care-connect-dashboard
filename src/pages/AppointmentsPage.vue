@@ -146,6 +146,8 @@ const tabPanelsPt = {
   root: { class: "cc-tab-content" },
 };
 
+const isCalendarView = computed(() => activeTab.value === "calendar");
+
 const mergeAppointmentDetails = (
   details: Partial<Appointment>,
   fallback: Appointment,
@@ -312,6 +314,44 @@ const resolveInlineAddress = (appointment: Appointment) => {
   };
 };
 
+const normalizeStaffPayloadId = (value: number | null | undefined) =>
+  typeof value === "number" && value > 0 ? String(value) : "";
+
+const normalizeInlineStaffId = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
+
+const resolveInlineStaff = (value: unknown) => {
+  if (value && typeof value === "object") {
+    const typed = value as {
+      id?: number | string | null;
+      employee_id?: number | string | null;
+      name?: string | null;
+      full_name?: string | null;
+      text?: string | null;
+    };
+    const id = normalizeInlineStaffId(typed.id ?? typed.employee_id);
+    const name = String(
+      typed.name ?? typed.full_name ?? typed.text ?? "",
+    ).trim();
+    if (id || name) {
+      return { id, name };
+    }
+    return null;
+  }
+  if (typeof value === "string") {
+    return { id: 0, name: value.trim() };
+  }
+  return null;
+};
+
 const buildInlineUpdatePayload = (
   appointment: Appointment,
 ): UpdateAppointmentPayload => {
@@ -326,9 +366,9 @@ const buildInlineUpdatePayload = (
     end_time: appointment.end_time ?? "",
     is_recurring: "0",
     status: appointment.status ?? "",
-    doctor_id: String(appointment.doctor?.id ?? ""),
-    nurse_id: String(appointment.nurse?.id ?? ""),
-    social_worker_id: String(appointment.social_worker?.id ?? ""),
+    doctor_id: normalizeStaffPayloadId(appointment.doctor?.id),
+    nurse_id: normalizeStaffPayloadId(appointment.nurse?.id),
+    social_worker_id: normalizeStaffPayloadId(appointment.social_worker?.id),
   };
 
   const address = resolveInlineAddress(appointment);
@@ -349,15 +389,26 @@ const applyInlineEditChange = (
   switch (field) {
     case "patient.name": {
       if (value && typeof value === "object") {
-        const typed = value as { id?: string | number | null; name?: string };
+        const typed = value as {
+          id?: string | number | null;
+          name?: string | null;
+          date_of_birth?: string | null;
+          phone?: string | null;
+        };
         const id = String(typed.id ?? "").trim();
         const name = String(typed.name ?? "").trim();
         updated.patient = {
           ...updated.patient,
           id,
           name: name || updated.patient?.name || "",
-          date_of_birth: updated.patient?.date_of_birth ?? "",
-          phone: updated.patient?.phone ?? "",
+          date_of_birth:
+            String(typed.date_of_birth ?? "").trim() ||
+            updated.patient?.date_of_birth ||
+            "",
+          phone:
+            String(typed.phone ?? "").trim() ||
+            updated.patient?.phone ||
+            "",
         };
         return updated;
       }
@@ -367,6 +418,37 @@ const applyInlineEditChange = (
         name: String(value ?? "").trim(),
         date_of_birth: updated.patient?.date_of_birth ?? "",
         phone: updated.patient?.phone ?? "",
+      };
+      return updated;
+    }
+    case "nurse.name": {
+      const staff = resolveInlineStaff(value);
+      if (!staff) return updated;
+      updated.nurse = {
+        ...updated.nurse,
+        id: staff.id,
+        name: staff.name || updated.nurse?.name || "",
+      };
+      return updated;
+    }
+    case "doctor.name": {
+      const staff = resolveInlineStaff(value);
+      if (!staff) return updated;
+      updated.doctor = {
+        ...updated.doctor,
+        id: staff.id,
+        name: staff.name || updated.doctor?.name || "",
+      };
+      return updated;
+    }
+    case "social_worker.name": {
+      const staff = resolveInlineStaff(value);
+      if (!staff) return updated;
+      const existing = updated.social_worker ?? { id: 0, name: "" };
+      updated.social_worker = {
+        ...existing,
+        id: staff.id,
+        name: staff.name || existing.name,
       };
       return updated;
     }
@@ -384,19 +466,6 @@ const applyInlineEditChange = (
       return updated;
     case "visit_type":
       updated.visit_type = String(value ?? "");
-      return updated;
-    case "nurse.name":
-      updated.nurse = { ...updated.nurse, name: String(value ?? "") };
-      return updated;
-    case "doctor.name":
-      updated.doctor = { ...updated.doctor, name: String(value ?? "") };
-      return updated;
-    case "social_worker.name":
-      updated.social_worker = {
-        ...updated.social_worker,
-        id: updated.social_worker?.id ?? 0,
-        name: String(value ?? ""),
-      };
       return updated;
     default:
       return updated;
@@ -656,6 +725,7 @@ const emit = defineEmits<{
           :visit-type-options="visitTypeOptions"
           :quick-patient-label="quickPatientLabel"
           :quick-doctor-label="quickDoctorLabel"
+          :is-calendar-view="isCalendarView"
         />
 
         <Tabs v-model:value="activeTab">

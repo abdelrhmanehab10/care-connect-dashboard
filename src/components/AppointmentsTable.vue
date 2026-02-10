@@ -21,7 +21,10 @@ import {
 import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
-import { fetchEmployeesByTitle } from "../services/employees";
+import {
+  fetchEmployeeOptionsByTitle,
+  type EmployeeOption,
+} from "../services/employees";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 type StaffMember = Appointment["doctor"];
@@ -42,12 +45,20 @@ const ensureStaffMember = (
   value: StaffMember | null | undefined,
 ): StaffMember => value ?? { id: 0, name: "" };
 
-const isPatientLike = (value: unknown): value is {
+const isPatientLike = (
+  value: unknown,
+): value is {
   id?: unknown;
   name?: unknown;
   date_of_birth?: unknown;
-} =>
-  typeof value === "object" && value !== null && "name" in value;
+} => typeof value === "object" && value !== null && "name" in value;
+
+const isStaffLike = (
+  value: unknown,
+): value is {
+  id?: unknown;
+  name?: unknown;
+} => typeof value === "object" && value !== null && "name" in value;
 
 const normalizePatientId = (value: unknown): string | number => {
   if (typeof value === "number") {
@@ -58,6 +69,21 @@ const normalizePatientId = (value: unknown): string | number => {
   }
   return "";
 };
+
+const normalizeStaffId = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
+
+const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
+const editDrafts = new Map<string, unknown>();
 
 const getFieldValue = (data: Appointment, field: string) => {
   switch (field) {
@@ -74,7 +100,11 @@ const getFieldValue = (data: Appointment, field: string) => {
   }
 };
 
-const setFieldValue = (data: Appointment, field: string, value: unknown) => {
+const applyFieldValue = (
+  data: Appointment,
+  field: string,
+  value: unknown,
+) => {
   switch (field) {
     case "patient.name":
       if (isPatientLike(value)) {
@@ -82,11 +112,11 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
         const dateOfBirth =
           typeof value.date_of_birth === "string"
             ? value.date_of_birth
-            : data.patient?.date_of_birth ?? "";
+            : (data.patient?.date_of_birth ?? "");
         const phone =
           typeof (value as { phone?: unknown }).phone === "string"
-            ? (value as { phone?: string }).phone ?? ""
-            : data.patient?.phone ?? "";
+            ? ((value as { phone?: string }).phone ?? "")
+            : (data.patient?.phone ?? "");
         data.patient = {
           id: normalizePatientId(value.id),
           name,
@@ -104,22 +134,49 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
       return;
     case "nurse.name":
       data.nurse = ensureStaffMember(data.nurse);
-      data.nurse.name =
-        typeof value === "string" ? value : String(value ?? "");
+      if (isStaffLike(value)) {
+        data.nurse.name =
+          typeof value.name === "string" ? value.name : data.nurse.name;
+        data.nurse.id = normalizeStaffId(value.id);
+        return;
+      }
+      data.nurse.name = typeof value === "string" ? value : String(value ?? "");
+      data.nurse.id = 0;
       return;
     case "doctor.name":
       data.doctor = ensureStaffMember(data.doctor);
+      if (isStaffLike(value)) {
+        data.doctor.name =
+          typeof value.name === "string" ? value.name : data.doctor.name;
+        data.doctor.id = normalizeStaffId(value.id);
+        return;
+      }
       data.doctor.name =
         typeof value === "string" ? value : String(value ?? "");
+      data.doctor.id = 0;
       return;
     case "social_worker.name":
       data.social_worker = ensureStaffMember(data.social_worker ?? null);
+      if (isStaffLike(value)) {
+        data.social_worker.name =
+          typeof value.name === "string"
+            ? value.name
+            : data.social_worker.name;
+        data.social_worker.id = normalizeStaffId(value.id);
+        return;
+      }
       data.social_worker.name =
         typeof value === "string" ? value : String(value ?? "");
+      data.social_worker.id = 0;
       return;
     default:
       (data as Record<string, unknown>)[field] = value;
   }
+};
+
+const setFieldValue = (data: Appointment, field: string, value: unknown) => {
+  editDrafts.set(snapshotKey(data, field), value);
+  applyFieldValue(data, field, value);
 };
 
 const props = defineProps<{
@@ -132,18 +189,28 @@ const props = defineProps<{
 }>();
 const { isLoading, detailsLoadingId, visitTypeOptions } = toRefs(props);
 
-
-
 const filteredPatients = ref<PatientOption[]>([]);
-const filteredNurses = ref<string[]>([]);
-const filteredDoctors = ref<string[]>([]);
-const filteredSocialWorkers = ref<string[]>([]);
+const filteredNurses = ref<EmployeeOption[]>([]);
+const filteredDoctors = ref<EmployeeOption[]>([]);
+const filteredSocialWorkers = ref<EmployeeOption[]>([]);
 const { run: runPatientSearch, cancel: cancelPatientSearch } =
   useDebouncedAsync(300);
 const { run: runNurseSearch } = useDebouncedAsync(300);
 const { run: runDoctorSearch } = useDebouncedAsync(300);
 const { run: runSocialWorkerSearch } = useDebouncedAsync(300);
 const editSnapshots = new Map<string, unknown>();
+const fallbackNurseOptions = nurseOptions.map((name) => ({
+  id: 0,
+  name,
+}));
+const fallbackDoctorOptions = doctorOptions.map((name) => ({
+  id: 0,
+  name,
+}));
+const fallbackSocialWorkerOptions = socialWorkerOptions.map((name) => ({
+  id: 0,
+  name,
+}));
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
     id: -(index + 1),
@@ -198,60 +265,52 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
 
 const searchNurses = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredNurses.value = [...nurseOptions];
-    return;
-  }
-
   runNurseSearch(
-    () => fetchEmployeesByTitle("nurse", query),
+    () => fetchEmployeeOptionsByTitle("nurse", query),
     (results) => {
-      filteredNurses.value = results.length > 0 ? results : [...nurseOptions];
+      filteredNurses.value =
+        results.length > 0 ? results : [...fallbackNurseOptions];
     },
     (error) => {
       console.error("Failed to load nurses.", error);
-      filteredNurses.value = [...nurseOptions];
+      filteredNurses.value = [...fallbackNurseOptions];
     },
   );
 };
 
 const searchDoctors = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredDoctors.value = [...doctorOptions];
-    return;
-  }
-
   runDoctorSearch(
-    () => fetchEmployeesByTitle("doctor", query),
+    () => fetchEmployeeOptionsByTitle("doctor", query),
     (results) => {
-      filteredDoctors.value = results.length > 0 ? results : [...doctorOptions];
+      filteredDoctors.value =
+        results.length > 0 ? results : [...fallbackDoctorOptions];
     },
     (error) => {
       console.error("Failed to load doctors.", error);
-      filteredDoctors.value = [...doctorOptions];
+      filteredDoctors.value = [...fallbackDoctorOptions];
     },
   );
 };
 
 const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
   const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredSocialWorkers.value = [...socialWorkerOptions];
-    return;
-  }
-
   runSocialWorkerSearch(
-    () => fetchEmployeesByTitle("social_worker", query),
+    () => fetchEmployeeOptionsByTitle("social_worker", query),
     (results) => {
       filteredSocialWorkers.value =
-        results.length > 0 ? results : [...socialWorkerOptions];
+        results.length > 0 ? results : [...fallbackSocialWorkerOptions];
     },
     (error) => {
       console.error("Failed to load social workers.", error);
-      filteredSocialWorkers.value = [...socialWorkerOptions];
+      filteredSocialWorkers.value = [...fallbackSocialWorkerOptions];
     },
   );
+};
+
+const isAutoCompleteEvent = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement | null;
+  return Boolean(target?.closest?.(".p-autocomplete"));
 };
 
 const handleEditorKeydown = (
@@ -260,6 +319,9 @@ const handleEditorKeydown = (
   cancel: (event: Event) => void,
 ) => {
   if (event.key === "Enter") {
+    if (isAutoCompleteEvent(event)) {
+      return;
+    }
     event.preventDefault();
     save(event);
     return;
@@ -425,8 +487,12 @@ const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
   return true;
 };
 
-
-const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
+const getSnapshotValue = (data: Appointment, field: string) =>
+  editSnapshots.get(snapshotKey(data, field));
+const isStatusLocked = (data: Appointment) => {
+  const snapshot = getSnapshotValue(data, "status");
+  return isFinalStatus(snapshot ?? data.status);
+};
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   const key = snapshotKey(event.data, event.field);
@@ -444,8 +510,9 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
     return;
   }
 
-  setFieldValue(data, event.field, editSnapshots.get(key));
+  applyFieldValue(data, event.field, editSnapshots.get(key));
   editSnapshots.delete(key);
+  editDrafts.delete(key);
 };
 
 const handleCellEditComplete = (
@@ -456,10 +523,21 @@ const handleCellEditComplete = (
 
   if (event.field === "status" && previousValue !== undefined) {
     if (!isStatusTransitionAllowed(previousValue, event.data.status)) {
-      setFieldValue(event.data, event.field, previousValue);
+      applyFieldValue(event.data, event.field, previousValue);
       editSnapshots.delete(key);
+      editDrafts.delete(key);
       return;
     }
+  }
+
+  const draftValue = editDrafts.get(key);
+  if (draftValue !== undefined) {
+    applyFieldValue(event.data, event.field, draftValue);
+    if (event.newData) {
+      applyFieldValue(event.newData as Appointment, event.field, draftValue);
+    }
+    event.newValue = draftValue;
+    editDrafts.delete(key);
   }
 
   editSnapshots.delete(key);
@@ -468,18 +546,23 @@ const handleCellEditComplete = (
 const emit = defineEmits<{
   (
     event: "cell-edit-complete",
-    payload: DataTableCellEditCompleteEvent<Appointment>
+    payload: DataTableCellEditCompleteEvent<Appointment>,
   ): void;
   (event: "view-details", payload: Appointment): void;
 }>();
-
 </script>
 
 <template>
   <div class="cc-card">
- 
-    <DataTable :value="displayAppointments" dataKey="id" :editMode="editMode" @cell-edit-init="handleCellEditInit"
-      @cell-edit-cancel="handleCellEditCancel" @cell-edit-complete="handleCellEditComplete" :pt="dataTablePt">
+    <DataTable
+      :value="displayAppointments"
+      dataKey="id"
+      :editMode="editMode"
+      @cell-edit-init="handleCellEditInit"
+      @cell-edit-cancel="handleCellEditCancel"
+      @cell-edit-complete="handleCellEditComplete"
+      :pt="dataTablePt"
+    >
       <template #empty>
         <div v-if="!isLoading" class="cc-empty">No appointments yet.</div>
       </template>
@@ -493,21 +576,32 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <input v-model="data.date" type="date" class="cc-input cc-input-sm" @keydown="
-                  handleEditorKeydown(
-                    $event,
-                    editorSaveCallback,
-                    editorCancelCallback,
-                  )
-                  " />
+                <input
+                  v-model="data.date"
+                  type="date"
+                  class="cc-input cc-input-sm"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
+                />
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -525,29 +619,49 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.patient ?? null" :suggestions="filteredPatients" optionLabel="name"
-                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                <AutoComplete
+                  :modelValue="data.patient ?? null"
+                  :suggestions="filteredPatients"
+                  optionLabel="name"
+                  :completeOnFocus="true"
+                  :autoOptionFocus="true"
+                  forceSelection
+                  appendTo="self"
                   panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search patient"
+                  inputClass="cc-input cc-input-sm"
+                  :pt="autoCompletePt"
+                  placeholder="Search patient"
                   @update:modelValue="
                     setFieldValue(data, 'patient.name', $event)
-                    " @option-select="
+                  "
+                  @option-select="
                     setFieldValue(data, 'patient.name', $event.value)
-                    " @complete="searchPatients" @keydown="
+                  "
+                  @complete="searchPatients"
+                  @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                    " @keydown.down.stop @keydown.up.stop />
+                  "
+                  @keydown.down.stop
+                  @keydown.up.stop
+                />
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -567,28 +681,44 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields cc-cell-edit-fields-row">
-                <input v-model="data.start_time" type="time" class="cc-input cc-input-sm" @keydown="
-                  handleEditorKeydown(
-                    $event,
-                    editorSaveCallback,
-                    editorCancelCallback,
-                  )
-                  " />
-                <input v-model="data.end_time" type="time" class="cc-input cc-input-sm" @keydown="
-                  handleEditorKeydown(
-                    $event,
-                    editorSaveCallback,
-                    editorCancelCallback,
-                  )
-                  " />
+                <input
+                  v-model="data.start_time"
+                  type="time"
+                  class="cc-input cc-input-sm"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
+                />
+                <input
+                  v-model="data.end_time"
+                  type="time"
+                  class="cc-input cc-input-sm"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
+                />
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -600,7 +730,11 @@ const emit = defineEmits<{
       <Column field="status" header="Status">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
-          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)">
+          <span
+            v-else
+            class="cc-badge"
+            :class="statusBadgeClass(data.status as AppointmentStatus)"
+          >
             {{ data.status ?? "-" }}
           </span>
         </template>
@@ -608,28 +742,42 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <select v-model="data.status" class="cc-select cc-select-sm" :disabled="isFinalStatus(data.status)"
+                  <select
+                    v-model="data.status"
+                    class="cc-select cc-select-sm"
+                    :disabled="isStatusLocked(data)"
                   @keydown="
-                  handleEditorKeydown(
-                    $event,
-                    editorSaveCallback,
-                    editorCancelCallback,
-                  )
-                  ">
-                  <option v-for="status in getStatusOptionsForRow(data.status)" :key="status.key" :value="status.key"
-                    :disabled="status.disabled">
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
+                >
+                  <option
+                    v-for="status in getStatusOptionsForRow(data.status)"
+                    :key="status.key"
+                    :value="status.key"
+                    :disabled="status.disabled"
+                  >
                     {{ status.label }}
                   </option>
                 </select>
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  :disabled="isFinalStatus(data.status)"
-                  @click.stop="editorSaveCallback($event)">
+                  <button
+                    type="button"
+                    class="cc-btn cc-btn-outline-success cc-btn-sm"
+                    :disabled="isStatusLocked(data)"
+                    @click.stop="editorSaveCallback($event)"
+                  >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -647,24 +795,47 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.nurse?.name ?? ''" :suggestions="filteredNurses" :completeOnFocus="true"
-                  :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search nurse"
-                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)" @complete="searchNurses" @keydown="
+                <AutoComplete
+                  :modelValue="data.nurse ?? null"
+                  :suggestions="filteredNurses"
+                  optionLabel="name"
+                  :completeOnFocus="true"
+                  :autoOptionFocus="true"
+                  forceSelection
+                  appendTo="self"
+                  panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm"
+                  :pt="autoCompletePt"
+                  placeholder="Search nurse"
+                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
+                  @option-select="
+                    setFieldValue(data, 'nurse.name', $event.value)
+                  "
+                  @complete="searchNurses"
+                  @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                    " @keydown.down.stop @keydown.up.stop />
+                  "
+                  @keydown.down.stop
+                  @keydown.up.stop
+                />
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -682,24 +853,49 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.doctor?.name ?? ''" :suggestions="filteredDoctors"
-                  :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search doctor"
-                  @update:modelValue="setFieldValue(data, 'doctor.name', $event)" @complete="searchDoctors" @keydown="
+                <AutoComplete
+                  :modelValue="data.doctor ?? null"
+                  :suggestions="filteredDoctors"
+                  optionLabel="name"
+                  :completeOnFocus="true"
+                  :autoOptionFocus="true"
+                  forceSelection
+                  appendTo="self"
+                  panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm"
+                  :pt="autoCompletePt"
+                  placeholder="Search doctor"
+                  @update:modelValue="
+                    setFieldValue(data, 'doctor.name', $event)
+                  "
+                  @option-select="
+                    setFieldValue(data, 'doctor.name', $event.value)
+                  "
+                  @complete="searchDoctors"
+                  @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                    " @keydown.down.stop @keydown.up.stop />
+                  "
+                  @keydown.down.stop
+                  @keydown.up.stop
+                />
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -717,26 +913,49 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.social_worker?.name ?? ''" :suggestions="filteredSocialWorkers"
-                  :completeOnFocus="true" :autoOptionFocus="true" appendTo="self" panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm" :pt="autoCompletePt" placeholder="Search social worker"
+                <AutoComplete
+                  :modelValue="data.social_worker ?? null"
+                  :suggestions="filteredSocialWorkers"
+                  optionLabel="name"
+                  :completeOnFocus="true"
+                  :autoOptionFocus="true"
+                  forceSelection
+                  appendTo="self"
+                  panelClass="cc-autocomplete-panel"
+                  inputClass="cc-input cc-input-sm"
+                  :pt="autoCompletePt"
+                  placeholder="Search social worker"
                   @update:modelValue="
                     setFieldValue(data, 'social_worker.name', $event)
-                    " @complete="searchSocialWorkers" @keydown="
+                  "
+                  @option-select="
+                    setFieldValue(data, 'social_worker.name', $event.value)
+                  "
+                  @complete="searchSocialWorkers"
+                  @keydown="
                     handleEditorKeydown(
                       $event,
                       editorSaveCallback,
                       editorCancelCallback,
                     )
-                    " @keydown.down.stop @keydown.up.stop />
+                  "
+                  @keydown.down.stop
+                  @keydown.up.stop
+                />
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -754,25 +973,39 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <select v-model="data.visit_type" class="cc-select cc-select-sm" @keydown="
-                  handleEditorKeydown(
-                    $event,
-                    editorSaveCallback,
-                    editorCancelCallback,
-                  )
-                  ">
-                  <option v-for="type in visitTypeOptions" :key="type" :value="type">
+                <select
+                  v-model="data.visit_type"
+                  class="cc-select cc-select-sm"
+                  @keydown="
+                    handleEditorKeydown(
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback,
+                    )
+                  "
+                >
+                  <option
+                    v-for="type in visitTypeOptions"
+                    :key="type"
+                    :value="type"
+                  >
                     {{ type }}
                   </option>
                 </select>
               </div>
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline-success cc-btn-sm"
+                  @click.stop="editorSaveCallback($event)"
+                >
                   Save
                 </button>
-                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)">
+                <button
+                  type="button"
+                  class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)"
+                >
                   Cancel
                 </button>
               </div>
@@ -784,12 +1017,21 @@ const emit = defineEmits<{
       <Column header="Actions" style="width: 8.5rem">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
-          <button v-else type="button" class="cc-icon-btn cc-icon-btn-outline"
+          <button
+            v-else
+            type="button"
+            class="cc-icon-btn cc-icon-btn-outline"
             :disabled="detailsLoadingId === data.id"
-            :aria-label="detailsLoadingId === data.id ? 'Loading details' : 'View details'"
-            @click="emit('view-details', data)">
-            <i v-if="detailsLoadingId === data.id" class="fa-solid fa-spinner fa-spin cc-icon"
-              aria-hidden="true"></i>
+            :aria-label="
+              detailsLoadingId === data.id ? 'Loading details' : 'View details'
+            "
+            @click="emit('view-details', data)"
+          >
+            <i
+              v-if="detailsLoadingId === data.id"
+              class="fa-solid fa-spinner fa-spin cc-icon"
+              aria-hidden="true"
+            ></i>
             <Eye v-else class="cc-icon" aria-hidden="true" />
           </button>
         </template>
