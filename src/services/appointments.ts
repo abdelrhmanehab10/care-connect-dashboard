@@ -136,7 +136,7 @@ export const fetchAppointments = async (
   if (params.visit_type_id) body.visit_type_id = params.visit_type_id;
   if (params.state) body.status = params.state;
 
-  const response = await http.post("/api/vue/appointments/list", body, {
+  const response = await http.post("/vue/appointments/list", body, {
     params: {
       page: params.page ?? 1,
     },
@@ -148,7 +148,7 @@ export const fetchAppointments = async (
 export const fetchAppointmentStatuses = async (): Promise<
   AppointmentStatusOption[]
 > => {
-  const response = await http.get("/api/vue/appointments/status-list");
+  const response = await http.get("/vue/appointments/status-list");
   const payload = response.data;
 
   if (Array.isArray(payload)) {
@@ -168,7 +168,7 @@ export const fetchAppointmentStatuses = async (): Promise<
 
 export const fetchAppointmentCards =
   async (): Promise<AppointmentCardsData> => {
-    const response = await http.get("/api/vue/appointments/cards");
+    const response = await http.get("/vue/appointments/cards");
     const payload = response.data;
     if (payload?.data) {
       return payload.data as AppointmentCardsData;
@@ -179,9 +179,7 @@ export const fetchAppointmentCards =
 export const fetchAppointmentDetails = async (
   appointmentId: number,
 ): Promise<AppointmentDetails> => {
-  const response = await http.get(
-    `/api/vue/appointments/details/${appointmentId}`,
-  );
+  const response = await http.get(`/vue/appointments/details/${appointmentId}`);
   const payload = response.data?.data ?? response.data;
   return payload as AppointmentDetails;
 };
@@ -203,7 +201,7 @@ export const fetchAppointmentLog = async (
 export const createAppointment = async (
   payload: CreateAppointmentPayload,
 ): Promise<unknown> => {
-  const response = await http.post("/api/vue/appointments/create", payload);
+  const response = await http.post("/vue/appointments/create", payload);
   return response.data;
 };
 
@@ -212,7 +210,7 @@ export const updateAppointment = async (
   payload: UpdateAppointmentPayload,
 ): Promise<unknown> => {
   const response = await http.post(
-    `/api/vue/appointments/update/${appointmentId}`,
+    `/vue/appointments/update/${appointmentId}`,
     payload,
   );
   return response.data;
@@ -222,7 +220,7 @@ export const confirmAppointmentAll = async (
   appointmentId: number,
 ): Promise<unknown> => {
   const response = await http.get(
-    `/api/vue/appointments/confirm-all/${appointmentId}`,
+    `/vue/appointments/confirm-all/${appointmentId}`,
   );
   return response.data;
 };
@@ -231,7 +229,7 @@ export const quickNoShowAppointment = async (
   appointmentId: number,
 ): Promise<unknown> => {
   const response = await http.post(
-    `/api/vue/appointments/quick-no-show/${appointmentId}`,
+    `/vue/appointments/quick-no-show/${appointmentId}`,
   );
   return response.data;
 };
@@ -245,11 +243,8 @@ export const cancelAppointment = async (
   appointmentId: number,
   payload: CancelAppointmentPayload = {},
 ): Promise<unknown> => {
-  const response = await http.get(
-    `/api/vue/appointments/cancel/${appointmentId}`,
-    {
-      params: payload,
-    },
-  );
+  const response = await http.get(`/vue/appointments/cancel/${appointmentId}`, {
+    params: payload,
+  });
   return response.data;
 };

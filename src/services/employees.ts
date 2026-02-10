@@ -19,7 +19,7 @@ export const fetchEmployeesByTitle = async (
   title: EmployeeTitle,
   query?: string,
 ): Promise<string[]> => {
-  const response = await http.get("/api/employees/search", {
+  const response = await http.get("/employees/search", {
     params: {
       title,
       q: query?.trim() || undefined,

@@ -11,7 +11,7 @@ type AreaPayload = {
 };
 
 export const fetchAreas = async (): Promise<AreaOption[]> => {
-  const response = await http.get("/api/areas");
+  const response = await http.get("/areas");
   const payload = response.data?.data ?? response.data;
 
   if (!Array.isArray(payload)) {

@@ -10,7 +10,7 @@ type PatientAutocompleteItem = {
 export const fetchPatientAutocomplete = async (
   query: string,
 ): Promise<PatientOption[]> => {
-  const response = await http.get("/api/patients/autocomplete", {
+  const response = await http.get("/patients/autocomplete", {
     params: { q: query },
   });
   const payload = response.data?.data ?? response.data;

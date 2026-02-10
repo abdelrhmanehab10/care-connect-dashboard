@@ -1136,6 +1136,8 @@ const searchPatients = (event: AutoCompleteCompleteEvent) => {
   runPatientSearch(
     () => fetchPatientAutocomplete(query),
     (results) => {
+      console.log(results);
+
       filteredPatients.value = results;
     },
     (error) => {
@@ -1224,6 +1226,8 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
     },
   );
 };
+
+console.log(filteredPatients.value);
 </script>
 <template>
   <Dialog
@@ -1274,7 +1278,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
           >
             <template #option="slotProps">
               <div class="cc-row cc-row-between">
-                <span>{{ slotProps.option.text }}</span>
+                <span>{{ slotProps.option.name }}</span>
               </div>
             </template>
           </AutoComplete>

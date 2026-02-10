@@ -7,7 +7,7 @@ export type VisitType = {
 };
 
 export const fetchVisitTypes = async (): Promise<VisitType[]> => {
-  const { data } = await http.get("/api/visit-types");
+  const { data } = await http.get("/visit-types");
 
   return data.data;
 };
