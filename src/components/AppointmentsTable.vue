@@ -23,8 +23,12 @@ const reasonText = ref("");
 type PendingSave = {
   data: Appointment;
   field: string;
+  key: string;
   saveCb: (e: Event) => void;
+  cancelCb: (e: Event) => void;
   originalEvent: Event;
+  completedEvent?: DataTableCellEditCompleteEvent<Appointment>;
+  wasCanceled?: boolean;
 };
 
 const pendingSave = ref<PendingSave | null>(null);
@@ -35,9 +39,10 @@ const openReasonBeforeSave = (
   field: string,
   e: Event,
   saveCb: (e: Event) => void,
-  _cancelCb: (e: Event) => void,
+  cancelCb: (e: Event) => void,
 ) => {
-  pendingSave.value = { data, field, saveCb, originalEvent: e };
+  const key = snapshotKey(data, field);
+  pendingSave.value = { data, field, key, saveCb, cancelCb, originalEvent: e };
   reasonText.value = "";
   reasonDialogVisible.value = true;
 };
@@ -48,17 +53,56 @@ const confirmReasonAndSave = () => {
   const reason = reasonText.value.trim();
   if (!reason) return;
 
-  const { data, field, saveCb, originalEvent } = pendingSave.value;
-  const key = snapshotKey(data, field);
+  const pending = pendingSave.value;
+  const { key, saveCb, originalEvent } = pending;
   editReasons.set(key, reason);
   explicitSaveKeys.add(key);
 
   reasonDialogVisible.value = false;
+  reasonText.value = "";
   pendingSave.value = null;
+
+  if (pending.completedEvent) {
+    handleCellEditComplete(pending.completedEvent);
+    return;
+  }
+
+  if (pending.wasCanceled) {
+    const previousValue = editSnapshots.get(key);
+    const draftValue = editDrafts.get(key);
+    const currentValue =
+      draftValue !== undefined
+        ? draftValue
+        : getFieldValue(pending.data, pending.field);
+    const syntheticEvent = {
+      originalEvent,
+      data: pending.data,
+      newData: pending.data,
+      value: previousValue,
+      newValue: currentValue,
+      field: pending.field,
+      index: -1,
+    } as DataTableCellEditCompleteEvent<Appointment>;
+    handleCellEditComplete(syntheticEvent);
+    return;
+  }
+
   saveCb(originalEvent);
 };
 
 const cancelReasonModal = () => {
+  const pending = pendingSave.value;
+  if (pending) {
+    const previousValue = editSnapshots.get(pending.key);
+    if (previousValue !== undefined) {
+      applyFieldValue(pending.data, pending.field, previousValue);
+    }
+    editSnapshots.delete(pending.key);
+    editDrafts.delete(pending.key);
+    explicitSaveKeys.delete(pending.key);
+    editReasons.delete(pending.key);
+    pending.cancelCb(pending.originalEvent);
+  }
   reasonDialogVisible.value = false;
   pendingSave.value = null;
   reasonText.value = "";
@@ -633,6 +677,14 @@ const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
 const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
   const data = event.data as Appointment;
   const key = snapshotKey(data, event.field);
+  if (
+    pendingSave.value &&
+    reasonDialogVisible.value &&
+    pendingSave.value.key === key
+  ) {
+    pendingSave.value.wasCanceled = true;
+    return;
+  }
   if (!editSnapshots.has(key)) {
     return;
   }
@@ -648,6 +700,14 @@ const handleCellEditComplete = (
   event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
   const key = snapshotKey(event.data, event.field);
+  if (
+    pendingSave.value &&
+    reasonDialogVisible.value &&
+    pendingSave.value.key === key
+  ) {
+    pendingSave.value.completedEvent = event;
+    return;
+  }
   const previousValue = editSnapshots.get(key);
   if (isStaffEditBlocked(event.data, event.field)) {
     if (previousValue !== undefined) {

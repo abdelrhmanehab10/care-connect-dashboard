@@ -360,6 +360,7 @@ const resolveInlineStaff = (value: unknown) => {
 
 const buildInlineUpdatePayload = (
   appointment: Appointment,
+  reason?: string,
 ): UpdateAppointmentPayload => {
   const visitTypeId = appointment.visit_type
     ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
@@ -376,6 +377,11 @@ const buildInlineUpdatePayload = (
     nurse_id: normalizeStaffPayloadId(appointment.nurse?.id),
     social_worker_id: normalizeStaffPayloadId(appointment.social_worker?.id),
   };
+
+  const normalizedReason = String(reason ?? "").trim();
+  if (normalizedReason) {
+    payload.reason = normalizedReason;
+  }
 
   const address = resolveInlineAddress(appointment);
   if (address) {
@@ -503,13 +509,16 @@ const restoreOptimisticSnapshot = (snapshot: Array<[unknown, unknown]>) => {
   });
 };
 
-const handleInlineUpdate = async (appointment: Appointment): Promise<void> => {
+const handleInlineUpdate = async (
+  appointment: Appointment,
+  reason = "",
+): Promise<void> => {
   if (!appointment?.id || isInlineSaving.value) return;
   isInlineSaving.value = true;
   const snapshot = queryClient.getQueriesData({ queryKey: ["appointments"] });
   applyOptimisticUpdate(appointment);
   try {
-    const payload = buildInlineUpdatePayload(appointment);
+    const payload = buildInlineUpdatePayload(appointment, reason);
     await updateAppointment(appointment.id, payload);
     toast.add({
       severity: "success",
@@ -536,9 +545,16 @@ const handleInlineUpdate = async (appointment: Appointment): Promise<void> => {
 const handleCellEditComplete = (
   event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
+  const eventReason = String(
+    (
+      event as DataTableCellEditCompleteEvent<Appointment> & {
+        reason?: string;
+      }
+    ).reason ?? "",
+  ).trim();
   const base = event.newData ?? event.data;
   const updated = applyInlineEditChange(base, event.field, event.newValue);
-  void handleInlineUpdate(updated);
+  void handleInlineUpdate(updated, eventReason);
 };
 
 const openDetails = async (appointment: Appointment) => {

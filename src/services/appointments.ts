@@ -117,6 +117,7 @@ type EmployeeRecurringSlot = {
 export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
   nurse_id?: string;
   status?: string;
+  reason?: string;
 };
 
 export const fetchAppointments = async (
@@ -221,6 +222,16 @@ export const confirmAppointmentAll = async (
 ): Promise<unknown> => {
   const response = await http.get(
     `/vue/appointments/confirm-all/${appointmentId}`,
+  );
+  return response.data;
+};
+
+export const confirmAppointmentEmployee = async (
+  appointmentId: number,
+  employeeId: number,
+): Promise<unknown> => {
+  const response = await http.get(
+    `/vue/appointments/confirm/${appointmentId}/${employeeId}`,
   );
   return response.data;
 };
