@@ -422,10 +422,18 @@ const formatTime = (value: string | null | undefined) => {
   return `${hours}:${minutes}`;
 };
 
+const getTodayIsoDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const normalizeDateInput = (value: string | null | undefined) => {
-  if (!value) return "";
+  if (!value) return getTodayIsoDate();
   const trimmed = value.trim();
-  if (!trimmed) return "";
+  if (!trimmed) return getTodayIsoDate();
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
@@ -443,7 +451,7 @@ const normalizeDateInput = (value: string | null | undefined) => {
     const day = String(parsed.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
-  return "";
+  return getTodayIsoDate();
 };
 
 const normalizeStatusKey = (value: unknown) =>

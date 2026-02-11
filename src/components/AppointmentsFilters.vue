@@ -338,6 +338,42 @@ const setDefaultTodayRange = () => {
   endDate.value = new Date(today);
 };
 
+const formatDateInputValue = (value: Date | null) => {
+  if (!value) return "";
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateInputValue = (value: string): Date | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+};
+
+const startDateInput = computed({
+  get: () => formatDateInputValue(startDate.value),
+  set: (value: string) => {
+    startDate.value = parseDateInputValue(value);
+  },
+});
+
+const endDateInput = computed({
+  get: () => formatDateInputValue(endDate.value),
+  set: (value: string) => {
+    endDate.value = parseDateInputValue(value);
+  },
+});
+
 onMounted(() => {
   if (!isCalendarView.value) {
     setDefaultTodayRange();
@@ -477,12 +513,24 @@ watch(
       </div> -->
       <div class="col-md-2">
         <label for="filterStartDate" class="cc-label">Start Date</label>
-        <input id="filterStartDate" type="date" class="form-control cc-input" v-model="startDate" :disabled="isCalendarView" />
+        <input
+          id="filterStartDate"
+          type="date"
+          class="form-control cc-input"
+          v-model="startDateInput"
+          :disabled="isCalendarView"
+        />
       </div>
 
       <div class="col-md-2">
         <label for="filterEndDate" class="cc-label">End Date</label>
-        <input id="filterEndDate" type="date" class="form-control cc-input" v-model="endDate" :disabled="isCalendarView" />
+        <input
+          id="filterEndDate"
+          type="date"
+          class="form-control cc-input"
+          v-model="endDateInput"
+          :disabled="isCalendarView"
+        />
       </div>
 
       <div class="col-md-2">

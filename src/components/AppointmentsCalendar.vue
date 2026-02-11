@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
+import { useToast } from "primevue/usetoast";
 import CalendarAppointmentCard from "./CalendarAppointmentCard.vue";
 import {
   confirmAppointmentAll,
@@ -25,6 +26,7 @@ const props = defineProps<{
   rangeStart?: string;
   rangeEnd?: string;
 }>();
+const toast = useToast();
 const emit = defineEmits<{
   (event: "edit", appointment: Appointment): void;
   (event: "confirm-all", appointment: Appointment): void;
@@ -275,6 +277,12 @@ const confirmAll = async (appointment: Appointment) => {
   setConfirming(appointment.id, true);
   try {
     await confirmAppointmentAll(appointment.id);
+    toast.add({
+      severity: "success",
+      summary: "Appointment confirmed",
+      detail: "Appointment confirmed successfully.",
+      life: 3000,
+    });
     emit("confirm-all", appointment);
   } catch (error) {
     console.error("Failed to confirm appointment.", error);
@@ -291,6 +299,12 @@ const markNoShow = async (appointment: Appointment) => {
   setNoShowLoading(appointment.id, true);
   try {
     await quickNoShowAppointment(appointment.id);
+    toast.add({
+      severity: "success",
+      summary: "No show updated",
+      detail: "Appointment marked as no show.",
+      life: 3000,
+    });
     emit("no-show", appointment);
   } catch (error) {
     console.error("Failed to mark appointment as no show.", error);
@@ -307,6 +321,12 @@ const handleCancelAppointment = async (appointment: Appointment) => {
   setCancelLoading(appointment.id, true);
   try {
     await cancelAppointmentApi(appointment.id);
+    toast.add({
+      severity: "success",
+      summary: "Appointment canceled",
+      detail: "Appointment canceled successfully.",
+      life: 3000,
+    });
     emit("cancel", appointment);
   } catch (error) {
     console.error("Failed to cancel appointment.", error);
