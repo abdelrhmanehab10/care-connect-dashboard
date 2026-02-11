@@ -15,6 +15,7 @@ import { z } from "zod";
 import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
+import { useToast } from "primevue/usetoast";
 import { Loader2 } from "lucide-vue-next";
 import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import { type PatientOption, type Weekday } from "../data/options";
@@ -31,6 +32,23 @@ import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
 
 const visible = defineModel<boolean>({ required: true });
+type ToastMessage = {
+  severity?: string;
+  summary?: string;
+  detail?: string;
+  life?: number;
+};
+type ToastApi = {
+  add: (message: ToastMessage) => void;
+};
+const resolveToast = (): ToastApi | null => {
+  try {
+    return useToast();
+  } catch {
+    return null;
+  }
+};
+const toast = resolveToast();
 const props = withDefaults(
   defineProps<{
     appointment?: Appointment | null;
@@ -77,6 +95,7 @@ const isVisitTypesLoading = ref(false);
 const mapLocation = ref<LocationValue | null>(null);
 const instructions = ref("");
 const hasAttemptedSubmit = ref(false);
+const pendingSaveAction = ref<"create" | "update" | null>(null);
 const nurseName = ref<string | null>(null);
 const doctorName = ref<string | null>(null);
 const socialWorkerName = ref<string | null>(null);
@@ -204,6 +223,7 @@ const fallbackVisitTypes = computed<VisitType[]>(() =>
     id: name,
     name,
     providers: [],
+    duration: null,
   })),
 );
 
@@ -220,6 +240,27 @@ const normalizeProvider = (value: string) => {
 const selectedVisitType = computed(
   () =>
     availableVisitTypes.value.find((type) => type.name === visit.type) ?? null,
+);
+const parseVisitTypeDurationHours = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) {
+      return null;
+    }
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const parsed = Number(value.trim());
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+const selectedVisitDurationHours = computed(() =>
+  parseVisitTypeDurationHours(selectedVisitType.value?.duration),
 );
 const visitProviders = computed(() =>
   (selectedVisitType.value?.providers ?? []).map(normalizeProvider),
@@ -298,10 +339,38 @@ const resolveScheduleTimes = () => {
   return { date, startTime, endTime };
 };
 
+const parseClockToMinutes = (value: string) => {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  const [, rawHours = "", rawMinutes = ""] = match ?? [];
+  if (!rawHours || !rawMinutes) {
+    return null;
+  }
+  const hours = Number(rawHours);
+  const minutes = Number(rawMinutes);
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
+const formatDurationHoursLabel = (hours: number) =>
+  Number.isInteger(hours)
+    ? `${hours} hour${hours === 1 ? "" : "s"}`
+    : `${hours} hours`;
+
 const validationSchema = z
   .object({
     patientSelected: z.boolean(),
     visitType: z.string(),
+    visitTypeDurationHours: z.number().nullable(),
     isRecurring: z.boolean(),
     date: z.string(),
     startTime: z.string(),
@@ -376,6 +445,31 @@ const validationSchema = z
         path: ["endTime"],
         message: "End time must be after start time.",
       });
+    }
+
+    if (
+      !values.isRecurring &&
+      values.visitTypeDurationHours !== null &&
+      values.startTime.trim() &&
+      values.endTime.trim()
+    ) {
+      const startMinutes = parseClockToMinutes(values.startTime);
+      const endMinutes = parseClockToMinutes(values.endTime);
+      if (
+        startMinutes !== null &&
+        endMinutes !== null &&
+        endMinutes > startMinutes
+      ) {
+        const allowedMinutes = Math.round(values.visitTypeDurationHours * 60);
+        const actualMinutes = endMinutes - startMinutes;
+        if (actualMinutes > allowedMinutes) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["endTime"],
+            message: `Duration must be within ${formatDurationHoursLabel(values.visitTypeDurationHours)}.`,
+          });
+        }
+      }
     }
 
     if (values.nurseRequired && !(values.nurseName?.trim() ?? "")) {
@@ -503,6 +597,7 @@ const buildValidationPayload = () => {
   return {
     patientSelected: isPatientOption(selectedPatient.value),
     visitType: visit.type ?? "",
+    visitTypeDurationHours: selectedVisitDurationHours.value,
     isRecurring,
     date: formatDate(date),
     startTime: formatTime(startTime),
@@ -778,6 +873,20 @@ const resolveAppointmentPatient = (
   return patientMatch ?? null;
 };
 
+const applyDurationTimeDefaults = (durationHours: number) => {
+  const now = new Date();
+  const durationMs = Math.round(durationHours * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + durationMs);
+  schedule.isRecurring = false;
+  schedule.appointmentDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  schedule.appointmentStartTime = formatTime(now);
+  schedule.appointmentEndTime = formatTime(end);
+};
+
 const loadVisitTypes = async () => {
   isVisitTypesLoading.value = true;
   try {
@@ -994,11 +1103,54 @@ watch(
   },
 );
 
+watch(selectedVisitDurationHours, (durationHours) => {
+  if (!visible.value || props.appointment || durationHours === null) {
+    return;
+  }
+
+  applyDurationTimeDefaults(durationHours);
+});
+
 watch(visible, (value) => {
   if (!value) {
+    pendingSaveAction.value = null;
     resetForm();
   }
 });
+
+watch(
+  () => props.isSaving,
+  (isSaving, wasSaving) => {
+    if (isSaving || !wasSaving || !pendingSaveAction.value) {
+      return;
+    }
+
+    const action = pendingSaveAction.value;
+    const errorDetail = props.errorMessage?.trim() ?? "";
+    if (errorDetail) {
+      toast?.add({
+        severity: "error",
+        summary:
+          action === "update" ? "Failed to update appointment" : "Failed to create appointment",
+        detail: errorDetail,
+        life: 4000,
+      });
+    } else {
+      toast?.add({
+        severity: "success",
+        summary:
+          action === "update" ? "Appointment updated" : "Appointment created",
+        detail:
+          action === "update"
+            ? "Appointment changes saved successfully."
+            : "Appointment saved successfully.",
+        life: 3000,
+      });
+    }
+
+    pendingSaveAction.value = null;
+  },
+);
 
 onMounted(() => {
   void loadVisitTypes();
@@ -1174,6 +1326,7 @@ const handleSave = () => {
     instructions: trimmedInstructions,
   };
 
+  pendingSaveAction.value = props.appointment ? "update" : "create";
   emit("save", payload);
 };
 
@@ -1312,7 +1465,8 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
           <div v-if="!schedule.isRecurring" class="cc-stack">
             <div class="cc-grid">
               <label for="appointmentDate" class="cc-label">Date</label>
-              <input id="appointmentDate" type="date" class="form-control" v-model="schedule.appointmentDate" />
+              <DatePicker v-model="schedule.appointmentDate" inputId="appointmentDate" appendTo="body"
+                panelClass="cc-datepicker-panel" :pt="datePickerPt" />
 
               <div v-if="hasAttemptedSubmit && validationErrors.date" class="cc-help-text cc-help-text--error">
                 {{ validationErrors.date }}
@@ -1349,7 +1503,8 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
             <div class="cc-grid cc-grid-2">
               <div>
                 <label for="recurringStartDate" class="cc-label">Start Date</label>
-                <input id="recurringStartDate" type="date" class="form-control" v-model="schedule.recurringStartDate" />
+                <DatePicker v-model="schedule.recurringStartDate" inputId="recurringStartDate" appendTo="body"
+                  panelClass="cc-datepicker-panel" :pt="datePickerPt" />
                 <div v-if="hasAttemptedSubmit && validationErrors.date" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.date }}
                 </div>
@@ -1357,7 +1512,8 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
 
               <div>
                 <label for="recurringEndDate" class="cc-label">End Date</label>
-                <input id="recurringEndDate" type="date" class="form-control" v-model="schedule.recurringEndDate" />
+                <DatePicker v-model="schedule.recurringEndDate" inputId="recurringEndDate" appendTo="body"
+                  panelClass="cc-datepicker-panel" :pt="datePickerPt" />
               </div>
             </div>
 
@@ -1376,12 +1532,14 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
 
                 <div>
                   <label :for="`start-${row.id}`" class="cc-label">Start Time</label>
-                  <input :id="`start-${row.id}`" type="time" class="cc-input" v-model="row.startTime" />
+                  <DatePicker v-model="row.startTime" :inputId="`start-${row.id}`" timeOnly hourFormat="24"
+                    appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
                 </div>
 
                 <div>
                   <label :for="`end-${row.id}`" class="cc-label">End Time</label>
-                  <input :id="`end-${row.id}`" type="time" class="cc-input" v-model="row.endTime" />
+                  <DatePicker v-model="row.endTime" :inputId="`end-${row.id}`" timeOnly hourFormat="24" appendTo="body"
+                    panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
                 </div>
 
                 <!-- Delete button on the right -->
