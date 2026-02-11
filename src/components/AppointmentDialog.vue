@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
+  getCurrentInstance,
   isRef,
   onMounted,
   reactive,
@@ -15,7 +16,6 @@ import { z } from "zod";
 import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
-import { useToast } from "primevue/usetoast";
 import { Loader2 } from "lucide-vue-next";
 import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import { type PatientOption, type Weekday } from "../data/options";
@@ -41,14 +41,9 @@ type ToastMessage = {
 type ToastApi = {
   add: (message: ToastMessage) => void;
 };
-const resolveToast = (): ToastApi | null => {
-  try {
-    return useToast();
-  } catch {
-    return null;
-  }
-};
-const toast = resolveToast();
+const componentInstance = getCurrentInstance();
+const toast = (componentInstance?.appContext.config.globalProperties.$toast ??
+  null) as ToastApi | null;
 const props = withDefaults(
   defineProps<{
     appointment?: Appointment | null;
@@ -156,6 +151,53 @@ const schedule = reactive({
   appointmentEndTime: null as string | null,
   recurringStartDate: null as Date | null,
   recurringEndDate: null as Date | null,
+});
+
+const formatNativeDateValue = (value: Date | null) => {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return "";
+  }
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseNativeDateValue = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) {
+    return null;
+  }
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const appointmentDateInput = computed({
+  get: () => formatNativeDateValue(schedule.appointmentDate),
+  set: (value: string) => {
+    schedule.appointmentDate = parseNativeDateValue(value);
+  },
+});
+
+const recurringStartDateInput = computed({
+  get: () => formatNativeDateValue(schedule.recurringStartDate),
+  set: (value: string) => {
+    schedule.recurringStartDate = parseNativeDateValue(value);
+  },
+});
+
+const recurringEndDateInput = computed({
+  get: () => formatNativeDateValue(schedule.recurringEndDate),
+  set: (value: string) => {
+    schedule.recurringEndDate = parseNativeDateValue(value);
+  },
 });
 
 type RecurrenceRow = {
@@ -1465,8 +1507,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
           <div v-if="!schedule.isRecurring" class="cc-stack">
             <div class="cc-grid">
               <label for="appointmentDate" class="cc-label">Date</label>
-              <DatePicker v-model="schedule.appointmentDate" inputId="appointmentDate" appendTo="body"
-                panelClass="cc-datepicker-panel" :pt="datePickerPt" />
+              <input id="appointmentDate" v-model="appointmentDateInput" type="date" class="form-control" />
 
               <div v-if="hasAttemptedSubmit && validationErrors.date" class="cc-help-text cc-help-text--error">
                 {{ validationErrors.date }}
@@ -1503,8 +1544,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
             <div class="cc-grid cc-grid-2">
               <div>
                 <label for="recurringStartDate" class="cc-label">Start Date</label>
-                <DatePicker v-model="schedule.recurringStartDate" inputId="recurringStartDate" appendTo="body"
-                  panelClass="cc-datepicker-panel" :pt="datePickerPt" />
+                <input id="recurringStartDate" v-model="recurringStartDateInput" type="date" class="form-control" />
                 <div v-if="hasAttemptedSubmit && validationErrors.date" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.date }}
                 </div>
@@ -1512,8 +1552,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
 
               <div>
                 <label for="recurringEndDate" class="cc-label">End Date</label>
-                <DatePicker v-model="schedule.recurringEndDate" inputId="recurringEndDate" appendTo="body"
-                  panelClass="cc-datepicker-panel" :pt="datePickerPt" />
+                <input id="recurringEndDate" v-model="recurringEndDateInput" type="date" class="form-control" />
               </div>
             </div>
 
