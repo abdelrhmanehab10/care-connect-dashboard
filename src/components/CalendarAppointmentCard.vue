@@ -48,7 +48,8 @@ const onCancel = () => emit("cancel", props.event.appointment);
         {{ formatTimeRange(event.appointment) }}
       </span>
       <span class="cc-calendar-event-provider">
-        Dr: {{ displayValue(event.appointment.doctor?.name) }}
+        Dr: {{ displayValue(event.appointment.doctor?.name) }}<i class="fa-solid fa-circle-info mx-1"></i>
+
       </span>
     </div>
     <span

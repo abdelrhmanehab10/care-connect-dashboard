@@ -1396,13 +1396,13 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
         </div>
 
         <div>
-          <label for="visitType" class="cc-label cc-label-strong">Visit type</label>
+          <label for="visitType" class="cc-label cc-label-strong">Visit Type</label>
           <select id="visitType" v-model="visit.type" class="cc-select">
             <option value="" disabled>
               {{
                 isVisitTypesLoading
                   ? "Loading visit types..."
-                  : "Select visit type"
+                  : "Select visit Type"
               }}
             </option>
             <option v-for="type in availableVisitTypes" :key="type.id" :value="type.name">
@@ -1416,7 +1416,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
 
         <div class="cc-panel">
           <div class="cc-stack cc-stack-sm">
-            <div class="cc-section-title">Date &amp; time</div>
+            <div class="cc-section-title">Date &amp; Time</div>
             <div class="cc-row">
               <label for="recurring" class="cc-label-inline">Is recurring?</label>
 
@@ -1435,7 +1435,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
             </div>
             <div class="cc-grid cc-grid-2">
               <div>
-                <label class="cc-label" for="appointmentStartTime">Start time</label>
+                <label class="cc-label" for="appointmentStartTime">Start Time</label>
 
                 <div class="input-group">
                   <input id="appointmentStartTime" type="time" class="form-control"
@@ -1447,7 +1447,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
               </div>
 
               <div>
-                <label class="cc-label" for="appointmentEndTime">End time</label>
+                <label class="cc-label" for="appointmentEndTime">End Time</label>
 
                 <div class="input-group">
                   <input id="appointmentEndTime" type="time" class="form-control"
@@ -1463,7 +1463,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
           <div v-else class="cc-stack">
             <div class="cc-grid cc-grid-2">
               <div>
-                <label for="recurringStartDate" class="cc-label">Start date</label>
+                <label for="recurringStartDate" class="cc-label">Start Date</label>
                 <input id="recurringStartDate" type="date" class="form-control" v-model="schedule.recurringStartDate" />
                 <div v-if="hasAttemptedSubmit && validationErrors.date" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.date }}
@@ -1471,7 +1471,7 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
               </div>
 
               <div>
-                <label for="recurringEndDate" class="cc-label">End date</label>
+                <label for="recurringEndDate" class="cc-label">End Date</label>
                 <input id="recurringEndDate" type="date" class="form-control" v-model="schedule.recurringEndDate" />
               </div>
             </div>

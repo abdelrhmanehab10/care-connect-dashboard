@@ -267,6 +267,7 @@ const handleCancel = async () => {
             ></span>
             <span class="cc-sub-text">{{ locationText() }}</span>
           </div>
+          <i class="fa-solid fa-diamond-turn-right"></i>
         </div>
 
         <div class="cc-chip-row">
@@ -437,6 +438,7 @@ const handleCancel = async () => {
   flex-wrap: wrap;
   color: #6b7280;
   font-size: 13px;
+  align-items: center;
 }
 
 .cc-sub-item {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watch } from "vue";
+import { computed, ref, toRefs, watch,onBeforeUnmount } from "vue";
 import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
@@ -20,14 +20,58 @@ import {
   type EmployeeOption,
 } from "../services/employees";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
-import Dialog from "primevue/dialog";
-import Textarea from "primevue/textarea";
 
-// dialog state
-const reasonDialogVisible = ref(false);
+// ✅ Bootstrap Modal (Vite friendly)
+import { nextTick } from "vue";
+import Modal from "bootstrap/js/dist/modal";
+
+// state
 const reasonText = ref("");
+const bsModalId = "reasonModal";
 
-// هنخزن عملية الـ save المعلّقة لحد ما المستخدم يكتب السبب
+// instance
+let bsModalInstance: Modal | null = null;
+
+const getModalEl = () => document.getElementById(bsModalId) as HTMLElement | null;
+
+const showReasonModal = async () => {
+  // تأكد إن الـ DOM اتعمل render
+  await nextTick();
+
+  const el = getModalEl();
+  if (!el) {
+    console.error(`Modal element #${bsModalId} not found in DOM`);
+    return;
+  }
+
+  // لو فيه instance قديم على نفس العنصر، هاته بدل ما تنشئ واحد جديد
+  bsModalInstance = Modal.getInstance(el) ?? new Modal(el, {
+    backdrop: "static",
+    keyboard: false,
+    focus: true,
+  });
+
+  bsModalInstance.show();
+};
+
+const hideReasonModal = async () => {
+  await nextTick();
+  const el = getModalEl();
+  if (!el) return;
+
+  const instance = Modal.getInstance(el);
+  instance?.hide();
+};
+
+onBeforeUnmount(() => {
+  const el = getModalEl();
+  if (!el) return;
+  const instance = Modal.getInstance(el);
+  instance?.dispose();
+  bsModalInstance = null;
+});
+
+// -------- Reason flow (same logic) --------
 type PendingSave = {
   data: Appointment;
   field: string;
@@ -37,52 +81,43 @@ type PendingSave = {
 };
 
 const pendingSave = ref<PendingSave | null>(null);
-
-// نخزن السبب لكل cell (عشان نقرأه في handleCellEditComplete)
 const editReasons = new Map<string, string>();
 
-const openReasonBeforeSave = (
+const openReasonBeforeSave = async (
   data: Appointment,
   field: string,
   e: Event,
   saveCb: (e: Event) => void,
   cancelCb: (e: Event) => void,
 ) => {
-  // (اختياري) لو عايز تتأكد إنه اتغير فعلاً قبل ما تطلب سبب
-  // const key = snapshotKey(data, field);
-  // const prev = editSnapshots.get(key);
-  // const curr = getFieldValue(data, field);
-  // if (JSON.stringify(prev) === JSON.stringify(curr)) return saveCb(e);
-
   pendingSave.value = { data, field, saveCb, cancelCb, originalEvent: e };
   reasonText.value = "";
-  reasonDialogVisible.value = true;
+  await showReasonModal();
 };
 
-const confirmReasonAndSave = () => {
+const confirmReasonAndSave = async () => {
   if (!pendingSave.value) return;
 
   const reason = reasonText.value.trim();
-  if (!reason) return; // خليها required
+  if (!reason) return;
 
   const { data, field, saveCb, originalEvent } = pendingSave.value;
 
-  // خزّن السبب على نفس key بتاع الـ snapshot
+  // خزّن السبب
   editReasons.set(snapshotKey(data, field), reason);
 
-  reasonDialogVisible.value = false;
+  // اقفل المودال
+  await hideReasonModal();
 
-  // نفّذ الحفظ الحقيقي
-  saveCb(originalEvent);
-
+  // نفّذ save
   pendingSave.value = null;
+  saveCb(originalEvent);
 };
 
-const cancelReasonDialog = () => {
-  // لو المستخدم قفل الـ dialog، ما تعملش save
-  reasonDialogVisible.value = false;
+const cancelReasonModal = async () => {
   pendingSave.value = null;
   reasonText.value = "";
+  await hideReasonModal();
 };
 
 type StaffMember = Appointment["doctor"];
@@ -1187,27 +1222,49 @@ const emit = defineEmits<{
       </Column>
     </DataTable>
 
-    <Dialog v-model:visible="reasonDialogVisible" modal header="Reason required" :style="{ width: '32rem' }"
-      @hide="cancelReasonDialog">
-      <div class="cc-form">
-        <label class="cc-label">Please enter the reason for this change</label>
-        <Textarea v-model="reasonText" rows="4" class="cc-input" autoResize
-          placeholder="e.g. Patient requested reschedule..." />
-        <small v-if="!reasonText.trim()" class="cc-text-danger">
-          Reason is required.
-        </small>
+    <!-- Bootstrap Reason Modal -->
+<div
+  class="modal fade"
+  :id="bsModalId"
+  tabindex="-1"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h6 class="modal-title text-danger fw-bold">Reason required</h6>
+        <button type="button" class="btn-close" @click="cancelReasonModal"></button>
       </div>
 
-      <template #footer>
-        <button class="cc-btn cc-btn-outline" type="button" @click="cancelReasonDialog">
+      <div class="modal-body">
+        <label class="form-label mb-2">Please Enter The Reason</label>
+        <textarea
+          v-model="reasonText"
+          class="form-control"
+          rows="2"
+        />
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" @click="cancelReasonModal">
           Cancel
         </button>
-        <button class="cc-btn cc-btn-outline-success" type="button" :disabled="!reasonText.trim()"
-          @click="confirmReasonAndSave">
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="!reasonText.trim()"
+          @click="confirmReasonAndSave"
+        >
           Confirm & Save
         </button>
-      </template>
-    </Dialog>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
 
   </div>
 </template>
@@ -1225,4 +1282,14 @@ const emit = defineEmits<{
   padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
   box-sizing: border-box;
 }
+
+/* footer */
+.cc-reason-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid #eef2f7;
+}
+
 </style>
