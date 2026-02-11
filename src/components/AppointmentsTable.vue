@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watch,onBeforeUnmount } from "vue";
+import { computed, ref, toRefs, watch } from "vue";
 import AutoComplete from "primevue/autocomplete";
 import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
@@ -10,6 +10,7 @@ import type {
   DataTableCellEditCompleteEvent,
   DataTableCellEditInitEvent,
 } from "primevue/datatable";
+import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
 import type { Appointment } from "../types";
 import type { AppointmentStatus, PatientOption } from "../data/options";
 import type { AppointmentStatusOption } from "../services/appointments";
@@ -21,104 +22,51 @@ import {
 } from "../services/employees";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
-// ✅ Bootstrap Modal (Vite friendly)
-import { nextTick } from "vue";
-import Modal from "bootstrap/js/dist/modal";
-
-// state
+const reasonDialogVisible = ref(false);
 const reasonText = ref("");
-const bsModalId = "reasonModal";
 
-// instance
-let bsModalInstance: Modal | null = null;
-
-const getModalEl = () => document.getElementById(bsModalId) as HTMLElement | null;
-
-const showReasonModal = async () => {
-  // تأكد إن الـ DOM اتعمل render
-  await nextTick();
-
-  const el = getModalEl();
-  if (!el) {
-    console.error(`Modal element #${bsModalId} not found in DOM`);
-    return;
-  }
-
-  // لو فيه instance قديم على نفس العنصر، هاته بدل ما تنشئ واحد جديد
-  bsModalInstance = Modal.getInstance(el) ?? new Modal(el, {
-    backdrop: "static",
-    keyboard: false,
-    focus: true,
-  });
-
-  bsModalInstance.show();
-};
-
-const hideReasonModal = async () => {
-  await nextTick();
-  const el = getModalEl();
-  if (!el) return;
-
-  const instance = Modal.getInstance(el);
-  instance?.hide();
-};
-
-onBeforeUnmount(() => {
-  const el = getModalEl();
-  if (!el) return;
-  const instance = Modal.getInstance(el);
-  instance?.dispose();
-  bsModalInstance = null;
-});
-
-// -------- Reason flow (same logic) --------
 type PendingSave = {
   data: Appointment;
   field: string;
   saveCb: (e: Event) => void;
-  cancelCb: (e: Event) => void;
   originalEvent: Event;
 };
 
 const pendingSave = ref<PendingSave | null>(null);
 const editReasons = new Map<string, string>();
 
-const openReasonBeforeSave = async (
+const openReasonBeforeSave = (
   data: Appointment,
   field: string,
   e: Event,
   saveCb: (e: Event) => void,
-  cancelCb: (e: Event) => void,
+  _cancelCb: (e: Event) => void,
 ) => {
-  pendingSave.value = { data, field, saveCb, cancelCb, originalEvent: e };
+  pendingSave.value = { data, field, saveCb, originalEvent: e };
   reasonText.value = "";
-  await showReasonModal();
+  reasonDialogVisible.value = true;
 };
 
-const confirmReasonAndSave = async () => {
+const confirmReasonAndSave = () => {
   if (!pendingSave.value) return;
 
   const reason = reasonText.value.trim();
   if (!reason) return;
 
   const { data, field, saveCb, originalEvent } = pendingSave.value;
+  const key = snapshotKey(data, field);
+  editReasons.set(key, reason);
+  explicitSaveKeys.add(key);
 
-  // خزّن السبب
-  editReasons.set(snapshotKey(data, field), reason);
-  explicitSaveKeys.add(snapshotKey(data, field));
-
-  // اقفل المودال
-  await hideReasonModal();
-
-  // نفّذ save
+  reasonDialogVisible.value = false;
   pendingSave.value = null;
   saveCb(originalEvent);
 };
 
-const cancelReasonModal = async () => {
+const cancelReasonModal = () => {
+  reasonDialogVisible.value = false;
   pendingSave.value = null;
   reasonText.value = "";
-  await hideReasonModal();
 };
 
 type StaffMember = Appointment["doctor"];
@@ -806,16 +754,10 @@ const handleCellEditComplete = (
 
   editSnapshots.delete(key);
   explicitSaveKeys.delete(key);
-  // هات key بتاع نفس الـ cell
   const reasonKey = snapshotKey(event.data, event.field);
-
-  // هات السبب اللي اتكتب من الـ dialog
   const reason = editReasons.get(reasonKey) ?? "";
-
-  // (اختياري) امسحه عشان مايتكرر
   editReasons.delete(reasonKey);
-
-  // اربطه بالـ event قبل ما تبعته للـ parent
+  // Pass reason to parent alongside the cell edit payload.
   (event as any).reason = reason;
 
   emit("cell-edit-complete", event);
@@ -1255,47 +1197,13 @@ const emit = defineEmits<{
       </Column>
     </DataTable>
 
-    <!-- Bootstrap Reason Modal -->
-<div
-  class="modal fade"
-  :id="bsModalId"
-  tabindex="-1"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <h6 class="modal-title text-danger fw-bold">Reason required</h6>
-        <button type="button" class="btn-close" @click="cancelReasonModal"></button>
-      </div>
-
-      <div class="modal-body">
-        <label class="form-label mb-2">Please Enter The Reason</label>
-        <textarea
-          v-model="reasonText"
-          class="form-control"
-          rows="2"
-        />
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-danger" @click="cancelReasonModal">
-          Cancel
-        </button>
-        <button
-          type="button"
-          class="btn btn-primary"
-          :disabled="!reasonText.trim()"
-          @click="confirmReasonAndSave"
-        >
-          Confirm & Save
-        </button>
-      </div>
-
-    </div>
-  </div>
-</div>
+    <AppointmentEditReasonDialog
+      v-model:visible="reasonDialogVisible"
+      v-model:reasonText="reasonText"
+      @confirm="confirmReasonAndSave"
+      @cancel="cancelReasonModal"
+      @hide="cancelReasonModal"
+    />
   </div>
 </template>
 
@@ -1312,18 +1220,4 @@ const emit = defineEmits<{
   padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
   box-sizing: border-box;
 }
-.modal-footer{
-  justify-content: space-between;
-}
-/* footer */
-.cc-reason-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 16px 14px;
-  border-top: 1px solid #eef2f7;
-}
-
 </style>
-
-
