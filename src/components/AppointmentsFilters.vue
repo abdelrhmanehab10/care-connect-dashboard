@@ -5,10 +5,9 @@ import type {
   AutoCompleteCompleteEvent,
   AutoCompleteOptionSelectEvent,
 } from "primevue/autocomplete";
-import DatePicker from "primevue/datepicker";
 import AppointmentCards from "./AppointmentCards.vue";
 import type { AppointmentStatus, PatientOption } from "../data/options";
-import { autoCompletePt, datePickerPt } from "../ui/primevuePt";
+import { autoCompletePt } from "../ui/primevuePt";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
