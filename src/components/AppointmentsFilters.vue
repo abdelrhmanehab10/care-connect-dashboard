@@ -492,12 +492,12 @@ watch(
         />
       </div> -->
       <div class="col-md-2">
-        <label for="filterStartDate" class="cc-label">Start date</label>
+        <label for="filterStartDate" class="cc-label">Start Date</label>
         <input id="filterStartDate" type="date" class="form-control cc-input" v-model="startDate" :disabled="isCalendarView" />
       </div>
 
       <div class="col-md-2">
-        <label for="filterEndDate" class="cc-label">End date</label>
+        <label for="filterEndDate" class="cc-label">End Date</label>
         <input id="filterEndDate" type="date" class="form-control cc-input" v-model="endDate" :disabled="isCalendarView" />
       </div>
 
@@ -511,11 +511,11 @@ watch(
       </div>
 
       <div class="col-md-2">
-        <label for="stateFilter" class="cc-label">States</label>
+        <label for="stateFilter" class="cc-label">Status</label>
         <AutoComplete v-model="stateInput" inputId="stateFilter" :suggestions="filteredStates" optionLabel="key"
           :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
           panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt"
-          :placeholder="isStatesBusy ? 'Loading states...' : 'Select state'" @complete="searchStates"
+          :placeholder="isStatesBusy ? 'Loading states...' : 'Select Status'" @complete="searchStates"
           @option-select="handleStateSelect" @item-select="handleStateSelect" />
       </div>
       <div class="cc-filters-actions">

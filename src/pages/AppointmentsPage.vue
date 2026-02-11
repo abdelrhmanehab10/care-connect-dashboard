@@ -474,13 +474,13 @@ const applyOptimisticUpdate = (updated: Appointment) => {
     const next = typed.data.map((item) =>
       item.id === updated.id
         ? {
-            ...item,
-            ...updated,
-            patient: updated.patient ?? item.patient,
-            doctor: updated.doctor ?? item.doctor,
-            nurse: updated.nurse ?? item.nurse,
-            social_worker: updated.social_worker ?? item.social_worker,
-          }
+          ...item,
+          ...updated,
+          patient: updated.patient ?? item.patient,
+          doctor: updated.doctor ?? item.doctor,
+          nurse: updated.nurse ?? item.nurse,
+          social_worker: updated.social_worker ?? item.social_worker,
+        }
         : item,
     );
     return { ...typed, data: next };
@@ -704,29 +704,16 @@ const emit = defineEmits<{
       <section class="cc-main">
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointments</h2>
-          <Button
-            label="Add Appointment"
-            class="cc-btn cc-btn-primary cc-toolbar-action text-light"
-            @click="openAddDialog"
-          />
+          <Button label="Add Appointment" class="cc-btn cc-btn-primary cc-toolbar-action text-light"
+            @click="openAddDialog" />
         </div>
-        <AppointmentsFilters
-          v-model:employee-filter="employeeFilter"
-          v-model:patient-filter="patientFilter"
-          v-model:visit-type-filter="visitTypeFilter"
-          v-model:state-filter="stateFilter"
-          v-model:status-tag-filter="statusTagFilter"
-          :start-date="startDate"
-          :end-date="endDate"
-          @update:start-date="setStartDateFromFilter"
-          @update:end-date="setEndDateFromFilter"
-          :employee-options="employeeOptions"
-          :patient-options="patientOptions"
-          :visit-type-options="visitTypeOptions"
-          :quick-patient-label="quickPatientLabel"
-          :quick-doctor-label="quickDoctorLabel"
-          :is-calendar-view="isCalendarView"
-        />
+        <AppointmentsFilters v-model:employee-filter="employeeFilter" v-model:patient-filter="patientFilter"
+          v-model:visit-type-filter="visitTypeFilter" v-model:state-filter="stateFilter"
+          v-model:status-tag-filter="statusTagFilter" :start-date="startDate" :end-date="endDate"
+          @update:start-date="setStartDateFromFilter" @update:end-date="setEndDateFromFilter"
+          :employee-options="employeeOptions" :patient-options="patientOptions" :visit-type-options="visitTypeOptions"
+          :quick-patient-label="quickPatientLabel" :quick-doctor-label="quickDoctorLabel"
+          :is-calendar-view="isCalendarView" />
 
         <Tabs v-model:value="activeTab">
           <div class="cc-tabs-wrap d-flex justify-content-between">
@@ -734,48 +721,32 @@ const emit = defineEmits<{
               <Tab value="table" :pt="tabLinkPt">Table View</Tab>
               <Tab value="calendar" :pt="tabLinkPt">Calendar View</Tab>
             </TabList>
-            <button
-              type="button"
-              class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light"
-              @click="exportExcel"
-            >
+            <button v-if="activeTab === 'table'" type="button"
+              class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light" @click="exportExcel">
               Export Excel
             </button>
+
           </div>
 
           <TabPanels :pt="tabPanelsPt">
             <TabPanel value="table">
               <div class="cc-table-card">
-                <AppointmentsTable
-                  :appointments="appointments"
-                  :is-loading="isLoading"
-                  :details-loading-id="detailsLoadingId"
-                  :status-options="statusOptions"
-                  :status-badge-class="statusBadgeClass"
-                  :visit-type-options="visitTypeOptions"
-                  @cell-edit-complete="handleCellEditComplete"
-                  @view-details="openDetails"
-                />
+                <AppointmentsTable :appointments="appointments" :is-loading="isLoading"
+                  :details-loading-id="detailsLoadingId" :status-options="statusOptions"
+                  :status-badge-class="statusBadgeClass" :visit-type-options="visitTypeOptions"
+                  @cell-edit-complete="handleCellEditComplete" @view-details="openDetails" />
                 <div class="cc-table-footer">
                   <div class="cc-help-text">
                     Page {{ appointmentsResponse?.currentPage ?? 1 }} of
                     {{ totalPages }}
                   </div>
                   <div class="cc-row cc-stack-sm">
-                    <button
-                      type="button"
-                      class="cc-btn cc-btn-outline cc-btn-sm"
-                      :disabled="!canGoPrev"
-                      @click="goPrev"
-                    >
+                    <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" :disabled="!canGoPrev"
+                      @click="goPrev">
                       Prev
                     </button>
-                    <button
-                      type="button"
-                      class="cc-btn cc-btn-outline cc-btn-sm"
-                      :disabled="!canGoNext"
-                      @click="goNext"
-                    >
+                    <button type="button" class="cc-btn cc-btn-outline cc-btn-sm" :disabled="!canGoNext"
+                      @click="goNext">
                       Next
                     </button>
                   </div>
@@ -783,44 +754,20 @@ const emit = defineEmits<{
               </div>
             </TabPanel>
             <TabPanel value="calendar">
-              <AppointmentsCalendar
-                :appointments="appointments"
-                :is-loading="isLoading"
-                :range-start="apiStart"
-                :range-end="apiEnd"
-                @range-change="syncCalendarRange"
-                @edit="openEditDialog"
-                @confirm-all="refreshAppointments"
-                @no-show="refreshAppointments"
-                @cancel="refreshAppointments"
-              />
+              <AppointmentsCalendar :appointments="appointments" :is-loading="isLoading" :range-start="apiStart"
+                :range-end="apiEnd" @range-change="syncCalendarRange" @edit="openEditDialog"
+                @confirm-all="refreshAppointments" @no-show="refreshAppointments" @cancel="refreshAppointments" />
             </TabPanel>
           </TabPanels>
         </Tabs>
       </section>
     </div>
 
-    <AppointmentDialog
-      v-model="isDialogOpen"
-      :appointment="editingAppointment"
-      :is-loading="isEditLoading"
-      :is-saving="isSaving"
-      :error-message="saveError"
-      :patient-options="patientOptionsData"
-      :nurse-options="nurseOptions"
-      :doctor-options="doctorOptions"
-      :social-worker-options="socialWorkerOptions"
-      :visit-type-options="visitTypeOptions"
-      :weekday-options="weekdayOptions"
-      @save="handleSaveAppointment"
-    />
-    <AppointmentDetailsDialog
-      v-model="isDetailsOpen"
-      :appointment="selectedAppointment"
-      @log="openLogPage"
-      @confirm-all="refreshAppointments"
-      @no-show="refreshAppointments"
-      @cancel="refreshAppointments"
-    />
+    <AppointmentDialog v-model="isDialogOpen" :appointment="editingAppointment" :is-loading="isEditLoading"
+      :is-saving="isSaving" :error-message="saveError" :patient-options="patientOptionsData"
+      :nurse-options="nurseOptions" :doctor-options="doctorOptions" :social-worker-options="socialWorkerOptions"
+      :visit-type-options="visitTypeOptions" :weekday-options="weekdayOptions" @save="handleSaveAppointment" />
+    <AppointmentDetailsDialog v-model="isDetailsOpen" :appointment="selectedAppointment" @log="openLogPage"
+      @confirm-all="refreshAppointments" @no-show="refreshAppointments" @cancel="refreshAppointments" />
   </div>
 </template>

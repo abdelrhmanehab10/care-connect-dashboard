@@ -20,6 +20,70 @@ import {
   type EmployeeOption,
 } from "../services/employees";
 import { useDebouncedAsync } from "../composables/useDebouncedAsync";
+import Dialog from "primevue/dialog";
+import Textarea from "primevue/textarea";
+
+// dialog state
+const reasonDialogVisible = ref(false);
+const reasonText = ref("");
+
+// هنخزن عملية الـ save المعلّقة لحد ما المستخدم يكتب السبب
+type PendingSave = {
+  data: Appointment;
+  field: string;
+  saveCb: (e: Event) => void;
+  cancelCb: (e: Event) => void;
+  originalEvent: Event;
+};
+
+const pendingSave = ref<PendingSave | null>(null);
+
+// نخزن السبب لكل cell (عشان نقرأه في handleCellEditComplete)
+const editReasons = new Map<string, string>();
+
+const openReasonBeforeSave = (
+  data: Appointment,
+  field: string,
+  e: Event,
+  saveCb: (e: Event) => void,
+  cancelCb: (e: Event) => void,
+) => {
+  // (اختياري) لو عايز تتأكد إنه اتغير فعلاً قبل ما تطلب سبب
+  // const key = snapshotKey(data, field);
+  // const prev = editSnapshots.get(key);
+  // const curr = getFieldValue(data, field);
+  // if (JSON.stringify(prev) === JSON.stringify(curr)) return saveCb(e);
+
+  pendingSave.value = { data, field, saveCb, cancelCb, originalEvent: e };
+  reasonText.value = "";
+  reasonDialogVisible.value = true;
+};
+
+const confirmReasonAndSave = () => {
+  if (!pendingSave.value) return;
+
+  const reason = reasonText.value.trim();
+  if (!reason) return; // خليها required
+
+  const { data, field, saveCb, originalEvent } = pendingSave.value;
+
+  // خزّن السبب على نفس key بتاع الـ snapshot
+  editReasons.set(snapshotKey(data, field), reason);
+
+  reasonDialogVisible.value = false;
+
+  // نفّذ الحفظ الحقيقي
+  saveCb(originalEvent);
+
+  pendingSave.value = null;
+};
+
+const cancelReasonDialog = () => {
+  // لو المستخدم قفل الـ dialog، ما تعملش save
+  reasonDialogVisible.value = false;
+  pendingSave.value = null;
+  reasonText.value = "";
+};
 
 type StaffMember = Appointment["doctor"];
 type Patient = Appointment["patient"];
@@ -57,8 +121,8 @@ const isStaffLike = (
 const hasStaffName = (value: StaffMember | null | undefined) =>
   Boolean(
     value &&
-      typeof value.name === "string" &&
-      value.name.trim(),
+    typeof value.name === "string" &&
+    value.name.trim(),
   );
 const displayStaffName = (value: StaffMember | null | undefined) =>
   value?.name?.trim() || "-";
@@ -402,15 +466,13 @@ const isAutoCompleteEvent = (event: KeyboardEvent) => {
 
 const handleEditorKeydown = (
   event: KeyboardEvent,
-  save: (event: Event) => void,
+  requestSave: (event: Event) => void,
   cancel: (event: Event) => void,
 ) => {
   if (event.key === "Enter") {
-    if (isAutoCompleteEvent(event)) {
-      return;
-    }
+    if (isAutoCompleteEvent(event)) return;
     event.preventDefault();
-    save(event);
+    requestSave(event);
     return;
   }
 
@@ -419,6 +481,7 @@ const handleEditorKeydown = (
     cancel(event);
   }
 };
+
 
 const formatTime = (value: string | null | undefined) => {
   if (!value) return "-";
@@ -566,8 +629,8 @@ const getStatusOptionsForRow = (
   const candidates =
     currentLevel >= 2
       ? baseStatusOptions.value.filter(
-          (option) => option.isFinal || option.level >= 3,
-        )
+        (option) => option.isFinal || option.level >= 3,
+      )
       : baseStatusOptions.value;
 
   if (!currentOption) {
@@ -675,6 +738,18 @@ const handleCellEditComplete = (
   (event as DataTableCellEditCompleteEvent<Appointment>).newData = event.data;
 
   editSnapshots.delete(key);
+  // هات key بتاع نفس الـ cell
+  const reasonKey = snapshotKey(event.data, event.field);
+
+  // هات السبب اللي اتكتب من الـ dialog
+  const reason = editReasons.get(reasonKey) ?? "";
+
+  // (اختياري) امسحه عشان مايتكرر
+  editReasons.delete(reasonKey);
+
+  // اربطه بالـ event قبل ما تبعته للـ parent
+  (event as any).reason = reason;
+
   emit("cell-edit-complete", event);
 };
 const emit = defineEmits<{
@@ -685,60 +760,56 @@ const emit = defineEmits<{
   (event: "view-details", payload: Appointment): void;
 }>();
 </script>
-
 <template>
   <div class="cc-card">
-    <DataTable
-      :value="displayAppointments"
-      dataKey="id"
-      :editMode="editMode"
-      @cell-edit-init="handleCellEditInit"
-      @cell-edit-cancel="handleCellEditCancel"
-      @cell-edit-complete="handleCellEditComplete"
-      :pt="dataTablePt"
-    >
+    <DataTable :value="displayAppointments" dataKey="id" :editMode="editMode" @cell-edit-init="handleCellEditInit"
+      @cell-edit-cancel="handleCellEditCancel" @cell-edit-complete="handleCellEditComplete" :pt="dataTablePt">
       <template #empty>
         <div v-if="!isLoading" class="cc-empty">No appointments yet.</div>
       </template>
 
+      <!-- Date -->
       <Column field="date" header="Date">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
           <span v-else>{{ data.date ?? "-" }}</span>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <input
-                  :value="normalizeDateInput(data.date)"
-                  type="date"
-                  class="cc-input cc-input-sm"
-                  @input="
-                    data.date = ($event.target as HTMLInputElement).value
-                  "
-                  @keydown="
+                <input :value="normalizeDateInput(data.date)" type="date" class="cc-input cc-input-sm"
+                  @input="data.date = ($event.target as HTMLInputElement).value" @keydown="
                     handleEditorKeydown(
                       $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
+                      (e) =>
+                        openReasonBeforeSave(
+                          data,
+                          'date',
+                          e,
+                          editorSaveCallback,
+                          editorCancelCallback
+                        ),
+                      editorCancelCallback
                     )
-                  "
-                />
+                    " />
               </div>
+
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" @click.stop="
+                  openReasonBeforeSave(
+                    data,
+                    'date',
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback
+                  )
+                  ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -747,58 +818,52 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Patient -->
       <Column field="patient.name" header="Patient">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-lg"></span>
           <span v-else>{{ data.patient?.name ?? "-" }}</span>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.patient ?? null"
-                  :suggestions="filteredPatients"
-                  optionLabel="name"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  forceSelection
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search patient"
-                  @update:modelValue="
-                    setFieldValue(data, 'patient.name', $event)
-                  "
-                  @option-select="
-                    setFieldValue(data, 'patient.name', $event.value)
-                  "
-                  @complete="searchPatients"
+                <AutoComplete :modelValue="data.patient ?? null" :suggestions="filteredPatients" optionLabel="name"
+                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                  panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
+                  placeholder="Search patient" @update:modelValue="setFieldValue(data, 'patient.name', $event)"
+                  @option-select="setFieldValue(data, 'patient.name', $event.value)" @complete="searchPatients"
                   @keydown="
                     handleEditorKeydown(
                       $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
+                      (e) =>
+                        openReasonBeforeSave(
+                          data,
+                          'patient.name',
+                          e,
+                          editorSaveCallback,
+                          editorCancelCallback
+                        ),
+                      editorCancelCallback
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
+
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" @click.stop="
+                  openReasonBeforeSave(
+                    data,
+                    'patient.name',
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback
+                  )
+                  ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -807,6 +872,7 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Time -->
       <Column header="Time">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
@@ -814,48 +880,55 @@ const emit = defineEmits<{
             {{ formatTime(data.start_time) }} - {{ formatTime(data.end_time) }}
           </span>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields cc-cell-edit-fields-row">
-                <input
-                  v-model="data.start_time"
-                  type="time"
-                  class="cc-input cc-input-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                />
-                <input
-                  v-model="data.end_time"
-                  type="time"
-                  class="cc-input cc-input-sm"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                />
+                <input v-model="data.start_time" type="time" class="cc-input cc-input-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    (e) =>
+                      openReasonBeforeSave(
+                        data,
+                        'start_time',
+                        e,
+                        editorSaveCallback,
+                        editorCancelCallback
+                      ),
+                    editorCancelCallback
+                  )
+                  " />
+                <input v-model="data.end_time" type="time" class="cc-input cc-input-sm" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    (e) =>
+                      openReasonBeforeSave(
+                        data,
+                        'end_time',
+                        e,
+                        editorSaveCallback,
+                        editorCancelCallback
+                      ),
+                    editorCancelCallback
+                  )
+                  " />
               </div>
+
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" @click.stop="
+                  openReasonBeforeSave(
+                    data,
+                    'time',
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback
+                  )
+                  ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -864,58 +937,56 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Status -->
       <Column field="status" header="Status">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
-          <span
-            v-else
-            class="cc-badge"
-            :class="statusBadgeClass(data.status as AppointmentStatus)"
-            @click="blockEditIfFinalStatus($event, data.status)"
-          >
+          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)"
+            @click="blockEditIfFinalStatus($event, data.status)">
             {{ data.status ?? "-" }}
           </span>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                  <select
-                    v-model="data.status"
-                    class="cc-select cc-select-sm"
-                    :disabled="isStatusLocked(data)"
-                  @keydown="
-                    handleEditorKeydown(
-                      $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
-                    )
-                  "
-                >
-                  <option
-                    v-for="status in getStatusOptionsForRow(data.status)"
-                    :key="status.key"
-                    :value="status.key"
-                    :disabled="status.disabled"
-                  >
+                <select v-model="data.status" class="cc-select cc-select-sm" :disabled="isStatusLocked(data)" @keydown="
+                  handleEditorKeydown(
+                    $event,
+                    (e) =>
+                      openReasonBeforeSave(
+                        data,
+                        'status',
+                        e,
+                        editorSaveCallback,
+                        editorCancelCallback
+                      ),
+                    editorCancelCallback
+                  )
+                  ">
+                  <option v-for="status in getStatusOptionsForRow(data.status)" :key="status.key" :value="status.key"
+                    :disabled="status.disabled">
                     {{ status.label }}
                   </option>
                 </select>
               </div>
+
               <div class="cc-cell-edit-actions">
-                  <button
-                    type="button"
-                    class="cc-btn cc-btn-outline-success cc-btn-sm"
-                    :disabled="isStatusLocked(data)"
-                    @click.stop="editorSaveCallback($event)"
-                  >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" :disabled="isStatusLocked(data)"
+                  @click.stop="
+                    openReasonBeforeSave(
+                      data,
+                      'status',
+                      $event,
+                      editorSaveCallback,
+                      editorCancelCallback
+                    )
+                    ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -924,62 +995,54 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Nurse -->
       <Column field="nurse.name" header="Nurse" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <div
-            class="cc-cell-block"
-            @mousedown="blockEditIfMissing($event, data.nurse)"
-            @click="blockEditIfMissing($event, data.nurse)"
-          >
+          <div class="cc-cell-block" @mousedown="blockEditIfMissing($event, data.nurse)"
+            @click="blockEditIfMissing($event, data.nurse)">
             <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
             <span v-else>{{ displayStaffName(data.nurse) }}</span>
           </div>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.nurse ?? null"
-                  :suggestions="filteredNurses"
-                  optionLabel="name"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  forceSelection
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search nurse"
-                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
-                  @option-select="
-                    setFieldValue(data, 'nurse.name', $event.value)
-                  "
-                  @complete="searchNurses"
-                  @keydown="
+                <AutoComplete :modelValue="data.nurse ?? null" :suggestions="filteredNurses" optionLabel="name"
+                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                  panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
+                  placeholder="Search nurse" @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
+                  @option-select="setFieldValue(data, 'nurse.name', $event.value)" @complete="searchNurses" @keydown="
                     handleEditorKeydown(
                       $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
+                      (e) =>
+                        openReasonBeforeSave(
+                          data,
+                          'nurse.name',
+                          e,
+                          editorSaveCallback,
+                          editorCancelCallback
+                        ),
+                      editorCancelCallback
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
+
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" @click.stop="
+                  openReasonBeforeSave(
+                    data,
+                    'nurse.name',
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback
+                  )
+                  ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -988,64 +1051,54 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Doctor -->
       <Column field="doctor.name" header="Doctor" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <div
-            class="cc-cell-block"
-            @mousedown="blockEditIfMissing($event, data.doctor)"
-            @click="blockEditIfMissing($event, data.doctor)"
-          >
+          <div class="cc-cell-block" @mousedown="blockEditIfMissing($event, data.doctor)"
+            @click="blockEditIfMissing($event, data.doctor)">
             <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
             <span v-else>{{ displayStaffName(data.doctor) }}</span>
           </div>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.doctor ?? null"
-                  :suggestions="filteredDoctors"
-                  optionLabel="name"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  forceSelection
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
-                  placeholder="Search doctor"
-                  @update:modelValue="
-                    setFieldValue(data, 'doctor.name', $event)
-                  "
-                  @option-select="
-                    setFieldValue(data, 'doctor.name', $event.value)
-                  "
-                  @complete="searchDoctors"
-                  @keydown="
+                <AutoComplete :modelValue="data.doctor ?? null" :suggestions="filteredDoctors" optionLabel="name"
+                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                  panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
+                  placeholder="Search doctor" @update:modelValue="setFieldValue(data, 'doctor.name', $event)"
+                  @option-select="setFieldValue(data, 'doctor.name', $event.value)" @complete="searchDoctors" @keydown="
                     handleEditorKeydown(
                       $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
+                      (e) =>
+                        openReasonBeforeSave(
+                          data,
+                          'doctor.name',
+                          e,
+                          editorSaveCallback,
+                          editorCancelCallback
+                        ),
+                      editorCancelCallback
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
+
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" @click.stop="
+                  openReasonBeforeSave(
+                    data,
+                    'doctor.name',
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback
+                  )
+                  ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -1054,68 +1107,56 @@ const emit = defineEmits<{
         </template>
       </Column>
 
-      <Column
-        field="social_worker.name"
-        header="Social worker"
-        :bodyStyle="staffCellBodyStyle"
-      >
+      <!-- Social worker -->
+      <Column field="social_worker.name" header="Social worker" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <div
-            class="cc-cell-block"
-            @mousedown="blockEditIfMissing($event, data.social_worker)"
-            @click="blockEditIfMissing($event, data.social_worker)"
-          >
+          <div class="cc-cell-block" @mousedown="blockEditIfMissing($event, data.social_worker)"
+            @click="blockEditIfMissing($event, data.social_worker)">
             <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
             <span v-else>{{ displayStaffName(data.social_worker) }}</span>
           </div>
         </template>
+
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete
-                  :modelValue="data.social_worker ?? null"
-                  :suggestions="filteredSocialWorkers"
-                  optionLabel="name"
-                  :completeOnFocus="true"
-                  :autoOptionFocus="true"
-                  forceSelection
-                  appendTo="self"
-                  panelClass="cc-autocomplete-panel"
-                  inputClass="cc-input cc-input-sm"
-                  :pt="autoCompletePt"
+                <AutoComplete :modelValue="data.social_worker ?? null" :suggestions="filteredSocialWorkers"
+                  optionLabel="name" :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                  panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
                   placeholder="Search social worker"
-                  @update:modelValue="
-                    setFieldValue(data, 'social_worker.name', $event)
-                  "
-                  @option-select="
-                    setFieldValue(data, 'social_worker.name', $event.value)
-                  "
-                  @complete="searchSocialWorkers"
-                  @keydown="
+                  @update:modelValue="setFieldValue(data, 'social_worker.name', $event)"
+                  @option-select="setFieldValue(data, 'social_worker.name', $event.value)"
+                  @complete="searchSocialWorkers" @keydown="
                     handleEditorKeydown(
                       $event,
-                      editorSaveCallback,
-                      editorCancelCallback,
+                      (e) =>
+                        openReasonBeforeSave(
+                          data,
+                          'social_worker.name',
+                          e,
+                          editorSaveCallback,
+                          editorCancelCallback
+                        ),
+                      editorCancelCallback
                     )
-                  "
-                  @keydown.down.stop
-                  @keydown.up.stop
-                />
+                    " @keydown.down.stop @keydown.up.stop />
               </div>
+
               <div class="cc-cell-edit-actions">
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline-success cc-btn-sm"
-                  @click.stop="editorSaveCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" @click.stop="
+                  openReasonBeforeSave(
+                    data,
+                    'social_worker.name',
+                    $event,
+                    editorSaveCallback,
+                    editorCancelCallback
+                  )
+                  ">
                   Save
                 </button>
-                <button
-                  type="button"
-                  class="cc-btn cc-btn-outline cc-btn-sm"
-                  @click.stop="editorCancelCallback($event)"
-                >
+                <button type="button" class="cc-btn cc-btn-outline cc-btn-sm"
+                  @click.stop="editorCancelCallback($event)">
                   Cancel
                 </button>
               </div>
@@ -1124,6 +1165,7 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Visit type -->
       <Column field="visit_type" header="Visit type">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
@@ -1131,29 +1173,42 @@ const emit = defineEmits<{
         </template>
       </Column>
 
+      <!-- Actions -->
       <Column header="Actions" style="width: 8.5rem">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
-          <button
-            v-else
-            type="button"
-            class="cc-icon-btn cc-icon-btn-outline"
-            :disabled="detailsLoadingId === data.id"
-            :aria-label="
-              detailsLoadingId === data.id ? 'Loading details' : 'View details'
-            "
-            @click="emit('view-details', data)"
-          >
-            <i
-              v-if="detailsLoadingId === data.id"
-              class="fa-solid fa-spinner fa-spin cc-icon"
-              aria-hidden="true"
-            ></i>
+          <button v-else type="button" class="cc-icon-btn cc-icon-btn-outline" :disabled="detailsLoadingId === data.id"
+            :aria-label="detailsLoadingId === data.id ? 'Loading details' : 'View details'"
+            @click="emit('view-details', data)">
+            <i v-if="detailsLoadingId === data.id" class="fa-solid fa-spinner fa-spin cc-icon" aria-hidden="true"></i>
             <Eye v-else class="cc-icon" aria-hidden="true" />
           </button>
         </template>
       </Column>
     </DataTable>
+
+    <Dialog v-model:visible="reasonDialogVisible" modal header="Reason required" :style="{ width: '32rem' }"
+      @hide="cancelReasonDialog">
+      <div class="cc-form">
+        <label class="cc-label">Please enter the reason for this change</label>
+        <Textarea v-model="reasonText" rows="4" class="cc-input" autoResize
+          placeholder="e.g. Patient requested reschedule..." />
+        <small v-if="!reasonText.trim()" class="cc-text-danger">
+          Reason is required.
+        </small>
+      </div>
+
+      <template #footer>
+        <button class="cc-btn cc-btn-outline" type="button" @click="cancelReasonDialog">
+          Cancel
+        </button>
+        <button class="cc-btn cc-btn-outline-success" type="button" :disabled="!reasonText.trim()"
+          @click="confirmReasonAndSave">
+          Confirm & Save
+        </button>
+      </template>
+    </Dialog>
+
   </div>
 </template>
 
