@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, getCurrentInstance, ref, watch } from "vue";
 import { CheckCircle, XCircle, Ban, Loader2, X } from "lucide-vue-next";
 import Dialog from "primevue/dialog";
 import type { Appointment } from "../types";
@@ -22,6 +22,13 @@ const emit = defineEmits<{
   (event: "no-show", payload: Appointment): void;
   (event: "cancel", payload: Appointment): void;
 }>();
+
+type RouterLike = {
+  push?: (to: string) => unknown;
+};
+
+const instance = getCurrentInstance();
+const appRouter = (instance?.proxy as { $router?: RouterLike } | null)?.$router;
 
 const appointmentData = computed(() => props.appointment);
 const appointmentId = computed(() => appointmentData.value?.id ?? null);
@@ -60,6 +67,39 @@ watch(
 
 const patientName = () => v(appointmentData.value?.patient?.name);
 const patientPhone = () => v(appointmentData.value?.patient?.phone);
+
+const normalizeCoordinate = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const locationMapUrl = computed(() => {
+  const patientAddress = (appointmentData.value as any)?.patient_address;
+  if (!patientAddress || typeof patientAddress !== "object") {
+    return null;
+  }
+
+  const lat = normalizeCoordinate(patientAddress.lat);
+  const lng = normalizeCoordinate(patientAddress.lng);
+  if (lat !== null && lng !== null) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+
+  const address = String(patientAddress.address ?? "").trim();
+  const city = String(patientAddress.city ?? "").trim();
+  const query = [address, city].filter(Boolean).join(", ");
+  if (!query) {
+    return null;
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+});
 
 const locationText = () => {
   const address = (appointmentData.value as any)?.patient_address?.address;
@@ -179,6 +219,17 @@ const handleCancel = async () => {
     isCancelLoading.value = false;
   }
 };
+
+const handleCheckIn = () => {
+  if (!appointmentId.value) return;
+  const destination = `/visits/start/${appointmentId.value}`;
+  emit("check-in");
+  if (appRouter?.push) {
+    void appRouter.push(destination);
+    return;
+  }
+  window.location.assign(destination);
+};
 </script>
 
 <template>
@@ -267,7 +318,17 @@ const handleCancel = async () => {
             ></span>
             <span class="cc-sub-text">{{ locationText() }}</span>
           </div>
-          <i class="fa-solid fa-diamond-turn-right"></i>
+          <a
+            v-if="locationMapUrl"
+            :href="locationMapUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="cc-map-link"
+            aria-label="Open location in Google Maps"
+            title="Open in Google Maps"
+          >
+            <i class="fa-solid fa-diamond-turn-right"></i>
+          </a>
         </div>
 
         <div class="cc-chip-row">
@@ -317,9 +378,9 @@ const handleCancel = async () => {
         <button
           type="button"
           class="cc-btn cc-btn-primary"
-          @click="emit('check-in')"
+          @click="handleCheckIn"
         >
-          View Visit
+          Check In
         </button>
 
         <button
@@ -457,6 +518,15 @@ const handleCancel = async () => {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.cc-map-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cc-map-link:hover {
+  color: #0f766e;
 }
 
 /* chips */
