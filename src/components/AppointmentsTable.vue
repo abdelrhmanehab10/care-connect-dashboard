@@ -1263,9 +1263,6 @@ const emit = defineEmits<{
     </div>
   </div>
 </div>
-
-
-
   </div>
 </template>
 
@@ -1282,7 +1279,9 @@ const emit = defineEmits<{
   padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
   box-sizing: border-box;
 }
-
+.modal-footer{
+  justify-content: space-between;
+}
 /* footer */
 .cc-reason-footer {
   display: flex;
