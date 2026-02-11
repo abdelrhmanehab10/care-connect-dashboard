@@ -105,6 +105,7 @@ const confirmReasonAndSave = async () => {
 
   // خزّن السبب
   editReasons.set(snapshotKey(data, field), reason);
+  explicitSaveKeys.add(snapshotKey(data, field));
 
   // اقفل المودال
   await hideReasonModal();
@@ -221,10 +222,21 @@ const normalizeStaffId = (value: unknown): number => {
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
 const editDrafts = new Map<string, unknown>();
 const editSnapshots = new Map<string, unknown>();
+const explicitSaveKeys = new Set<string>();
 
 const closeCellEditor = () => {
   if (typeof document === "undefined") return;
   document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+};
+
+const cloneSnapshotValue = (value: unknown): unknown => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (typeof value === "object") {
+    return { ...(value as Record<string, unknown>) };
+  }
+  return value;
 };
 
 const getFieldValue = (data: Appointment, field: string) => {
@@ -232,11 +244,11 @@ const getFieldValue = (data: Appointment, field: string) => {
     case "patient.name":
       return data.patient ?? null;
     case "nurse.name":
-      return data.nurse?.name ?? "";
+      return data.nurse ?? null;
     case "doctor.name":
-      return data.doctor?.name ?? "";
+      return data.doctor ?? null;
     case "social_worker.name":
-      return data.social_worker?.name ?? "";
+      return data.social_worker ?? null;
     default:
       return (data as Record<string, unknown>)[field];
   }
@@ -501,19 +513,19 @@ const isAutoCompleteEvent = (event: KeyboardEvent) => {
 
 const handleEditorKeydown = (
   event: KeyboardEvent,
-  requestSave: (event: Event) => void,
-  cancel: (event: Event) => void,
+  _requestSave: (event: Event) => void,
+  _cancel: (event: Event) => void,
 ) => {
   if (event.key === "Enter") {
     if (isAutoCompleteEvent(event)) return;
     event.preventDefault();
-    requestSave(event);
+    event.stopPropagation();
     return;
   }
 
   if (event.key === "Escape") {
     event.preventDefault();
-    cancel(event);
+    event.stopPropagation();
   }
 };
 
@@ -721,11 +733,12 @@ const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   }
 
   const key = snapshotKey(event.data, event.field);
+  explicitSaveKeys.delete(key);
   if (editSnapshots.has(key)) {
     return;
   }
 
-  editSnapshots.set(key, getFieldValue(event.data, event.field));
+  editSnapshots.set(key, cloneSnapshotValue(getFieldValue(event.data, event.field)));
 };
 
 const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
@@ -738,26 +751,45 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
   applyFieldValue(data, event.field, editSnapshots.get(key));
   editSnapshots.delete(key);
   editDrafts.delete(key);
+  explicitSaveKeys.delete(key);
+  editReasons.delete(key);
 };
 
 const handleCellEditComplete = (
   event: DataTableCellEditCompleteEvent<Appointment>,
 ) => {
+  const key = snapshotKey(event.data, event.field);
+  const previousValue = editSnapshots.get(key);
   if (isStaffEditBlocked(event.data, event.field)) {
-    const key = snapshotKey(event.data, event.field);
+    if (previousValue !== undefined) {
+      applyFieldValue(event.data, event.field, previousValue);
+    }
     editSnapshots.delete(key);
     editDrafts.delete(key);
+    explicitSaveKeys.delete(key);
+    editReasons.delete(key);
     return;
   }
 
-  const key = snapshotKey(event.data, event.field);
-  const previousValue = editSnapshots.get(key);
+  const isExplicitSave = explicitSaveKeys.has(key);
+  if (!isExplicitSave) {
+    if (previousValue !== undefined) {
+      applyFieldValue(event.data, event.field, previousValue);
+    }
+    editSnapshots.delete(key);
+    editDrafts.delete(key);
+    explicitSaveKeys.delete(key);
+    editReasons.delete(key);
+    return;
+  }
 
   if (event.field === "status" && previousValue !== undefined) {
     if (!isStatusTransitionAllowed(previousValue, event.data.status)) {
       applyFieldValue(event.data, event.field, previousValue);
       editSnapshots.delete(key);
       editDrafts.delete(key);
+      explicitSaveKeys.delete(key);
+      editReasons.delete(key);
       return;
     }
   }
@@ -773,6 +805,7 @@ const handleCellEditComplete = (
   (event as DataTableCellEditCompleteEvent<Appointment>).newData = event.data;
 
   editSnapshots.delete(key);
+  explicitSaveKeys.delete(key);
   // هات key بتاع نفس الـ cell
   const reasonKey = snapshotKey(event.data, event.field);
 
@@ -1292,3 +1325,5 @@ const emit = defineEmits<{
 }
 
 </style>
+
+
