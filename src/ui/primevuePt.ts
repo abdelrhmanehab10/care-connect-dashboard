@@ -9,6 +9,7 @@ export const dialogPt = {
 export const autoCompletePt = {
   root: { class: "cc-input-wrap" },
   pcInputText: { root: { class: "cc-input" } },
+  loader: { class: "cc-autocomplete-loader" },
   listContainer: { class: "cc-autocomplete-list" },
   list: { class: "cc-list" },
   option: { class: "cc-list-item cc-list-item-action" },

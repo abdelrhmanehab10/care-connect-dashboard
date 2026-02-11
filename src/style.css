@@ -383,6 +383,45 @@ body {
   width: 100%;
 }
 
+.cc-async-autocomplete .cc-autocomplete-loader,
+.cc-async-autocomplete .p-autocomplete-loader {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0.75rem;
+  margin-block: auto;
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+  z-index: 2;
+  animation: cc-autocomplete-loader-spin 0.8s linear infinite;
+}
+
+.cc-async-autocomplete .cc-autocomplete-loader[data-p-has-dropdown="true"],
+.cc-async-autocomplete .p-autocomplete-loader[data-p-has-dropdown="true"] {
+  inset-inline-end: 2.85rem;
+}
+
+.cc-async-autocomplete--loading .cc-input,
+.cc-async-autocomplete--loading .p-autocomplete-input {
+  padding-inline-end: 2.25rem;
+}
+
+.cc-async-autocomplete--loading
+  .cc-input[data-p-has-dropdown="true"],
+.cc-async-autocomplete--loading
+  .p-autocomplete-input[data-p-has-dropdown="true"] {
+  padding-inline-end: 4.5rem;
+}
+
+@keyframes cc-autocomplete-loader-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .cc-input,
 .cc-select,
 .cc-textarea {

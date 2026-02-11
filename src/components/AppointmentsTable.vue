@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, toRefs, watch } from "vue";
-import AutoComplete from "primevue/autocomplete";
-import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import { Eye } from "lucide-vue-next";
@@ -11,16 +9,13 @@ import type {
   DataTableCellEditInitEvent,
 } from "primevue/datatable";
 import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
+import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import type { Appointment } from "../types";
-import type { AppointmentStatus, PatientOption } from "../data/options";
+import type { AppointmentStatus } from "../data/options";
 import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
-import {
-  fetchEmployeeOptionsByTitle,
-  type EmployeeOption,
-} from "../services/employees";
-import { useDebouncedAsync } from "../composables/useDebouncedAsync";
+import { fetchEmployeeOptionsByTitle } from "../services/employees";
 
 const reasonDialogVisible = ref(false);
 const reasonText = ref("");
@@ -305,14 +300,19 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
   applyFieldValue(data, field, value);
 };
 
-const props = defineProps<{
-  appointments: ReadonlyArray<Appointment>;
-  isLoading: boolean;
-  detailsLoadingId?: number | null;
-  statusOptions: ReadonlyArray<AppointmentStatus | AppointmentStatusOption>;
-  statusBadgeClass: (status: AppointmentStatus) => string;
-  visitTypeOptions: ReadonlyArray<string>;
-}>();
+const props = withDefaults(
+  defineProps<{
+    appointments: ReadonlyArray<Appointment>;
+    isLoading: boolean;
+    detailsLoadingId?: number | null;
+    statusOptions: ReadonlyArray<AppointmentStatus | AppointmentStatusOption>;
+    statusBadgeClass: (status: AppointmentStatus) => string;
+    visitTypeOptions?: ReadonlyArray<string>;
+  }>(),
+  {
+    visitTypeOptions: () => [],
+  },
+);
 const { isLoading, detailsLoadingId } = toRefs(props);
 
 const cloneAppointment = (appointment: Appointment): Appointment => ({
@@ -338,15 +338,6 @@ watch(
   { immediate: true, deep: true },
 );
 
-const filteredPatients = ref<PatientOption[]>([]);
-const filteredNurses = ref<EmployeeOption[]>([]);
-const filteredDoctors = ref<EmployeeOption[]>([]);
-const filteredSocialWorkers = ref<EmployeeOption[]>([]);
-const { run: runPatientSearch, cancel: cancelPatientSearch } =
-  useDebouncedAsync(300);
-const { run: runNurseSearch } = useDebouncedAsync(300);
-const { run: runDoctorSearch } = useDebouncedAsync(300);
-const { run: runSocialWorkerSearch } = useDebouncedAsync(300);
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
     id: -(index + 1),
@@ -380,79 +371,21 @@ const displayAppointments = computed(() =>
 const staffCellBodyStyle = { padding: "0" } as const;
 const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 
-const searchPatients = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim();
-  if (query.length < 2) {
-    cancelPatientSearch();
-    filteredPatients.value = [];
-    return;
-  }
+const fetchPatientSuggestions = (query: string, signal: AbortSignal) =>
+  fetchPatientAutocomplete(query, signal);
 
-  runPatientSearch(
-    () => fetchPatientAutocomplete(query),
-    (results) => {
-      filteredPatients.value = results;
-    },
-    (error) => {
-      filteredPatients.value = [];
-      console.error("Failed to load patient suggestions.", error);
-    },
-  );
-};
+const fetchNurseSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeeOptionsByTitle("nurse", query.trim().toLowerCase(), signal);
 
-const searchNurses = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    filteredNurses.value = [];
-    return;
-  }
-  runNurseSearch(
-    () => fetchEmployeeOptionsByTitle("nurse", query),
-    (results) => {
-      filteredNurses.value = results;
-    },
-    (error) => {
-      console.error("Failed to load nurses.", error);
-      filteredNurses.value = [];
-    },
-  );
-};
+const fetchDoctorSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeeOptionsByTitle("doctor", query.trim().toLowerCase(), signal);
 
-const searchDoctors = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    filteredDoctors.value = [];
-    return;
-  }
-  runDoctorSearch(
-    () => fetchEmployeeOptionsByTitle("doctor", query),
-    (results) => {
-      filteredDoctors.value = results;
-    },
-    (error) => {
-      console.error("Failed to load doctors.", error);
-      filteredDoctors.value = [];
-    },
+const fetchSocialWorkerSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeeOptionsByTitle(
+    "social_worker",
+    query.trim().toLowerCase(),
+    signal,
   );
-};
-
-const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    filteredSocialWorkers.value = [];
-    return;
-  }
-  runSocialWorkerSearch(
-    () => fetchEmployeeOptionsByTitle("social_worker", query),
-    (results) => {
-      filteredSocialWorkers.value = results;
-    },
-    (error) => {
-      console.error("Failed to load social workers.", error);
-      filteredSocialWorkers.value = [];
-    },
-  );
-};
 
 const isAutoCompleteEvent = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement | null;
@@ -839,11 +772,12 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.patient ?? null" :suggestions="filteredPatients" optionLabel="name"
-                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                <AppAsyncAutocomplete :modelValue="data.patient ?? null" optionLabel="name" appendTo="self"
                   panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
-                  placeholder="Search patient" @update:modelValue="setFieldValue(data, 'patient.name', $event)"
-                  @option-select="setFieldValue(data, 'patient.name', $event.value)" @complete="searchPatients"
+                  placeholder="Search patient" :fetcher="fetchPatientSuggestions"
+                  @update:modelValue="setFieldValue(data, 'patient.name', $event)"
+                  @option-select="setFieldValue(data, 'patient.name', $event.value)"
+                  @error="(error) => console.error('Failed to load patient suggestions.', error)"
                   @keydown="
                     handleEditorKeydown(
                       $event,
@@ -1019,11 +953,12 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.nurse ?? null" :suggestions="filteredNurses" optionLabel="name"
-                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                <AppAsyncAutocomplete :modelValue="data.nurse ?? null" optionLabel="name" appendTo="self"
                   panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
-                  placeholder="Search nurse" @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
-                  @option-select="setFieldValue(data, 'nurse.name', $event.value)" @complete="searchNurses" @keydown="
+                  placeholder="Search nurse" :fetcher="fetchNurseSuggestions"
+                  @update:modelValue="setFieldValue(data, 'nurse.name', $event)"
+                  @option-select="setFieldValue(data, 'nurse.name', $event.value)"
+                  @error="(error) => console.error('Failed to load nurses.', error)" @keydown="
                     handleEditorKeydown(
                       $event,
                       (e) =>
@@ -1075,11 +1010,12 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.doctor ?? null" :suggestions="filteredDoctors" optionLabel="name"
-                  :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                <AppAsyncAutocomplete :modelValue="data.doctor ?? null" optionLabel="name" appendTo="self"
                   panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
-                  placeholder="Search doctor" @update:modelValue="setFieldValue(data, 'doctor.name', $event)"
-                  @option-select="setFieldValue(data, 'doctor.name', $event.value)" @complete="searchDoctors" @keydown="
+                  placeholder="Search doctor" :fetcher="fetchDoctorSuggestions"
+                  @update:modelValue="setFieldValue(data, 'doctor.name', $event)"
+                  @option-select="setFieldValue(data, 'doctor.name', $event.value)"
+                  @error="(error) => console.error('Failed to load doctors.', error)" @keydown="
                     handleEditorKeydown(
                       $event,
                       (e) =>
@@ -1131,13 +1067,12 @@ const emit = defineEmits<{
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit cc-staff-edit">
               <div class="cc-cell-edit-fields">
-                <AutoComplete :modelValue="data.social_worker ?? null" :suggestions="filteredSocialWorkers"
-                  optionLabel="name" :completeOnFocus="true" :autoOptionFocus="true" forceSelection appendTo="self"
+                <AppAsyncAutocomplete :modelValue="data.social_worker ?? null" optionLabel="name" appendTo="self"
                   panelClass="cc-autocomplete-panel" inputClass="cc-input cc-input-sm" :pt="autoCompletePt"
-                  placeholder="Search social worker"
+                  placeholder="Search social worker" :fetcher="fetchSocialWorkerSuggestions"
                   @update:modelValue="setFieldValue(data, 'social_worker.name', $event)"
                   @option-select="setFieldValue(data, 'social_worker.name', $event.value)"
-                  @complete="searchSocialWorkers" @keydown="
+                  @error="(error) => console.error('Failed to load social workers.', error)" @keydown="
                     handleEditorKeydown(
                       $event,
                       (e) =>

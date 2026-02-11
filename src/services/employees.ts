@@ -35,12 +35,14 @@ const toEmployeeOption = (item: EmployeePayload): EmployeeOption | null => {
 export const fetchEmployeesByTitle = async (
   title: EmployeeTitle,
   query?: string,
+  signal?: AbortSignal,
 ): Promise<string[]> => {
   const response = await http.get("/employees/search", {
     params: {
       title,
       q: query?.trim() || undefined,
     },
+    signal,
   });
 
   const payload = response.data?.data ?? response.data;
@@ -56,12 +58,14 @@ export const fetchEmployeesByTitle = async (
 export const fetchEmployeeOptionsByTitle = async (
   title: EmployeeTitle,
   query?: string,
+  signal?: AbortSignal,
 ): Promise<EmployeeOption[]> => {
   const response = await http.get("/employees/search", {
     params: {
       title,
       q: query?.trim() || undefined,
     },
+    signal,
   });
 
   const payload = response.data?.data ?? response.data;

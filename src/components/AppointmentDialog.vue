@@ -12,12 +12,11 @@ import {
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
-import type { AutoCompleteCompleteEvent } from "primevue/autocomplete";
-import AutoComplete from "primevue/autocomplete";
 import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
 import { Loader2 } from "lucide-vue-next";
+import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import { type PatientOption, type Weekday } from "../data/options";
 import {
   autoCompletePt,
@@ -30,7 +29,6 @@ import type { CreateAppointmentPayload } from "../services/appointments";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
-import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 const visible = defineModel<boolean>({ required: true });
 const props = withDefaults(
@@ -74,30 +72,15 @@ const defaultMapLocation: LocationValue = {
 };
 
 const selectedPatient = ref<PatientOption | string | null>(null);
-const filteredPatients = ref<PatientOption[]>([]);
 const fetchedVisitTypes = ref<VisitType[]>([]);
 const isVisitTypesLoading = ref(false);
 const mapLocation = ref<LocationValue | null>(null);
-const { run: runPatientSearch, cancel: cancelPatientSearch } =
-  useDebouncedAsync(300);
-const { run: runNurseSearch, cancel: cancelNurseSearch } =
-  useDebouncedAsync(300);
-const { run: runDoctorSearch, cancel: cancelDoctorSearch } =
-  useDebouncedAsync(300);
-const { run: runSocialWorkerSearch, cancel: cancelSocialWorkerSearch } =
-  useDebouncedAsync(300);
-const { run: runDriverSearch, cancel: cancelDriverSearch } =
-  useDebouncedAsync(300);
 const instructions = ref("");
 const hasAttemptedSubmit = ref(false);
 const nurseName = ref<string | null>(null);
-const filteredNurses = ref<string[]>([]);
 const doctorName = ref<string | null>(null);
-const filteredDoctors = ref<string[]>([]);
 const socialWorkerName = ref<string | null>(null);
-const filteredSocialWorkers = ref<string[]>([]);
 const driverName = ref<string | null>(null);
-const filteredDrivers = ref<string[]>([]);
 const primaryNurseName = ref<string | null>(null);
 const primaryDoctorName = ref<string | null>(null);
 const primarySocialWorkerName = ref<string | null>(null);
@@ -689,22 +672,12 @@ const resolveAppointmentLocation = (
 };
 
 const resetForm = () => {
-  cancelPatientSearch();
-  cancelNurseSearch();
-  cancelDoctorSearch();
-  cancelSocialWorkerSearch();
-  cancelDriverSearch();
   hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
-  filteredPatients.value = [];
   nurseName.value = null;
-  filteredNurses.value = [];
   doctorName.value = null;
-  filteredDoctors.value = [];
   socialWorkerName.value = null;
-  filteredSocialWorkers.value = [];
   driverName.value = null;
-  filteredDrivers.value = [];
   primaryNurseName.value = null;
   primaryDoctorName.value = null;
   primarySocialWorkerName.value = null;
@@ -945,7 +918,6 @@ const applyAppointment = (appointment: Appointment) => {
 watch(nurseAssignmentMode, (value) => {
   if (value === "primary") {
     nurseName.value = null;
-    filteredNurses.value = [];
     nurseSchedule.startTime = null;
     nurseSchedule.endTime = null;
     nurseRecurrenceRows.value = [
@@ -962,7 +934,6 @@ watch(nurseAssignmentMode, (value) => {
 watch(doctorAssignmentMode, (value) => {
   if (value === "primary") {
     doctorName.value = null;
-    filteredDoctors.value = [];
     doctorSchedule.startTime = null;
     doctorSchedule.endTime = null;
     doctorRecurrenceRows.value = [
@@ -979,7 +950,6 @@ watch(doctorAssignmentMode, (value) => {
 watch(socialWorkerAssignmentMode, (value) => {
   if (value === "primary") {
     socialWorkerName.value = null;
-    filteredSocialWorkers.value = [];
     socialWorkerSchedule.startTime = null;
     socialWorkerSchedule.endTime = null;
     socialWorkerRecurrenceRows.value = [
@@ -996,7 +966,6 @@ watch(socialWorkerAssignmentMode, (value) => {
 watch(driverAssignmentMode, (value) => {
   if (value === "primary") {
     driverName.value = null;
-    filteredDrivers.value = [];
     driverSchedule.startTime = null;
     driverSchedule.endTime = null;
     driverRecurrenceRows.value = [
@@ -1255,105 +1224,20 @@ const removeEmployeeRecurrenceRow = (rows: EmployeeRowsLike, rowId: string) => {
   }
 };
 
-const searchPatients = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim();
-  if (query.length < 2) {
-    cancelPatientSearch();
-    filteredPatients.value = [];
-    return;
-  }
+const fetchPatientSuggestions = (query: string, signal: AbortSignal) =>
+  fetchPatientAutocomplete(query, signal);
 
-  runPatientSearch(
-    () => fetchPatientAutocomplete(query),
-    (results) => {
-      filteredPatients.value = results;
-    },
-    (error) => {
-      filteredPatients.value = [];
-      console.error("Failed to load patient suggestions.", error);
-    },
-  );
-};
+const fetchNurseSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeesByTitle("nurse", query.trim().toLowerCase(), signal);
 
-const searchNurses = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    cancelNurseSearch();
-    filteredNurses.value = [];
-    return;
-  }
+const fetchDoctorSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeesByTitle("doctor", query.trim().toLowerCase(), signal);
 
-  runNurseSearch(
-    () => fetchEmployeesByTitle("nurse", query),
-    (results) => {
-      filteredNurses.value = results;
-    },
-    (error) => {
-      console.error("Failed to load nurses.", error);
-      filteredNurses.value = [];
-    },
-  );
-};
+const fetchSocialWorkerSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeesByTitle("social_worker", query.trim().toLowerCase(), signal);
 
-const searchDoctors = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    cancelDoctorSearch();
-    filteredDoctors.value = [];
-    return;
-  }
-
-  runDoctorSearch(
-    () => fetchEmployeesByTitle("doctor", query),
-    (results) => {
-      filteredDoctors.value = results;
-    },
-    (error) => {
-      console.error("Failed to load doctors.", error);
-      filteredDoctors.value = [];
-    },
-  );
-};
-
-const searchSocialWorkers = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    cancelSocialWorkerSearch();
-    filteredSocialWorkers.value = [];
-    return;
-  }
-
-  runSocialWorkerSearch(
-    () => fetchEmployeesByTitle("social_worker", query),
-    (results) => {
-      filteredSocialWorkers.value = results;
-    },
-    (error) => {
-      console.error("Failed to load social workers.", error);
-      filteredSocialWorkers.value = [];
-    },
-  );
-};
-
-const searchDrivers = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (query.length < 2) {
-    cancelDriverSearch();
-    filteredDrivers.value = [];
-    return;
-  }
-
-  runDriverSearch(
-    () => fetchEmployeesByTitle("driver", query),
-    (results) => {
-      filteredDrivers.value = results;
-    },
-    (error) => {
-      console.error("Failed to load drivers.", error);
-      filteredDrivers.value = [];
-    },
-  );
-};
+const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
+  fetchEmployeesByTitle("driver", query.trim().toLowerCase(), signal);
 
 </script>
 <template>
@@ -1375,15 +1259,16 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
       <fieldset :disabled="isBusy" class="cc-stack">
         <div>
           <label for="patient" class="cc-label cc-label-strong">Patient</label>
-          <AutoComplete v-model="selectedPatient" inputId="patient" optionLabel="name" :suggestions="filteredPatients"
-            :completeOnFocus="true" :forceSelection="true" appendTo="body" panelClass="cc-autocomplete-panel"
-            :pt="autoCompletePt" placeholder="Search by name or ID" @complete="searchPatients">
+          <AppAsyncAutocomplete v-model="selectedPatient" inputId="patient" optionLabel="name" appendTo="body"
+            panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search by name or ID"
+            :fetcher="fetchPatientSuggestions"
+            @error="(error) => console.error('Failed to load patient suggestions.', error)">
             <template #option="slotProps">
               <div class="cc-row cc-row-between">
                 <span>{{ slotProps.option.name }}</span>
               </div>
             </template>
-          </AutoComplete>
+          </AppAsyncAutocomplete>
           <div v-if="hasAttemptedSubmit && validationErrors.patient" class="cc-help-text cc-help-text--error">
             {{ validationErrors.patient }}
           </div>
@@ -1549,9 +1434,10 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
             <div class="cc-stack">
               <div v-if="nurseAssignmentMode === 'custom'" class="cc-grid">
                 <label for="nurseName" class="cc-label">Nurse name</label>
-                <AutoComplete v-model="nurseName" inputId="nurseName" :suggestions="filteredNurses"
-                  :completeOnFocus="true" :forceSelection="true" appendTo="body" panelClass="cc-autocomplete-panel"
-                  :pt="autoCompletePt" placeholder="Search nurse" @complete="searchNurses" />
+                <AppAsyncAutocomplete v-model="nurseName" inputId="nurseName" appendTo="body"
+                  panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search nurse"
+                  :fetcher="fetchNurseSuggestions"
+                  @error="(error) => console.error('Failed to load nurses.', error)" />
                 <div v-if="hasAttemptedSubmit && validationErrors.nurse" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.nurse }}
                 </div>
@@ -1634,9 +1520,10 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
             <div class="cc-stack">
               <div v-if="doctorAssignmentMode === 'custom'" class="cc-grid">
                 <label for="doctorName" class="cc-label">Doctor name</label>
-                <AutoComplete v-model="doctorName" inputId="doctorName" :suggestions="filteredDoctors"
-                  :completeOnFocus="true" :forceSelection="true" appendTo="body" panelClass="cc-autocomplete-panel"
-                  :pt="autoCompletePt" placeholder="Search doctor" @complete="searchDoctors" />
+                <AppAsyncAutocomplete v-model="doctorName" inputId="doctorName" appendTo="body"
+                  panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search doctor"
+                  :fetcher="fetchDoctorSuggestions"
+                  @error="(error) => console.error('Failed to load doctors.', error)" />
                 <div v-if="hasAttemptedSubmit && validationErrors.doctor" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.doctor }}
                 </div>
@@ -1728,9 +1615,10 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
                 <label for="socialWorkerName" class="cc-label">
                   Social worker name
                 </label>
-                <AutoComplete v-model="socialWorkerName" inputId="socialWorkerName" :suggestions="filteredSocialWorkers"
-                  :completeOnFocus="true" :forceSelection="true" appendTo="body" panelClass="cc-autocomplete-panel"
-                  :pt="autoCompletePt" placeholder="Search social worker" @complete="searchSocialWorkers" />
+                <AppAsyncAutocomplete v-model="socialWorkerName" inputId="socialWorkerName" appendTo="body"
+                  panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search social worker"
+                  :fetcher="fetchSocialWorkerSuggestions"
+                  @error="(error) => console.error('Failed to load social workers.', error)" />
                 <div v-if="hasAttemptedSubmit && validationErrors.socialWorker"
                   class="cc-help-text cc-help-text--error">
                   {{ validationErrors.socialWorker }}
@@ -1821,9 +1709,10 @@ const searchDrivers = (event: AutoCompleteCompleteEvent) => {
             <div class="cc-stack">
               <div v-if="driverAssignmentMode === 'custom'" class="cc-grid">
                 <label for="driverName" class="cc-label">Driver name</label>
-                <AutoComplete v-model="driverName" inputId="driverName" :suggestions="filteredDrivers"
-                  :completeOnFocus="true" :forceSelection="true" appendTo="body" panelClass="cc-autocomplete-panel"
-                  :pt="autoCompletePt" placeholder="Search driver" @complete="searchDrivers" />
+                <AppAsyncAutocomplete v-model="driverName" inputId="driverName" appendTo="body"
+                  panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search driver"
+                  :fetcher="fetchDriverSuggestions"
+                  @error="(error) => console.error('Failed to load drivers.', error)" />
                 <div v-if="hasAttemptedSubmit && validationErrors.driver" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.driver }}
                 </div>

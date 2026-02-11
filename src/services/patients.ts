@@ -9,9 +9,11 @@ type PatientAutocompleteItem = {
 
 export const fetchPatientAutocomplete = async (
   query: string,
+  signal?: AbortSignal,
 ): Promise<PatientOption[]> => {
   const response = await http.get("/patients/autocomplete", {
     params: { q: query },
+    signal,
   });
   const payload = response.data?.data ?? response.data;
 

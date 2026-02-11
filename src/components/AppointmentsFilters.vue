@@ -6,6 +6,7 @@ import type {
   AutoCompleteOptionSelectEvent,
 } from "primevue/autocomplete";
 import AppointmentCards from "./AppointmentCards.vue";
+import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import type { AppointmentStatus, PatientOption } from "../data/options";
 import { autoCompletePt } from "../ui/primevuePt";
 import { fetchEmployeesByTitle } from "../services/employees";
@@ -13,7 +14,6 @@ import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useAppointmentStatusesQuery } from "../composables/useAppointmentStatusesQuery";
 import type { AppointmentStatusOption } from "../services/appointments";
-import { useDebouncedAsync } from "../composables/useDebouncedAsync";
 
 const props = defineProps<{
   employeeOptions: string[];
@@ -48,7 +48,6 @@ const endDate = defineModel<Date | null>("endDate", { default: null });
 const filteredEmployees = ref<string[]>([]);
 const fetchedEmployees = ref<string[]>([]);
 const isEmployeesLoading = ref(false);
-const filteredPatients = ref<PatientOption[]>([]);
 const patientInput = ref<PatientOption | string | null>(null);
 const employeeInput = ref<string | null>(null);
 const filteredVisitTypes = ref<string[]>([]);
@@ -57,8 +56,6 @@ const isVisitTypesLoading = ref(false);
 const visitTypeInput = ref<string | null>(null);
 const filteredStates = ref<AppointmentStatusOption[]>([]);
 const stateInput = ref<AppointmentStatusOption | null>(null);
-const { run: runPatientSearch, cancel: cancelPatientSearch } =
-  useDebouncedAsync(300);
 
 const {
   statuses: appointmentStatuses,
@@ -92,51 +89,31 @@ const searchEmployees = (event: AutoCompleteCompleteEvent) => {
   );
 };
 
-const searchPatients = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim();
-  if (query.length < 2) {
-    cancelPatientSearch();
-    filteredPatients.value = [];
-    return;
-  }
-
-  runPatientSearch(
-    () => fetchPatientAutocomplete(query),
-    (results) => {
-      filteredPatients.value = results;
-    },
-    (error) => {
-      filteredPatients.value = [];
-      console.error("Failed to load patient suggestions.", error);
-    },
-  );
-};
-
 const handleEmployeeSelect = (event: AutoCompleteOptionSelectEvent) => {
   employeeFilter.value = event.value as string;
   employeeInput.value = event.value as string;
 };
+
+const fetchPatientSuggestions = (query: string, signal: AbortSignal) =>
+  fetchPatientAutocomplete(query, signal);
 
 const handlePatientSelect = (event: AutoCompleteOptionSelectEvent) => {
   patientFilter.value = event.value as PatientOption;
   patientInput.value = event.value as PatientOption;
 };
 
-const handlePatientModelUpdate = (value: PatientOption | string | null) => {
-  if (value === null) {
+const handlePatientModelUpdate = (value: unknown) => {
+  const typed = value as PatientOption | string | null;
+  patientInput.value = typed;
+  if (typed === null) {
     patientFilter.value = null;
     return;
   }
-  if (typeof value === "object") {
-    patientFilter.value = value as PatientOption;
+  if (typeof typed === "object") {
+    patientFilter.value = typed as PatientOption;
     return;
   }
-  const match = filteredPatients.value.find(
-    (option) => option.name === value || option.id === value,
-  );
-  if (match) {
-    patientFilter.value = match;
-  }
+  patientFilter.value = null;
 };
 
 const handleVisitTypeSelect = (event: AutoCompleteOptionSelectEvent) => {
@@ -300,7 +277,6 @@ const toggleQuickDoctor = () => {
 };
 
 const clearFilters = () => {
-  cancelPatientSearch();
   employeeFilter.value = null;
   employeeInput.value = null;
   patientFilter.value = null;
@@ -313,7 +289,6 @@ const clearFilters = () => {
   stateFilter.value = null;
   stateInput.value = null;
   filteredEmployees.value = [];
-  filteredPatients.value = [];
   filteredVisitTypes.value = [];
   filteredStates.value = [];
 };
@@ -467,11 +442,20 @@ watch(
       </div>
       <div class="col-md-2">
         <label for="patientFilter" class="cc-label">Patient</label>
-        <AutoComplete v-model="patientInput" inputId="patientFilter" :suggestions="filteredPatients" optionLabel="name"
-          :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
-          panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt" placeholder="Search patient"
-          @update:modelValue="handlePatientModelUpdate" @complete="searchPatients" @option-select="handlePatientSelect"
-          @item-select="handlePatientSelect" />
+        <AppAsyncAutocomplete
+          :modelValue="patientInput"
+          inputId="patientFilter"
+          optionLabel="name"
+          appendTo="body"
+          panelClass="cc-autocomplete-panel"
+          inputClass="cc-input"
+          :pt="autoCompletePt"
+          placeholder="Search patient"
+          :fetcher="fetchPatientSuggestions"
+          @update:modelValue="handlePatientModelUpdate"
+          @option-select="handlePatientSelect"
+          @error="(error) => console.error('Failed to load patient suggestions.', error)"
+        />
       </div>
       <!-- <div class="col-md-2">
         <label for="filterStartDate" class="cc-label">Start date</label>
