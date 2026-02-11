@@ -1,25 +1,29 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { fetchAppointmentLog, type AppointmentLogEntry } from "../services/appointments";
 
-const emit = defineEmits<{
-  (event: "back"): void;
-}>();
-
-const props = defineProps<{
-  appointmentId: number | null;
-}>();
+const route = useRoute();
+const router = useRouter();
 
 const logs = ref<AppointmentLogEntry[]>([]);
 const isLoading = ref(false);
 const errorMessage = ref<string | null>(null);
 
+const appointmentId = computed<number | null>(() => {
+  const raw = route.params.appointmentId;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+});
+
 const loadLogs = async (appointmentId: number | null) => {
   if (!appointmentId) {
     logs.value = [];
-    errorMessage.value = "Select an appointment to view its log.";
+    errorMessage.value = "Invalid appointment id.";
     return;
   }
+
   isLoading.value = true;
   errorMessage.value = null;
   try {
@@ -34,11 +38,21 @@ const loadLogs = async (appointmentId: number | null) => {
 };
 
 watch(
-  () => props.appointmentId,
+  appointmentId,
   (value) => {
     void loadLogs(value);
   },
   { immediate: true },
+);
+
+const goBack = () => {
+  void router.push("/appointments");
+};
+
+const loadingRows = computed(() =>
+  Array.from({ length: 7 }, (_, index) => ({
+    id: `loading-${index + 1}`,
+  })),
 );
 
 const logRows = computed(() =>
@@ -55,7 +69,7 @@ const logRows = computed(() =>
       <section class="cc-main">
         <div class="cc-toolbar">
           <h2 class="cc-title">Appointment Log</h2>
-          <button type="button" class="cc-tab-link is-active btn-sm" @click="emit('back')">
+          <button type="button" class="cc-tab-link is-active btn-sm" @click="goBack">
             <i class="fa-solid fa-arrow-left me-2"></i>
             Back to Appointments
           </button>
@@ -74,11 +88,15 @@ const logRows = computed(() =>
                 </tr>
               </thead>
               <tbody class="cc-table-body">
-                <tr v-if="isLoading">
-                  <td colspan="5" class="cc-help-text">
-                    Loading log entries...
-                  </td>
-                </tr>
+                <template v-if="isLoading">
+                  <tr v-for="row in loadingRows" :key="row.id">
+                    <td><span class="cc-skeleton cc-skeleton-sm"></span></td>
+                    <td><span class="cc-skeleton cc-skeleton-md"></span></td>
+                    <td><span class="cc-skeleton cc-skeleton-md"></span></td>
+                    <td><span class="cc-skeleton cc-skeleton-pill"></span></td>
+                    <td><span class="cc-skeleton cc-skeleton-lg"></span></td>
+                  </tr>
+                </template>
                 <tr v-else-if="errorMessage">
                   <td colspan="5" class="cc-help-text">
                     {{ errorMessage }}
