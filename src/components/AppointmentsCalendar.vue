@@ -189,6 +189,10 @@ const focus = ref<string>(
   getEarliestAppointmentFocus(sourceAppointments.value) || toIsoDate(new Date()),
 );
 const viewType = ref<"week" | "day" | "month">("week");
+const monthTitle = computed(() => {
+  const d = parseFocusDate(focus.value);
+  return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+});
 
 const resolveRangeFocus = (rangeStart: string, rangeEnd: string) => {
   const today = toIsoDate(new Date());
@@ -350,9 +354,8 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
 
     return [
       {
-        name: `${displayValue(appointment.patient?.name)} (${
-          appointment.doctor?.name || "TBD"
-        })`,
+        name: `${displayValue(appointment.patient?.name)} (${appointment.doctor?.name || "TBD"
+          })`,
         start,
         end,
         color: statusToColor(appointment.status as AppointmentStatus),
@@ -456,53 +459,32 @@ watch(
         <div>
           <div class="cc-section-title">Calendar View</div>
           <div class="cc-help-text">Click a date to focus on that day.</div>
+          <div class="cc-month-title" v-if="viewType === 'month'">
+            {{ monthTitle }}
+          </div>
         </div>
         <div class="cc-btn-group" role="group" aria-label="Calendar navigation">
-          <button
-            type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
-            @click="goPrev"
-          >
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler" @click="goPrev">
             &lt;
           </button>
-          <button
-            type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
-            @click="goNext"
-          >
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler" @click="goNext">
             &gt;
           </button>
         </div>
         <div class="cc-btn-group" role="group">
-          <button
-            type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
-            @click="setToday"
-          >
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler" @click="setToday">
             Today
           </button>
-          <button
-            type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
-            :class="{ 'is-active': viewType === 'week' }"
-            @click="viewWeek"
-          >
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler"
+            :class="{ 'is-active': viewType === 'week' }" @click="viewWeek">
             Week
           </button>
-          <button
-            type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
-            :class="{ 'is-active': viewType === 'month' }"
-            @click="viewMonth"
-          >
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler"
+            :class="{ 'is-active': viewType === 'month' }" @click="viewMonth">
             Month
           </button>
-          <button
-            type="button"
-            class="cc-btn cc-btn-outline cc-btn-sm scheduler"
-            :class="{ 'is-active': viewType === 'day' }"
-            @click="viewType = 'day'"
-          >
+          <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler"
+            :class="{ 'is-active': viewType === 'day' }" @click="viewType = 'day'">
             Day
           </button>
         </div>
@@ -513,32 +495,15 @@ watch(
         No appointments for this range.
       </div>
 
-      <VCalendar
-        v-model="focus"
-        :type="viewType"
-        :events="events"
-        :height="calendarHeight"
-        :showWeek="false"
-        :eventHeight="eventHeight"
-        :eventMore="showEventMore"
-        :event-color="neutralEventColor"
-        :class="['cc-calendar', `cc-calendar--${viewType}`]"
-        @click:date="viewDay"
-        @click:more="viewMore"
-      >
+      <VCalendar v-model="focus" :type="viewType" :events="events" :height="calendarHeight" :showWeek="false"
+        :eventHeight="eventHeight" :eventMore="showEventMore" :event-color="neutralEventColor"
+        :class="['cc-calendar', `cc-calendar--${viewType}`]" @click:date="viewDay" @click:more="viewMore">
         <template #event="{ event }">
-          <CalendarAppointmentCard
-            :event="asAppointmentEvent(event)"
-            :format-time-range="formatTimeRange"
-            :status-badge-class="statusBadgeClass"
-            :is-confirming="isConfirming(event.appointment.id)"
+          <CalendarAppointmentCard :event="asAppointmentEvent(event)" :format-time-range="formatTimeRange"
+            :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
-            :is-cancel-loading="isCancelLoading(event.appointment.id)"
-            @edit="emit('edit', $event)"
-            @confirm="confirmAll"
-            @no-show="markNoShow"
-            @cancel="handleCancelAppointment"
-          />
+            :is-cancel-loading="isCancelLoading(event.appointment.id)" @edit="emit('edit', $event)"
+            @confirm="confirmAll" @no-show="markNoShow" @cancel="handleCancelAppointment" />
         </template>
       </VCalendar>
     </div>

@@ -956,7 +956,12 @@ body {
   height: auto;
   min-height: 0;
 }
-
+.v-event .v-event-start .v-event-end{
+  margin: auto;
+}
+.v-calendar .v-event {
+  margin: auto !important;
+}
 .cc-calendar--month .v-calendar-weekly__body {
   overflow: visible;
 }

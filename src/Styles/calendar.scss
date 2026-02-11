@@ -1,0 +1,49 @@
+.cc-month-title{
+  margin-top: 6px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+/* خلي month grid يعمل horizontal scroll لو الشاشة ضيقة */
+.cc-calendar--month{
+  overflow-x: auto;
+}
+
+/* خلي grid له min width عشان يبان زي dashboard */
+.cc-calendar--month :deep(.v-calendar-weekly__head),
+.cc-calendar--month :deep(.v-calendar-weekly__week){
+  min-width: 980px;
+}
+
+/* ارتفاع ثابت لكل يوم */
+.cc-calendar--month :deep(.v-calendar-weekly__day){
+  height: 155px;
+}
+
+/* ✅ scroll داخل events container في اليوم */
+.cc-calendar--month :deep(.v-calendar-weekly__day .v-calendar-weekly__day-events){
+  max-height: 115px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Scrollbar شكل لطيف */
+.cc-calendar--month :deep(.v-calendar-weekly__day .v-calendar-weekly__day-events::-webkit-scrollbar){
+  width: 6px;
+}
+.cc-calendar--month :deep(.v-calendar-weekly__day .v-calendar-weekly__day-events::-webkit-scrollbar-thumb){
+  background: rgba(15, 23, 42, 0.22);
+  border-radius: 999px;
+}
+
+/* borders زي الجدول */
+.cc-calendar--month :deep(.v-calendar-weekly__day){
+  border-right: 1px solid rgba(15,23,42,0.10);
+  border-bottom: 1px solid rgba(15,23,42,0.10);
+}
+.cc-calendar--month :deep(.v-calendar-weekly__head-weekday){
+  border-right: 1px solid rgba(15,23,42,0.10);
+}
