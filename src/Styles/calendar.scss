@@ -7,30 +7,70 @@
   font-size: 14px;
 }
 
-/* خلي month grid يعمل horizontal scroll لو الشاشة ضيقة */
+/* =========================================================
+   ✅ Month view: Vertical scroll + clean grid (no gray days)
+   ========================================================= */
+
+/* ✅ Scroll عمودي للشهر كله */
 .cc-calendar--month{
-  overflow-x: auto;
+  max-height: 720px;          /* عدّل الرقم حسب ارتفاع الصفحة */
+  overflow-y: auto;
+  overflow-x: hidden !important;
 }
 
-/* خلي grid له min width عشان يبان زي dashboard */
+/* Scrollbar للشهر */
+.cc-calendar--month::-webkit-scrollbar{
+  width: 8px;
+}
+.cc-calendar--month::-webkit-scrollbar-thumb{
+  background: rgba(15,23,42,0.20);
+  border-radius: 999px;
+}
+
+/* ✅ امنع أي min-width يعمل سكرول بالعرض */
 .cc-calendar--month :deep(.v-calendar-weekly__head),
 .cc-calendar--month :deep(.v-calendar-weekly__week){
-  min-width: 980px;
+  min-width: 0 !important;
 }
 
-/* ارتفاع ثابت لكل يوم */
+/* ✅ خلي كل يوم نفس الارتفاع والشكل */
 .cc-calendar--month :deep(.v-calendar-weekly__day){
-  height: 155px;
+  height: 165px;                 /* ارتفاع الخلية */
+  overflow: hidden;
+  background: #fff;
+  border-right: 1px solid rgba(15,23,42,0.10);
+  border-bottom: 1px solid rgba(15,23,42,0.10);
 }
 
-/* ✅ scroll داخل events container في اليوم */
+/* خطوط الهيدر */
+.cc-calendar--month :deep(.v-calendar-weekly__head-weekday){
+  border-right: 1px solid rgba(15,23,42,0.10);
+}
+
+/* ✅ خلي داخل اليوم Layout عمودي: (رقم اليوم فوق) + (events scroll) */
+.cc-calendar--month :deep(.v-calendar-weekly__day > div){
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* رقم اليوم/الهيدر يفضل فوق */
+.cc-calendar--month :deep(.v-calendar-weekly__day-label),
+.cc-calendar--month :deep(.v-calendar-weekly__day-header){
+  flex: 0 0 auto;
+}
+
+/* ✅ منطقة الأحداث هي اللي تعمل scroll بالطول داخل اليوم */
 .cc-calendar--month :deep(.v-calendar-weekly__day .v-calendar-weekly__day-events){
-  max-height: 115px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding-right: 6px;
+  overflow-x: hidden;
+  padding: 6px 6px 8px;
 }
 
-/* Scrollbar شكل لطيف */
+/* Scrollbar داخل اليوم */
 .cc-calendar--month :deep(.v-calendar-weekly__day .v-calendar-weekly__day-events::-webkit-scrollbar){
   width: 6px;
 }
@@ -39,11 +79,27 @@
   border-radius: 999px;
 }
 
-/* borders زي الجدول */
-.cc-calendar--month :deep(.v-calendar-weekly__day){
-  border-right: 1px solid rgba(15,23,42,0.10);
-  border-bottom: 1px solid rgba(15,23,42,0.10);
+/* =========================================================
+   ✅ Hide gray/outside days (previous/next month)
+   ========================================================= */
+
+/* بعض نسخ Vuetify بتستخدم adjacent / outside */
+.cc-calendar--month :deep(.v-calendar-weekly__day--adjacent),
+.cc-calendar--month :deep(.v-calendar-weekly__day--outside){
+  background: #fff !important;
 }
-.cc-calendar--month :deep(.v-calendar-weekly__head-weekday){
-  border-right: 1px solid rgba(15,23,42,0.10);
+
+/* اخفي كل محتوى اليوم الرصاصي (الرقم + الأحداث) */
+.cc-calendar--month :deep(.v-calendar-weekly__day--adjacent *),
+.cc-calendar--month :deep(.v-calendar-weekly__day--outside *){
+  display: none !important;
+}
+
+/* امنع التفاعل معاها */
+.cc-calendar--month :deep(.v-calendar-weekly__day--adjacent),
+.cc-calendar--month :deep(.v-calendar-weekly__day--outside){
+  pointer-events: none !important;
+}
+.v-calendar-weekly__head{
+  background: aliceblue;
 }

@@ -37,5 +37,3 @@ app.component('Toast', Toast)
 app.component('AppointmentMap', AppointmentMap)
 
 app.mount('#app')
-console.log("ENV FULL:", import.meta.env)
-console.log("API:", import.meta.env.VITE_API_URL)
