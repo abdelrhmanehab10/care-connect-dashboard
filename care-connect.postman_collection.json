@@ -27,8 +27,14 @@
             "header": [],
             "url": {
               "raw": "{{url}}/api/labs/companies",
-              "host": ["{{url}}"],
-              "path": ["api", "labs", "companies"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "companies"
+              ]
             }
           },
           "response": []
@@ -62,8 +68,14 @@
             },
             "url": {
               "raw": "{{url}}/api/labs/tests",
-              "host": ["{{url}}"],
-              "path": ["api", "labs", "tests"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "tests"
+              ]
             }
           },
           "response": []
@@ -75,8 +87,14 @@
             "header": [],
             "url": {
               "raw": "{{url}}/api/labs/panels",
-              "host": ["{{url}}"],
-              "path": ["api", "labs", "panels"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "panels"
+              ]
             }
           },
           "response": []
@@ -110,8 +128,14 @@
             },
             "url": {
               "raw": "{{url}}/api/labs/profiles",
-              "host": ["{{url}}"],
-              "path": ["api", "labs", "profiles"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "profiles"
+              ]
             }
           },
           "response": []
@@ -142,8 +166,14 @@
             },
             "url": {
               "raw": "{{url}}/api/labs/orders",
-              "host": ["{{url}}"],
-              "path": ["api", "labs", "orders"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "orders"
+              ]
             }
           },
           "response": []
@@ -175,8 +205,13 @@
             },
             "url": {
               "raw": "{{url}}/admin/login",
-              "host": ["{{url}}"],
-              "path": ["admin", "login"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
             }
           },
           "response": []
@@ -203,7 +238,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"start\":\"\",\n    \"end\":\"\",\n    \"status\":\"waiting\",\n    \"view_pagination\":true\n}",
+              "raw": "{\n    \"start\":\"2026-02-5\",\n    \"end\":\"\",\n    \"status\":\"new\",\n    \"view_pagination\":true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -212,8 +247,14 @@
             },
             "url": {
               "raw": "{{url}}/vue/appointments/list",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "list"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "list"
+              ]
             }
           },
           "response": [
@@ -233,8 +274,14 @@
                 },
                 "url": {
                   "raw": "{{url}}/api/scheduler/appointments",
-                  "host": ["{{url}}"],
-                  "path": ["api", "scheduler", "appointments"]
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "scheduler",
+                    "appointments"
+                  ]
                 }
               },
               "status": "OK",
@@ -291,9 +338,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/vue/appointments/details/23",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "details", "23"]
+              "raw": "{{url}}/vue/appointments/details/357",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "details",
+                "357"
+              ]
             }
           },
           "response": [
@@ -304,8 +358,15 @@
                 "header": [],
                 "url": {
                   "raw": "{{url}}/vue/appointments/details/23",
-                  "host": ["{{url}}"],
-                  "path": ["vue", "appointments", "details", "23"]
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "vue",
+                    "appointments",
+                    "details",
+                    "23"
+                  ]
                 }
               },
               "status": "OK",
@@ -363,7 +424,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"3\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"2\",\n  \"is_recurring\": \"1\",\n  \"date\": \"2026-01-31\",\n  \"start_time\": \"04:02\",\n  \"end_time\": \"06:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"04:00\",\n      \"end_time\": \"05:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"05:00\",\n      \"end_time\": \"05:30\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"05:30\",\n      \"end_time\": \"06:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "raw": "{\n  \"patient_id\": \"8\",\n  \"new_address\": {\n    \"address\": \"123 Main St\",\n    \"lat\":22.2653,\n    \"lng\":22.2653\n  },\n  \"visit_type_id\": \"2\",\n  \"is_recurring\": \"0\",\n  \"date\": \"2026-01-31\",\n  \"start_time\": \"04:02\",\n  \"end_time\": \"06:02\",\n  \"main_nurse\": 1,\n  \"nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"04:00\",\n      \"end_time\": \"05:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"05:00\",\n      \"end_time\": \"05:30\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"05:30\",\n      \"end_time\": \"06:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": 1,\n  \"doctor_id\": \"21\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": 1,\n  \"social_worker_id\": \"25\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -372,8 +433,14 @@
             },
             "url": {
               "raw": "{{url}}/vue/appointments/create",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "create"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "create"
+              ]
             }
           },
           "response": []
@@ -392,10 +459,17 @@
               ]
             },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text",
+                "disabled": true
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"4\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"123 Main St\"\n  },\n  \"visit_type_id\": \"1\",\n  \"is_recurring\": \"1\",\n  \"date\": \"2026-02-31\",\n  \"start_time\": \"02:02\",\n  \"end_time\": \"04:02\",\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"1\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"5\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "raw": "{\n    \"patient_id\": \"8\",\n    \"visit_type_id\": 9,\n    \"date\": \"2025-11-10\",\n    \"start_time\": \"09:49:00\",\n    \"end_time\": \"11:45:00\",\n    \"is_recurring\": \"0\",\n    \"status\": \"waiting\",\n    \"doctor_id\": \"\",\n    \"nurse_id\": \"5\",\n    \"social_worker_id\": \"\",\n    \"new_address\": {\n        \"address\": \"dfdf\",\n        \"lat\": \"0\",\n        \"lng\": \"0\"\n    }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -404,8 +478,15 @@
             },
             "url": {
               "raw": "{{url}}/vue/appointments/update/1",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "update", "1"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "update",
+                "1"
+              ]
             }
           },
           "response": []
@@ -427,7 +508,9 @@
             "header": [],
             "url": {
               "raw": "{{url}}/vue/appointments/confirm/{{appointment_id}}/{{employee_id}}",
-              "host": ["{{url}}"],
+              "host": [
+                "{{url}}"
+              ],
               "path": [
                 "vue",
                 "appointments",
@@ -456,7 +539,9 @@
             "header": [],
             "url": {
               "raw": "{{url}}/vue/appointments/confirm-all/{{appointment_id}}",
-              "host": ["{{url}}"],
+              "host": [
+                "{{url}}"
+              ],
               "path": [
                 "vue",
                 "appointments",
@@ -484,8 +569,15 @@
             "header": [],
             "url": {
               "raw": "{{url}}/vue/appointments/quick-no-show/20",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "quick-no-show", "20"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "quick-no-show",
+                "20"
+              ]
             }
           },
           "response": []
@@ -516,14 +608,21 @@
             },
             "url": {
               "raw": "{{url}}/vue/appointments/cancel/20",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "cancel", "20"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "cancel",
+                "20"
+              ]
             }
           },
           "response": []
         },
         {
-          "name": "List Appointment Status",
+          "name": "List Appointment Statuses",
           "request": {
             "auth": {
               "type": "bearer",
@@ -539,8 +638,14 @@
             "header": [],
             "url": {
               "raw": "{{url}}/vue/appointments/status-list",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "status-list"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "status-list"
+              ]
             }
           },
           "response": [
@@ -551,8 +656,15 @@
                 "header": [],
                 "url": {
                   "raw": "{{url}}/api/vue/appointments/status-list",
-                  "host": ["{{url}}"],
-                  "path": ["api", "vue", "appointments", "status-list"]
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "vue",
+                    "appointments",
+                    "status-list"
+                  ]
                 }
               },
               "status": "OK",
@@ -601,7 +713,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "value": "{{token}}",
                   "type": "string"
                 }
               ]
@@ -610,8 +722,14 @@
             "header": [],
             "url": {
               "raw": "{{url}}/vue/appointments/cards",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "cards"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "cards"
+              ]
             }
           },
           "response": [
@@ -622,8 +740,99 @@
                 "header": [],
                 "url": {
                   "raw": "{{url}}/api/vue/appointments/cards",
-                  "host": ["{{url}}"],
-                  "path": ["api", "vue", "appointments", "cards"]
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "vue",
+                    "appointments",
+                    "cards"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Host",
+                  "value": "127.0.0.1:8000"
+                },
+                {
+                  "key": "Connection",
+                  "value": "close"
+                },
+                {
+                  "key": "X-Powered-By",
+                  "value": "PHP/8.3.10"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-cache, private"
+                },
+                {
+                  "key": "Date",
+                  "value": "Sat, 07 Feb 2026 09:07:10 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "*"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"total\": 21,\n        \"by_status\": [\n            {\n                \"status\": \"New\",\n                \"name\": \"new\",\n                \"count\": 2\n            },\n            {\n                \"status\": \"Waiting\",\n                \"name\": \"waiting\",\n                \"count\": 3\n            },\n            {\n                \"status\": \"Confirmed\",\n                \"name\": \"confirmed\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Rescheduled\",\n                \"name\": \"rescheduled\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Patient Confirmed\",\n                \"name\": \"patient_confirmed\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Canceled\",\n                \"name\": \"canceled\",\n                \"count\": 4\n            },\n            {\n                \"status\": \"No Show\",\n                \"name\": \"no_show\",\n                \"count\": 0\n            },\n            {\n                \"status\": \"Completed\",\n                \"name\": \"completed\",\n                \"count\": 12\n            }\n        ],\n        \"periods\": {\n            \"today\": 0,\n            \"this_week\": 1,\n            \"this_month\": 1\n        }\n    },\n    \"status\": \"success\",\n    \"message\": \"\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "get DD",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/vue/appointments/getdd",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "getdd"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List Appointments cards (counts)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{url}}/api/vue/appointments/cards",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "vue",
+                    "appointments",
+                    "cards"
+                  ]
                 }
               },
               "status": "OK",
@@ -680,9 +889,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/vue/appointments/log/353",
-              "host": ["{{url}}"],
-              "path": ["vue", "appointments", "log", "353"]
+              "raw": "{{url}}/vue/appointments/log/2",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "log",
+                "2"
+              ]
             }
           },
           "response": [
@@ -693,8 +909,15 @@
                 "header": [],
                 "url": {
                   "raw": "{{url}}/vue/appointments/log/353",
-                  "host": ["{{url}}"],
-                  "path": ["vue", "appointments", "log", "353"]
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "vue",
+                    "appointments",
+                    "log",
+                    "353"
+                  ]
                 }
               },
               "status": "OK",
@@ -765,8 +988,13 @@
             "header": [],
             "url": {
               "raw": "{{url}}/employees/search?title=social_worker",
-              "host": ["{{url}}"],
-              "path": ["employees", "search"],
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "employees",
+                "search"
+              ],
               "query": [
                 {
                   "key": "title",
@@ -799,8 +1027,12 @@
             "header": [],
             "url": {
               "raw": "{{url}}/visit-types",
-              "host": ["{{url}}"],
-              "path": ["visit-types"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "visit-types"
+              ]
             }
           },
           "response": []
@@ -827,8 +1059,12 @@
             "header": [],
             "url": {
               "raw": "{{url}}/areas",
-              "host": ["{{url}}"],
-              "path": ["areas"]
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "areas"
+              ]
             }
           },
           "response": []
@@ -855,7 +1091,9 @@
             "header": [],
             "url": {
               "raw": "{{url}}/api/vue/appointments/quick-confirm/{{appointment_id}}",
-              "host": ["{{url}}"],
+              "host": [
+                "{{url}}"
+              ],
               "path": [
                 "api",
                 "vue",
@@ -893,7 +1131,9 @@
             },
             "url": {
               "raw": "{{url}}/api/vue/appointments/quick-cancel/{{appointment_id}}",
-              "host": ["{{url}}"],
+              "host": [
+                "{{url}}"
+              ],
               "path": [
                 "api",
                 "vue",
@@ -926,13 +1166,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/patients/autocomplete?q=yass",
-              "host": ["{{url}}"],
-              "path": ["patients", "autocomplete"],
+              "raw": "{{url}}/patients/autocomplete?q=ahmed",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "patients",
+                "autocomplete"
+              ],
               "query": [
                 {
                   "key": "q",
-                  "value": "yass"
+                  "value": "ahmed"
                 }
               ]
             }
