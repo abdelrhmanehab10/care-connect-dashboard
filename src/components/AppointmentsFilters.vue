@@ -462,6 +462,7 @@ watch(
 <template>
   <div class="border p-3 rounded mb-2">
     <AppointmentCards :is-today-active="isTodayActive" :is-this-week-active="isThisWeekActive"
+      :active-state-filter="stateFilter?.value ?? stateFilter?.key ?? null"
       :status-tag-filter="statusTagFilter" :quick-patient-label="quickPatientLabel"
       :quick-doctor-label="quickDoctorLabel" :patient-filter="patientFilter" :employee-filter="employeeFilter"
       :is-disabled="isCalendarView" @toggle-today="toggleToday" @toggle-week="toggleThisWeek"

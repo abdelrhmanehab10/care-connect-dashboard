@@ -19,6 +19,7 @@ interface Card {
 const props = defineProps<{
   isTodayActive?: boolean;
   isThisWeekActive?: boolean;
+  activeStateFilter?: string | null;
   statusTagFilter?: AppointmentStatus | null;
   quickPatientLabel?: string;
   quickDoctorLabel?: string;
@@ -39,6 +40,21 @@ const emit = defineEmits<{
 const { cards: cardsData } = useAppointmentCardsQuery();
 
 const isDisabled = computed(() => Boolean(props.isDisabled));
+const normalizedActiveStateFilter = computed(() =>
+  String(props.activeStateFilter ?? "")
+    .trim()
+    .toLowerCase(),
+);
+
+const isCardAlreadyActive = (card: Card) => {
+  if (card.filter.type === "period") {
+    return card.filter.value === "today"
+      ? Boolean(props.isTodayActive)
+      : Boolean(props.isThisWeekActive);
+  }
+
+  return normalizedActiveStateFilter.value === card.filter.value.toLowerCase();
+};
 
 const statusCounts = computed(() => {
   const map = new Map<string, number>();
@@ -101,6 +117,7 @@ const cards = computed<Card[]>(() => {
 
 const handleCardClick = (card: Card) => {
   if (isDisabled.value) return;
+  if (isCardAlreadyActive(card)) return;
   if (card.filter.type === "period") {
     if (card.filter.value === "today") {
       emit("toggle-today");
