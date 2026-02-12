@@ -1033,6 +1033,27 @@ const resolveSelectedPrimaryDoctorName = (
   return name || null;
 };
 
+const resolveSelectedPrimaryNurseName = (patient: PatientOption): string | null => {
+  const name =
+    String(patient.primary_nurse?.name ?? "").trim() ||
+    String(patient.primary_leader_nurse?.name ?? "").trim();
+  return name || null;
+};
+
+const resolveSelectedPrimarySocialWorkerName = (
+  patient: PatientOption,
+): string | null => {
+  const name = String(patient.primary_social_worker?.name ?? "").trim();
+  return name || null;
+};
+
+const resolveSelectedPrimaryDriverName = (
+  patient: PatientOption,
+): string | null => {
+  const name = String(patient.primary_driver?.name ?? "").trim();
+  return name || null;
+};
+
 const resetForm = () => {
   hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
@@ -1147,6 +1168,40 @@ const resolveAppointmentPatient = (
             name: String(patient.primary_doctor.name ?? "").trim() || null,
           }
         : patient?.primary_doctor === null
+          ? null
+          : undefined,
+      primary_nurse: patient?.primary_nurse
+        ? {
+            id: patient.primary_nurse.id ?? null,
+            name: String(patient.primary_nurse.name ?? "").trim() || null,
+          }
+        : patient?.primary_nurse === null
+          ? null
+          : undefined,
+      primary_leader_nurse: patient?.primary_leader_nurse
+        ? {
+            id: patient.primary_leader_nurse.id ?? null,
+            name:
+              String(patient.primary_leader_nurse.name ?? "").trim() || null,
+          }
+        : patient?.primary_leader_nurse === null
+          ? null
+          : undefined,
+      primary_social_worker: patient?.primary_social_worker
+        ? {
+            id: patient.primary_social_worker.id ?? null,
+            name:
+              String(patient.primary_social_worker.name ?? "").trim() || null,
+          }
+        : patient?.primary_social_worker === null
+          ? null
+          : undefined,
+      primary_driver: patient?.primary_driver
+        ? {
+            id: patient.primary_driver.id ?? null,
+            name: String(patient.primary_driver.name ?? "").trim() || null,
+          }
+        : patient?.primary_driver === null
           ? null
           : undefined,
       primary_nurse_id:
@@ -1455,7 +1510,10 @@ watch(driverAssignmentMode, (value) => {
 watch(selectedPatient, (value) => {
   if (value === null) {
     mapLocation.value = { ...defaultMapLocation };
+    primaryNurseName.value = null;
     primaryDoctorName.value = null;
+    primarySocialWorkerName.value = null;
+    primaryDriverName.value = null;
     return;
   }
 
@@ -1464,7 +1522,10 @@ watch(selectedPatient, (value) => {
   }
 
   mapLocation.value = resolveSelectedPatientLocation(value);
+  primaryNurseName.value = resolveSelectedPrimaryNurseName(value);
   primaryDoctorName.value = resolveSelectedPrimaryDoctorName(value);
+  primarySocialWorkerName.value = resolveSelectedPrimarySocialWorkerName(value);
+  primaryDriverName.value = resolveSelectedPrimaryDriverName(value);
 });
 
 watch(
