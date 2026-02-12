@@ -36,6 +36,7 @@ export type AppointmentLogEntry = {
   patient: string;
   action: string;
   time: string;
+  reason?: string | null;
 };
 
 export type AppointmentLogResponse = {

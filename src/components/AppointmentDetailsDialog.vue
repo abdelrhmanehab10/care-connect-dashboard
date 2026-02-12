@@ -765,6 +765,7 @@ const handleEditAppointment = () => {
                 <th scope="col">Employee</th>
                 <th scope="col">Patient</th>
                 <th scope="col">Action</th>
+                <th scope="col">Reason</th>
                 <th scope="col">Timestamp</th>
               </tr>
             </thead>
@@ -775,16 +776,17 @@ const handleEditAppointment = () => {
                   <td><span class="cc-skeleton cc-skeleton-md"></span></td>
                   <td><span class="cc-skeleton cc-skeleton-md"></span></td>
                   <td><span class="cc-skeleton cc-skeleton-pill"></span></td>
+                  <td><span class="cc-skeleton cc-skeleton-md"></span></td>
                   <td><span class="cc-skeleton cc-skeleton-lg"></span></td>
                 </tr>
               </template>
               <tr v-else-if="logErrorMessage">
-                <td colspan="5" class="cc-help-text">
+                <td colspan="6" class="cc-help-text">
                   {{ logErrorMessage }}
                 </td>
               </tr>
               <tr v-else-if="logRows.length === 0">
-                <td colspan="5" class="cc-help-text">
+                <td colspan="6" class="cc-help-text">
                   No log entries yet.
                 </td>
               </tr>
@@ -793,6 +795,7 @@ const handleEditAppointment = () => {
                 <td>{{ row.employee }}</td>
                 <td>{{ row.patient }}</td>
                 <td>{{ row.action }}</td>
+                <td>{{ v(row.reason) }}</td>
                 <td>{{ row.time }}</td>
               </tr>
             </tbody>
