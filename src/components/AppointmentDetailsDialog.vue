@@ -650,41 +650,43 @@ const handleEditAppointment = () => {
       </div>
 
       <div class="cc-actions">
-        <button
-          type="button"
-          class="cc-btn cc-btn-success"
-          :disabled="!appointmentId || isConfirming || !isConfirmableStatus"
-          @click="requestConfirmAll"
-        >
-          <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
-          <span v-else>Confirm Appointment</span>
-        </button>
+        <div class="cc-actions-left">
+          <button
+            type="button"
+            class="cc-btn cc-btn-primary"
+            @click="handleCheckIn"
+          >
+            {{ checkInButtonLabel }}
+          </button>
+          <button
+            type="button"
+            class="cc-btn cc-btn-success"
+            :disabled="!appointmentId || isConfirming || !isConfirmableStatus"
+            @click="requestConfirmAll"
+          >
+            <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
+            <span v-else>Confirm Appointment</span>
+          </button>
+        </div>
 
-        <button
-          type="button"
-          class="cc-btn cc-btn-primary"
-          @click="handleCheckIn"
-        >
-          {{ checkInButtonLabel }}
-        </button>
-
-        <button
-          type="button"
-          class="cc-btn cc-btn-warn"
-          :disabled="!appointmentId"
-          @click="appointmentId && emit('log', appointmentId)"
-        >
-          Log
-        </button>
-
-        <button
-          type="button"
-          class="cc-btn cc-btn-secondary"
-          :disabled="!appointmentId"
-          @click="handleEditAppointment"
-        >
-          Edit Appointment
-        </button>
+        <div class="cc-actions-right">
+          <button
+            type="button"
+            class="cc-btn cc-btn-secondary"
+            :disabled="!appointmentId"
+            @click="handleEditAppointment"
+          >
+            Edit Appointment
+          </button>
+          <button
+            type="button"
+            class="cc-btn cc-btn-warn"
+            :disabled="!appointmentId"
+            @click="appointmentId && emit('log', appointmentId)"
+          >
+            Log
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1016,10 +1018,18 @@ const handleEditAppointment = () => {
 /* Bottom actions */
 .cc-actions {
   display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding-top: 6px;
+}
+
+.cc-actions-left,
+.cc-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .cc-btn {
