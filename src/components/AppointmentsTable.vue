@@ -570,6 +570,25 @@ const statusOptionsMap = computed(() => {
 const getStatusOption = (value: unknown) =>
   statusOptionsMap.value.get(normalizeStatusKey(value)) ?? null;
 
+const getStatusDisplayLabel = (value: unknown) => {
+  const optionLabel = getStatusOption(value)?.label?.trim();
+  if (optionLabel) {
+    return optionLabel;
+  }
+
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return "-";
+  }
+
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const buildFallbackStatusOption = (
   value: unknown,
 ): NormalizedStatusOption | null => {
@@ -649,7 +668,7 @@ const isStatusLocked = (data: Appointment) => {
 };
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
-  if (event.field === "status" && isStatusLocked(event.data)) {
+  if (isStatusLocked(event.data)) {
     const originalEvent = event.originalEvent as Event | undefined;
     originalEvent?.preventDefault?.();
     originalEvent?.stopPropagation?.();
@@ -955,7 +974,7 @@ const emit = defineEmits<{
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
           <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)"
             @click="blockEditIfFinalStatus($event, data.status)">
-            {{ data.status ?? "-" }}
+            {{ getStatusDisplayLabel(data.status) }}
           </span>
         </template>
 

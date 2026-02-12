@@ -1,6 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { defineComponent, h, inject, provide } from "vue";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import AppointmentsTable from "../../src/components/AppointmentsTable.vue";
 import type { Appointment } from "../../src/types";
 import type { AppointmentStatusOption } from "../../src/services/appointments";
@@ -105,6 +105,27 @@ describe("AppointmentsTable status rules", () => {
     const select = wrapper.find("select");
     expect(select.exists()).toBe(true);
     expect((select.element as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it("blocks editing any field when status is final", () => {
+    const appointment = makeAppointment("canceled");
+    const wrapper = mountTable(appointment);
+    const table = wrapper.findComponent(DataTableStub);
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+
+    table.vm.$emit("cell-edit-init", {
+      originalEvent: {
+        preventDefault,
+        stopPropagation,
+      },
+      data: appointment,
+      field: "date",
+      index: 0,
+    });
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
   });
 
   it("limits level-2 statuses to final options", () => {
