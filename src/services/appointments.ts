@@ -220,9 +220,7 @@ export const updateAppointment = async (
 export const confirmAppointmentAll = async (
   appointmentId: number,
 ): Promise<unknown> => {
-  const response = await http.get(
-    `/vue/appointments/confirm-all/${appointmentId}`,
-  );
+  const response = await http.get(`/vue/appointments/confirm-all/${appointmentId}`);
   return response.data;
 };
 
@@ -230,18 +228,14 @@ export const confirmAppointmentEmployee = async (
   appointmentId: number,
   employeeId: number,
 ): Promise<unknown> => {
-  const response = await http.get(
-    `/vue/appointments/confirm/${appointmentId}/${employeeId}`,
-  );
+  const response = await http.get(`/vue/appointments/confirm/${appointmentId}/${employeeId}`);
   return response.data;
 };
 
 export const quickNoShowAppointment = async (
   appointmentId: number,
 ): Promise<unknown> => {
-  const response = await http.post(
-    `/vue/appointments/quick-no-show/${appointmentId}`,
-  );
+  const response = await http.post(`/vue/appointments/quick-no-show/${appointmentId}`);
   return response.data;
 };
 
@@ -254,8 +248,9 @@ export const cancelAppointment = async (
   appointmentId: number,
   payload: CancelAppointmentPayload = {},
 ): Promise<unknown> => {
-  const response = await http.get(`/vue/appointments/cancel/${appointmentId}`, {
-    params: payload,
-  });
+  const response = await http.post(
+    `/vue/appointments/cancel/${appointmentId}`,
+    payload,
+  );
   return response.data;
 };

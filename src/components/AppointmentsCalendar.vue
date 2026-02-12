@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
 import { useToast } from "primevue/usetoast";
+import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
 import CalendarAppointmentCard from "./CalendarAppointmentCard.vue";
 import {
   confirmAppointmentAll,
@@ -226,6 +227,15 @@ const showEventMore = computed(() => viewType.value !== "month");
 const confirmingIds = ref<number[]>([]);
 const noShowIds = ref<number[]>([]);
 const cancelIds = ref<number[]>([]);
+const reasonDialogVisible = ref(false);
+const reasonText = ref("");
+
+type PendingCalendarAction = {
+  type: "cancel";
+  appointment: Appointment;
+};
+
+const pendingReasonAction = ref<PendingCalendarAction | null>(null);
 const neutralEventColor = () => "";
 const asAppointmentEvent = (event: unknown) =>
   event as AppointmentCalendarEvent;
@@ -269,70 +279,119 @@ const setCancelLoading = (appointmentId: number, value: boolean) => {
   cancelIds.value = cancelIds.value.filter((id) => id !== appointmentId);
 };
 
-const confirmAll = async (appointment: Appointment) => {
+const openReasonForAction = (action: PendingCalendarAction) => {
+  if (reasonDialogVisible.value) {
+    return;
+  }
+
+  pendingReasonAction.value = action;
+  reasonText.value = "";
+  reasonDialogVisible.value = true;
+};
+
+const resetReasonDialogState = () => {
+  reasonDialogVisible.value = false;
+  reasonText.value = "";
+  pendingReasonAction.value = null;
+};
+
+const requestConfirmAll = (appointment: Appointment) => {
   if (!appointment?.id || isConfirming(appointment.id)) {
     return;
   }
 
   setConfirming(appointment.id, true);
-  try {
-    await confirmAppointmentAll(appointment.id);
-    toast.add({
-      severity: "success",
-      summary: "Appointment confirmed",
-      detail: "Appointment confirmed successfully.",
-      life: 3000,
+  void confirmAppointmentAll(appointment.id)
+    .then(() => {
+      toast.add({
+        severity: "success",
+        summary: "Appointment confirmed",
+        detail: "Appointment confirmed successfully.",
+        life: 3000,
+      });
+      emit("confirm-all", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to confirm appointment.", error);
+    })
+    .finally(() => {
+      setConfirming(appointment.id, false);
     });
-    emit("confirm-all", appointment);
-  } catch (error) {
-    console.error("Failed to confirm appointment.", error);
-  } finally {
-    setConfirming(appointment.id, false);
-  }
 };
 
-const markNoShow = async (appointment: Appointment) => {
+const requestNoShow = (appointment: Appointment) => {
   if (!appointment?.id || isNoShowLoading(appointment.id)) {
     return;
   }
 
   setNoShowLoading(appointment.id, true);
-  try {
-    await quickNoShowAppointment(appointment.id);
-    toast.add({
-      severity: "success",
-      summary: "No show updated",
-      detail: "Appointment marked as no show.",
-      life: 3000,
+  void quickNoShowAppointment(appointment.id)
+    .then(() => {
+      toast.add({
+        severity: "success",
+        summary: "No show updated",
+        detail: "Appointment marked as no show.",
+        life: 3000,
+      });
+      emit("no-show", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to mark appointment as no show.", error);
+    })
+    .finally(() => {
+      setNoShowLoading(appointment.id, false);
     });
-    emit("no-show", appointment);
-  } catch (error) {
-    console.error("Failed to mark appointment as no show.", error);
-  } finally {
-    setNoShowLoading(appointment.id, false);
-  }
 };
 
-const handleCancelAppointment = async (appointment: Appointment) => {
+const requestCancelAppointment = (appointment: Appointment) => {
   if (!appointment?.id || isCancelLoading(appointment.id)) {
     return;
   }
 
-  setCancelLoading(appointment.id, true);
-  try {
-    await cancelAppointmentApi(appointment.id);
-    toast.add({
-      severity: "success",
-      summary: "Appointment canceled",
-      detail: "Appointment canceled successfully.",
-      life: 3000,
-    });
-    emit("cancel", appointment);
-  } catch (error) {
-    console.error("Failed to cancel appointment.", error);
-  } finally {
-    setCancelLoading(appointment.id, false);
+  openReasonForAction({
+    type: "cancel",
+    appointment,
+  });
+};
+
+const confirmReasonAndRun = async () => {
+  const action = pendingReasonAction.value;
+  const reason = reasonText.value.trim();
+  if (!action || !reason) {
+    return;
   }
+
+  resetReasonDialogState();
+
+  switch (action.type) {
+    case "cancel": {
+      const { appointment } = action;
+      if (!appointment?.id || isCancelLoading(appointment.id)) {
+        return;
+      }
+
+      setCancelLoading(appointment.id, true);
+      try {
+        await cancelAppointmentApi(appointment.id, { reason });
+        toast.add({
+          severity: "success",
+          summary: "Appointment canceled",
+          detail: "Appointment canceled successfully.",
+          life: 3000,
+        });
+        emit("cancel", appointment);
+      } catch (error) {
+        console.error("Failed to cancel appointment.", error);
+      } finally {
+        setCancelLoading(appointment.id, false);
+      }
+      return;
+    }
+  }
+};
+
+const cancelReasonModal = () => {
+  resetReasonDialogState();
 };
 
 const syncRange = () => {
@@ -517,15 +576,23 @@ watch(
 
       <VCalendar v-model="focus" :type="viewType" :events="events" :height="calendarHeight" :showWeek="false"
         :eventHeight="eventHeight" :eventMore="showEventMore" :event-color="neutralEventColor"
+        :event-overlap-threshold="0"
         :class="['cc-calendar', `cc-calendar--${viewType}`]" @click:date="viewDay" @click:more="viewMore">
         <template #event="{ event }">
           <CalendarAppointmentCard :event="asAppointmentEvent(event)" :format-time-range="formatTimeRange"
             :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
             :is-cancel-loading="isCancelLoading(event.appointment.id)" @edit="emit('edit', $event)"
-            @confirm="confirmAll" @no-show="markNoShow" @cancel="handleCancelAppointment" />
+            @confirm="requestConfirmAll" @no-show="requestNoShow" @cancel="requestCancelAppointment" />
         </template>
       </VCalendar>
     </div>
+    <AppointmentEditReasonDialog
+      v-model:visible="reasonDialogVisible"
+      v-model:reasonText="reasonText"
+      @confirm="confirmReasonAndRun"
+      @cancel="cancelReasonModal"
+      @hide="cancelReasonModal"
+    />
   </div>
 </template>

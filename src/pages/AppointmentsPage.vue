@@ -649,14 +649,22 @@ const getSaveErrorMessage = (error: unknown) => {
   return "Failed to save appointment.";
 };
 
-const handleSaveAppointment = async (payload: CreateAppointmentPayload) => {
+const handleSaveAppointment = async (
+  payload: CreateAppointmentPayload,
+  reason = "",
+) => {
   if (isSaving.value) return;
   isSaving.value = true;
   saveError.value = null;
   const appointmentId = editingAppointment.value?.id ?? null;
   try {
     if (appointmentId) {
-      await updateAppointment(appointmentId, payload);
+      const updatePayload: UpdateAppointmentPayload = { ...payload };
+      const trimmedReason = reason.trim();
+      if (trimmedReason) {
+        updatePayload.reason = trimmedReason;
+      }
+      await updateAppointment(appointmentId, updatePayload);
     } else {
       await createAppointment(payload);
     }
@@ -836,6 +844,7 @@ onMounted(() => {
       :appointment="selectedAppointment"
       @log="openLogPage"
       @confirm-all="refreshAppointments"
+      @confirm-employee="refreshAppointments"
       @no-show="refreshAppointments"
       @cancel="refreshAppointments"
     />

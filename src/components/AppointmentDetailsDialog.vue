@@ -2,10 +2,12 @@
 import { computed, getCurrentInstance, ref, watch } from "vue";
 import { CheckCircle, XCircle, Ban, Loader2, X } from "lucide-vue-next";
 import Dialog from "primevue/dialog";
-import type { Appointment } from "../types";
+import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
+import type { Appointment, Confirmation } from "../types";
 import {
   cancelAppointment as cancelAppointmentApi,
   confirmAppointmentAll,
+  confirmAppointmentEmployee,
   quickNoShowAppointment,
 } from "../services/appointments";
 import { dialogPt } from "../ui/primevuePt";
@@ -19,6 +21,7 @@ const emit = defineEmits<{
   (event: "check-in"): void;
   (event: "log", payload: number): void;
   (event: "confirm-all", payload: Appointment): void;
+  (event: "confirm-employee", payload: Appointment): void;
   (event: "no-show", payload: Appointment): void;
   (event: "cancel", payload: Appointment): void;
 }>();
@@ -36,6 +39,18 @@ const isConfirming = ref(false);
 const isNoShowLoading = ref(false);
 const isCancelLoading = ref(false);
 const statusOverride = ref<string | null>(null);
+const confirmingEmployeeIds = ref<number[]>([]);
+const optimisticConfirmedEmployeeIds = ref<number[]>([]);
+const reasonDialogVisible = ref(false);
+const reasonText = ref("");
+
+type PendingReasonAction =
+  {
+      type: "cancel";
+      appointment: Appointment;
+    };
+
+const pendingReasonAction = ref<PendingReasonAction | null>(null);
 
 const v = (x: any) =>
   x === null || x === undefined || x === "" ? "-" : String(x);
@@ -56,6 +71,17 @@ const statusClass = (s: any) => {
 const displayStatus = computed(
   () => statusOverride.value ?? appointmentData.value?.status ?? null,
 );
+const normalizedStatus = computed(() =>
+  String(displayStatus.value ?? "")
+    .trim()
+    .toLowerCase(),
+);
+const isConfirmableStatus = computed(
+  () => normalizedStatus.value === "new" || normalizedStatus.value === "waiting",
+);
+const isStatusConfirmed = computed(() =>
+  normalizedStatus.value.includes("confirm"),
+);
 
 watch(
   () => appointmentData.value?.status ?? null,
@@ -64,6 +90,32 @@ watch(
   },
   { immediate: true },
 );
+
+const resetRowConfirmState = () => {
+  confirmingEmployeeIds.value = [];
+  optimisticConfirmedEmployeeIds.value = [];
+};
+
+const resetReasonDialogState = () => {
+  reasonDialogVisible.value = false;
+  reasonText.value = "";
+  pendingReasonAction.value = null;
+};
+
+watch(
+  () => appointmentData.value?.id ?? null,
+  () => {
+    resetRowConfirmState();
+    resetReasonDialogState();
+  },
+);
+
+watch(visible, (value) => {
+  if (!value) {
+    resetRowConfirmState();
+    resetReasonDialogState();
+  }
+});
 
 const patientName = () => v(appointmentData.value?.patient?.name);
 const patientPhone = () => v(appointmentData.value?.patient?.phone);
@@ -126,98 +178,303 @@ const scheduleText = () =>
 type TeamItem = {
   role: string;
   name: string;
-  confirmed?: boolean;
+  employeeId: number | null;
+  confirmed: boolean;
+  isConfirming: boolean;
+  canConfirm: boolean;
   start_time?: string;
   end_time?: string;
 };
 
-const careTeam = (): TeamItem[] => {
-  const a: any = appointmentData.value;
+type AppointmentWithConfirmations = Appointment & {
+  confirmations?: Confirmation[] | null;
+  confirmation?: Confirmation[] | null;
+};
 
+const normalizeId = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const confirmationList = computed<Confirmation[]>(() => {
+  const appointment = appointmentData.value as AppointmentWithConfirmations | null;
+  if (!appointment) {
+    return [];
+  }
+  if (Array.isArray(appointment.confirmations)) {
+    return appointment.confirmations;
+  }
+  if (Array.isArray(appointment.confirmation)) {
+    return appointment.confirmation;
+  }
+  return [];
+});
+
+const confirmedEmployeeIds = computed(() => {
+  const ids = new Set<number>();
+  for (const item of confirmationList.value) {
+    const byConfirmedBy = normalizeId(item.confirmed_by);
+    const byEmployeeId = normalizeId(item.employee_id);
+    if (byConfirmedBy !== null) {
+      ids.add(byConfirmedBy);
+    } else if (byEmployeeId !== null) {
+      ids.add(byEmployeeId);
+    }
+  }
+  return ids;
+});
+
+const isEmployeeConfirming = (employeeId: number | null) =>
+  employeeId !== null && confirmingEmployeeIds.value.includes(employeeId);
+
+const isEmployeeConfirmed = (employeeId: number | null) => {
+  if (isStatusConfirmed.value) {
+    return true;
+  }
+  if (employeeId === null) {
+    return false;
+  }
+  return (
+    confirmedEmployeeIds.value.has(employeeId) ||
+    optimisticConfirmedEmployeeIds.value.includes(employeeId)
+  );
+};
+
+const canConfirmEmployee = (employeeId: number | null, confirmed: boolean) =>
+  Boolean(
+    appointmentId.value &&
+      employeeId !== null &&
+      isConfirmableStatus.value &&
+      !confirmed,
+  );
+
+const buildTeamItem = (base: {
+  role: string;
+  name: string;
+  employeeId: number | null;
+  start_time?: string;
+  end_time?: string;
+}): TeamItem => {
+  const confirmed = isEmployeeConfirmed(base.employeeId);
+  return {
+    ...base,
+    confirmed,
+    isConfirming: isEmployeeConfirming(base.employeeId),
+    canConfirm: canConfirmEmployee(base.employeeId, confirmed),
+  };
+};
+
+const careTeam = computed<TeamItem[]>(() => {
+  const appointment: any = appointmentData.value;
   const list: TeamItem[] = [];
 
-  if (Array.isArray(a?.care_team) && a.care_team.length > 0) {
-    for (const member of a.care_team) {
+  if (Array.isArray(appointment?.care_team) && appointment.care_team.length > 0) {
+    for (const member of appointment.care_team) {
       const role = String(member?.role ?? "")
         .replace(/_/g, " ")
         .trim();
-      list.push({
-        role: role ? role.charAt(0).toUpperCase() + role.slice(1) : "Care Team",
-        name: v(member?.employee?.name ?? member?.name ?? ""),
-        confirmed: true,
-        start_time: member?.start_time,
-        end_time: member?.end_time,
-      });
+      list.push(
+        buildTeamItem({
+          role: role ? role.charAt(0).toUpperCase() + role.slice(1) : "Care Team",
+          name: v(member?.employee?.name ?? member?.name ?? ""),
+          employeeId: normalizeId(member?.employee?.id ?? member?.employee_id),
+          start_time: member?.start_time,
+          end_time: member?.end_time,
+        }),
+      );
     }
   }
 
   if (!list.length) {
-    if (a?.doctor?.name)
-      list.push({ role: "Doctor", name: v(a.doctor.name), confirmed: true });
-    if (a?.nurse?.name)
-      list.push({ role: "Nurse", name: v(a.nurse.name), confirmed: true });
+    if (appointment?.doctor?.name) {
+      list.push(
+        buildTeamItem({
+          role: "Doctor",
+          name: v(appointment.doctor.name),
+          employeeId: normalizeId(appointment?.doctor?.id),
+        }),
+      );
+    }
+    if (appointment?.nurse?.name) {
+      list.push(
+        buildTeamItem({
+          role: "Nurse",
+          name: v(appointment.nurse.name),
+          employeeId: normalizeId(appointment?.nurse?.id),
+        }),
+      );
+    }
 
-    // social worker keys fallback
     const swName =
-      a?.social_worker?.name ??
-      a?.socialWorker?.name ??
-      a?.social_worker_name ??
-      a?.social_worker?.full_name;
-
-    if (swName)
-      list.push({ role: "Social Worker", name: v(swName), confirmed: true });
+      appointment?.social_worker?.name ??
+      appointment?.socialWorker?.name ??
+      appointment?.social_worker_name ??
+      appointment?.social_worker?.full_name;
+    if (swName) {
+      list.push(
+        buildTeamItem({
+          role: "Social Worker",
+          name: v(swName),
+          employeeId: normalizeId(
+            appointment?.social_worker?.id ?? appointment?.socialWorker?.id,
+          ),
+        }),
+      );
+    }
   }
 
-  // Ù„Ùˆ Ù…ÙÙŠØ´ Ø­Ø¯ Ø¸Ø§Ù‡Ø±
-  if (!list.length)
-    list.push({ role: "Care Team", name: "-", confirmed: false });
+  if (!list.length) {
+    list.push(
+      buildTeamItem({
+        role: "Care Team",
+        name: "-",
+        employeeId: null,
+      }),
+    );
+  }
 
   return list;
+});
+
+const openReasonForAction = (action: PendingReasonAction) => {
+  if (reasonDialogVisible.value) {
+    return;
+  }
+
+  pendingReasonAction.value = action;
+  reasonText.value = "";
+  reasonDialogVisible.value = true;
 };
 
-const handleConfirm = async () => {
+const requestConfirmEmployee = (employeeId: number | null) => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || isConfirming.value) return;
+  if (
+    !appointment?.id ||
+    employeeId === null ||
+    !isConfirmableStatus.value ||
+    isEmployeeConfirming(employeeId) ||
+    isEmployeeConfirmed(employeeId)
+  ) {
+    return;
+  }
+
+  confirmingEmployeeIds.value = [...confirmingEmployeeIds.value, employeeId];
+  if (!optimisticConfirmedEmployeeIds.value.includes(employeeId)) {
+    optimisticConfirmedEmployeeIds.value = [
+      ...optimisticConfirmedEmployeeIds.value,
+      employeeId,
+    ];
+  }
+
+  void confirmAppointmentEmployee(appointment.id, employeeId)
+    .then(() => {
+      emit("confirm-employee", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to confirm appointment employee.", error);
+      optimisticConfirmedEmployeeIds.value =
+        optimisticConfirmedEmployeeIds.value.filter((id) => id !== employeeId);
+    })
+    .finally(() => {
+      confirmingEmployeeIds.value = confirmingEmployeeIds.value.filter(
+        (id) => id !== employeeId,
+      );
+    });
+};
+
+const requestConfirmAll = () => {
+  const appointment = appointmentData.value;
+  if (!appointment?.id || isConfirming.value) {
+    return;
+  }
+
   isConfirming.value = true;
-  try {
-    await confirmAppointmentAll(appointment.id);
-    statusOverride.value = "confirmed";
-    emit("confirm-all", appointment);
-  } catch (error) {
-    console.error("Failed to confirm appointment.", error);
-  } finally {
-    isConfirming.value = false;
-  }
+  void confirmAppointmentAll(appointment.id)
+    .then(() => {
+      statusOverride.value = "confirmed";
+      emit("confirm-all", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to confirm appointment.", error);
+    })
+    .finally(() => {
+      isConfirming.value = false;
+    });
 };
 
-const handleNoShow = async () => {
+const requestNoShow = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || isNoShowLoading.value) return;
+  if (!appointment?.id || isNoShowLoading.value) {
+    return;
+  }
+
   isNoShowLoading.value = true;
-  try {
-    await quickNoShowAppointment(appointment.id);
-    statusOverride.value = "no_show";
-    emit("no-show", appointment);
-  } catch (error) {
-    console.error("Failed to mark appointment as no show.", error);
-  } finally {
-    isNoShowLoading.value = false;
+  void quickNoShowAppointment(appointment.id)
+    .then(() => {
+      statusOverride.value = "no_show";
+      emit("no-show", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to mark appointment as no show.", error);
+    })
+    .finally(() => {
+      isNoShowLoading.value = false;
+    });
+};
+
+const requestCancel = () => {
+  const appointment = appointmentData.value;
+  if (!appointment?.id || isCancelLoading.value) {
+    return;
+  }
+
+  openReasonForAction({
+    type: "cancel",
+    appointment,
+  });
+};
+
+const confirmReasonAndRun = async () => {
+  const action = pendingReasonAction.value;
+  const reason = reasonText.value.trim();
+  if (!action || !reason) {
+    return;
+  }
+
+  resetReasonDialogState();
+
+  switch (action.type) {
+    case "cancel": {
+      const { appointment } = action;
+      if (!appointment?.id || isCancelLoading.value) {
+        return;
+      }
+
+      isCancelLoading.value = true;
+      try {
+        await cancelAppointmentApi(appointment.id, { reason });
+        statusOverride.value = "canceled";
+        emit("cancel", appointment);
+      } catch (error) {
+        console.error("Failed to cancel appointment.", error);
+      } finally {
+        isCancelLoading.value = false;
+      }
+      return;
+    }
   }
 };
 
-const handleCancel = async () => {
-  const appointment = appointmentData.value;
-  if (!appointment?.id || isCancelLoading.value) return;
-  isCancelLoading.value = true;
-  try {
-    await cancelAppointmentApi(appointment.id);
-    statusOverride.value = "canceled";
-    emit("cancel", appointment);
-  } catch (error) {
-    console.error("Failed to cancel appointment.", error);
-  } finally {
-    isCancelLoading.value = false;
-  }
+const cancelReasonModal = () => {
+  resetReasonDialogState();
 };
 
 const handleCheckIn = () => {
@@ -261,7 +518,7 @@ const handleCheckIn = () => {
                 aria-label="Confirm appointment"
                 title="Confirm"
                 :disabled="!appointmentId || isConfirming"
-                @click="handleConfirm"
+                @click="requestConfirmAll"
               >
                 <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
                 <CheckCircle v-else class="cc-icon" aria-hidden="true" />
@@ -272,7 +529,7 @@ const handleCheckIn = () => {
                 aria-label="Mark as no show"
                 title="No show"
                 :disabled="!appointmentId || isNoShowLoading"
-                @click="handleNoShow"
+                @click="requestNoShow"
               >
                 <Loader2
                   v-if="isNoShowLoading"
@@ -286,7 +543,7 @@ const handleCheckIn = () => {
                 aria-label="Cancel appointment"
                 title="Cancel"
                 :disabled="!appointmentId || isCancelLoading"
-                @click="handleCancel"
+                @click="requestCancel"
               >
                 <Loader2
                   v-if="isCancelLoading"
@@ -357,7 +614,7 @@ const handleCheckIn = () => {
         <div class="cc-card-title">Care Team</div>
 
         <div class="cc-team-list">
-          <div v-for="(m, idx) in careTeam()" :key="idx" class="cc-team-item">
+          <div v-for="(m, idx) in careTeam" :key="idx" class="cc-team-item">
             <div class="cc-team-left">
               <div class="cc-team-role">{{ m.role }}</div>
               <div class="cc-team-name">{{ m.name }}</div>
@@ -369,6 +626,16 @@ const handleCheckIn = () => {
 
             <div class="cc-team-right">
               <span class="cc-confirm" v-if="m.confirmed"> Confirmed </span>
+              <button
+                v-else-if="m.canConfirm"
+                type="button"
+                class="cc-btn cc-team-confirm-btn"
+                :disabled="m.isConfirming"
+                @click="requestConfirmEmployee(m.employeeId)"
+              >
+                <Loader2 v-if="m.isConfirming" class="cc-icon cc-icon-spinner" />
+                <span v-else>Confirm</span>
+              </button>
             </div>
           </div>
         </div>
@@ -399,6 +666,13 @@ const handleCheckIn = () => {
       <div style="height: 0" />
     </template>
   </Dialog>
+  <AppointmentEditReasonDialog
+    v-model:visible="reasonDialogVisible"
+    v-model:reasonText="reasonText"
+    @confirm="confirmReasonAndRun"
+    @cancel="cancelReasonModal"
+    @hide="cancelReasonModal"
+  />
 </template>
 
 <style scoped>
@@ -671,6 +945,34 @@ const handleCheckIn = () => {
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
+}
+
+.cc-team-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #bff3d8;
+  border-radius: 999px;
+  background: #e8fbf2;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cc-team-confirm-btn:hover {
+  filter: none;
+  background: #d8f5e8;
+}
+
+.cc-team-confirm-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.cc-team-confirm-btn .cc-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .cc-confirm-dot {
