@@ -1,6 +1,31 @@
+export type PatientAddressOption = {
+  id?: number | string | null;
+  address?: string | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
+};
+
+export type PatientPrimaryStaffOption = {
+  id?: number | string | null;
+  name?: string | null;
+};
+
 export type PatientOption = {
   id: string;
   name: string;
+  name_ar?: string;
+  date_of_birth?: string;
+  mobile?: string;
+  address?: PatientAddressOption | null;
+  primary_doctor?: PatientPrimaryStaffOption | null;
+  primary_nurse?: PatientPrimaryStaffOption | null;
+  primary_leader_nurse?: PatientPrimaryStaffOption | null;
+  primary_social_worker?: PatientPrimaryStaffOption | null;
+  primary_driver?: PatientPrimaryStaffOption | null;
+  primary_nurse_id?: string;
+  primary_doctor_id?: string;
+  primary_social_worker_id?: string;
+  primary_driver_id?: string;
 };
 
 export const patientOptions: PatientOption[] = [

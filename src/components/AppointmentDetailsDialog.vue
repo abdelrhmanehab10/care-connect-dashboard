@@ -20,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: "check-in"): void;
   (event: "log", payload: number): void;
+  (event: "edit", payload: Appointment): void;
   (event: "confirm-all", payload: Appointment): void;
   (event: "confirm-employee", payload: Appointment): void;
   (event: "no-show", payload: Appointment): void;
@@ -79,8 +80,12 @@ const normalizedStatus = computed(() =>
 const isConfirmableStatus = computed(
   () => normalizedStatus.value === "new" || normalizedStatus.value === "waiting",
 );
+const isCompletedStatus = computed(() => normalizedStatus.value === "completed");
 const isStatusConfirmed = computed(() =>
   normalizedStatus.value.includes("confirm"),
+);
+const checkInButtonLabel = computed(() =>
+  isCompletedStatus.value ? "View Visit" : "Check In",
 );
 
 watch(
@@ -221,11 +226,8 @@ const confirmationList = computed<Confirmation[]>(() => {
 const confirmedEmployeeIds = computed(() => {
   const ids = new Set<number>();
   for (const item of confirmationList.value) {
-    const byConfirmedBy = normalizeId(item.confirmed_by);
     const byEmployeeId = normalizeId(item.employee_id);
-    if (byConfirmedBy !== null) {
-      ids.add(byConfirmedBy);
-    } else if (byEmployeeId !== null) {
+    if (byEmployeeId !== null) {
       ids.add(byEmployeeId);
     }
   }
@@ -392,7 +394,7 @@ const requestConfirmEmployee = (employeeId: number | null) => {
 
 const requestConfirmAll = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || isConfirming.value) {
+  if (!appointment?.id || isConfirming.value || !isConfirmableStatus.value) {
     return;
   }
 
@@ -487,6 +489,12 @@ const handleCheckIn = () => {
   }
   window.location.assign(destination);
 };
+
+const handleEditAppointment = () => {
+  const appointment = appointmentData.value;
+  if (!appointment?.id) return;
+  emit("edit", appointment);
+};
 </script>
 
 <template>
@@ -517,7 +525,7 @@ const handleCheckIn = () => {
                 class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--confirm"
                 aria-label="Confirm appointment"
                 title="Confirm"
-                :disabled="!appointmentId || isConfirming"
+                :disabled="!appointmentId || isConfirming || !isConfirmableStatus"
                 @click="requestConfirmAll"
               >
                 <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
@@ -644,10 +652,20 @@ const handleCheckIn = () => {
       <div class="cc-actions">
         <button
           type="button"
+          class="cc-btn cc-btn-success"
+          :disabled="!appointmentId || isConfirming || !isConfirmableStatus"
+          @click="requestConfirmAll"
+        >
+          <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
+          <span v-else>Confirm Appointment</span>
+        </button>
+
+        <button
+          type="button"
           class="cc-btn cc-btn-primary"
           @click="handleCheckIn"
         >
-          Check In
+          {{ checkInButtonLabel }}
         </button>
 
         <button
@@ -657,6 +675,15 @@ const handleCheckIn = () => {
           @click="appointmentId && emit('log', appointmentId)"
         >
           Log
+        </button>
+
+        <button
+          type="button"
+          class="cc-btn cc-btn-secondary"
+          :disabled="!appointmentId"
+          @click="handleEditAppointment"
+        >
+          Edit Appointment
         </button>
       </div>
     </div>
@@ -989,7 +1016,8 @@ const handleCheckIn = () => {
 /* Bottom actions */
 .cc-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   padding-top: 6px;
 }
@@ -1012,6 +1040,15 @@ const handleCheckIn = () => {
   filter: brightness(0.95);
 }
 
+.cc-btn-success {
+  background: #16a34a;
+  color: #fff;
+}
+
+.cc-btn-success:hover {
+  filter: brightness(0.95);
+}
+
 .cc-btn-warn {
   background: #f59e0b;
   color: #fff;
@@ -1019,5 +1056,14 @@ const handleCheckIn = () => {
 
 .cc-btn-warn:hover {
   filter: brightness(0.95);
+}
+
+.cc-btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.cc-btn-secondary:hover {
+  filter: brightness(0.97);
 }
 </style>

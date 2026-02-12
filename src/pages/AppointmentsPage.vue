@@ -843,6 +843,7 @@ onMounted(() => {
       v-model="isDetailsOpen"
       :appointment="selectedAppointment"
       @log="openLogPage"
+      @edit="openEditDialog"
       @confirm-all="refreshAppointments"
       @confirm-employee="refreshAppointments"
       @no-show="refreshAppointments"

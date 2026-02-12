@@ -224,6 +224,10 @@ const resolveWeekdayFromDate = (value: Date): Weekday => {
 };
 const cloneDateValue = (value: Date | null) =>
   value ? new Date(value.getTime()) : null;
+const weekdayToApiDay = (day: Weekday) => {
+  const index = weekdayOptions.value.indexOf(day);
+  return String(index >= 0 ? index : 0);
+};
 let recurrenceRowId = 1;
 const recurrenceRows = ref<RecurrenceRow[]>([
   {
@@ -272,7 +276,69 @@ const isPatientOption = (value: unknown): value is PatientOption => {
     typeof value === "object" &&
     value !== null &&
     "id" in value &&
-    typeof (value as PatientOption).id === "string"
+    (typeof (value as PatientOption).id === "string" ||
+      typeof (value as PatientOption).id === "number")
+  );
+};
+
+const normalizeOptionalId = (value: unknown) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? String(value) : "";
+  }
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return "";
+  }
+  const asNumber = Number(normalized);
+  if (Number.isFinite(asNumber) && asNumber > 0) {
+    return String(asNumber);
+  }
+  return normalized;
+};
+
+const resolveSelectedPatientPrimaryId = (
+  role: "nurse" | "doctor" | "social_worker" | "driver",
+) => {
+  if (!isPatientOption(selectedPatient.value)) {
+    return "";
+  }
+  const patient = selectedPatient.value as PatientOption & {
+    main_nurse_id?: unknown;
+    main_doctor_id?: unknown;
+    main_social_worker_id?: unknown;
+    main_driver_id?: unknown;
+    primary_nurse?: { id?: unknown } | null;
+    primary_leader_nurse?: { id?: unknown } | null;
+    primary_doctor?: { id?: unknown } | null;
+    primary_social_worker?: { id?: unknown } | null;
+    primary_driver?: { id?: unknown } | null;
+  };
+  if (role === "nurse") {
+    return (
+      normalizeOptionalId(patient.primary_nurse_id) ||
+      normalizeOptionalId(patient.main_nurse_id) ||
+      normalizeOptionalId(patient.primary_nurse?.id) ||
+      normalizeOptionalId(patient.primary_leader_nurse?.id)
+    );
+  }
+  if (role === "doctor") {
+    return (
+      normalizeOptionalId(patient.primary_doctor_id) ||
+      normalizeOptionalId(patient.main_doctor_id) ||
+      normalizeOptionalId(patient.primary_doctor?.id)
+    );
+  }
+  if (role === "social_worker") {
+    return (
+      normalizeOptionalId(patient.primary_social_worker_id) ||
+      normalizeOptionalId(patient.main_social_worker_id) ||
+      normalizeOptionalId(patient.primary_social_worker?.id)
+    );
+  }
+  return (
+    normalizeOptionalId(patient.primary_driver_id) ||
+    normalizeOptionalId(patient.main_driver_id) ||
+    normalizeOptionalId(patient.primary_driver?.id)
   );
 };
 
@@ -831,10 +897,16 @@ const normalizeTimeInput = (value: string | null | undefined) => {
   return `${hours}:${minutes}`;
 };
 
-const buildRecurringSlots = (rows: EmployeeRecurrenceRow[]) =>
+type RecurringRowLike = {
+  day: Weekday;
+  startTime: Date | null;
+  endTime: Date | null;
+};
+
+const buildRecurringSlots = (rows: RecurringRowLike[]) =>
   rows
     .map((row) => ({
-      day: row.day,
+      day: weekdayToApiDay(row.day),
       start_time: formatTime(row.startTime),
       end_time: formatTime(row.endTime),
     }))
@@ -909,6 +981,56 @@ const resolveAppointmentLocation = (
     };
   }
   return { ...defaultMapLocation };
+};
+
+const parseCoordinate = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const resolveSelectedPatientLocation = (patient: PatientOption): LocationValue => {
+  const patientAddress = patient.address;
+  if (!patientAddress || typeof patientAddress !== "object") {
+    return { ...defaultMapLocation };
+  }
+
+  const address = String(patientAddress.address ?? "").trim();
+  const lat = parseCoordinate(patientAddress.lat);
+  const lng = parseCoordinate(patientAddress.lng);
+
+  if (lat !== null && lng !== null) {
+    return {
+      lat,
+      lng,
+      address: address || undefined,
+    };
+  }
+
+  if (address) {
+    return {
+      ...defaultMapLocation,
+      address,
+    };
+  }
+
+  return { ...defaultMapLocation };
+};
+
+const resolveSelectedPrimaryDoctorName = (
+  patient: PatientOption,
+): string | null => {
+  const name = String(patient.primary_doctor?.name ?? "").trim();
+  return name || null;
 };
 
 const resetForm = () => {
@@ -1003,10 +1125,51 @@ const resolveAppointmentPatient = (
 ): PatientOption | null => {
   const name = appointment.patient?.name ?? "";
   const id = appointment.patient?.id;
+  const patient = (appointment as Appointment & { patient?: any }).patient;
+  const patientAddress = appointment.patient_address;
   if (name || id) {
     return {
       id: String(id ?? name),
       name: name || String(id ?? ""),
+      address: patientAddress
+        ? {
+            id: patientAddress.id ?? null,
+            address: patientAddress.address ?? null,
+            lat: patientAddress.lat ?? null,
+            lng: patientAddress.lng ?? null,
+          }
+        : patientAddress === null
+          ? null
+          : undefined,
+      primary_doctor: patient?.primary_doctor
+        ? {
+            id: patient.primary_doctor.id ?? null,
+            name: String(patient.primary_doctor.name ?? "").trim() || null,
+          }
+        : patient?.primary_doctor === null
+          ? null
+          : undefined,
+      primary_nurse_id:
+        normalizeOptionalId(patient?.primary_nurse_id) ||
+        normalizeOptionalId(patient?.main_nurse_id) ||
+        normalizeOptionalId(patient?.primary_nurse?.id) ||
+        normalizeOptionalId(patient?.primary_leader_nurse?.id) ||
+        undefined,
+      primary_doctor_id:
+        normalizeOptionalId(patient?.primary_doctor_id) ||
+        normalizeOptionalId(patient?.main_doctor_id) ||
+        normalizeOptionalId(patient?.primary_doctor?.id) ||
+        undefined,
+      primary_social_worker_id:
+        normalizeOptionalId(patient?.primary_social_worker_id) ||
+        normalizeOptionalId(patient?.main_social_worker_id) ||
+        normalizeOptionalId(patient?.primary_social_worker?.id) ||
+        undefined,
+      primary_driver_id:
+        normalizeOptionalId(patient?.primary_driver_id) ||
+        normalizeOptionalId(patient?.main_driver_id) ||
+        normalizeOptionalId(patient?.primary_driver?.id) ||
+        undefined,
     };
   }
 
@@ -1289,6 +1452,21 @@ watch(driverAssignmentMode, (value) => {
   }
 });
 
+watch(selectedPatient, (value) => {
+  if (value === null) {
+    mapLocation.value = { ...defaultMapLocation };
+    primaryDoctorName.value = null;
+    return;
+  }
+
+  if (!isPatientOption(value)) {
+    return;
+  }
+
+  mapLocation.value = resolveSelectedPatientLocation(value);
+  primaryDoctorName.value = resolveSelectedPrimaryDoctorName(value);
+});
+
 watch(
   () => schedule.isRecurring,
   (isRecurring, wasRecurring) => {
@@ -1458,18 +1636,30 @@ const handleSave = () => {
   const trimmedInstructions = instructions.value.trim();
 
   const employeeSlots: CreateAppointmentPayload["employee_slots"] = {};
+  const employeeRecurringSlots: CreateAppointmentPayload["employee_recurring_slots"] =
+    {};
   const shouldIncludeNurse = showNurseSection.value;
   const shouldIncludeDoctor = showDoctorSection.value;
   const shouldIncludeSocialWorker = showSocialWorkerSection.value;
   const shouldIncludeDriver = showDriverSection.value;
+  const recurringAppointments = schedule.isRecurring
+    ? buildRecurringSlots(recurrenceRows.value)
+    : [];
+  const recurringStartDate = schedule.isRecurring
+    ? formatDate(schedule.recurringStartDate)
+    : "";
+  const recurringEndDate = schedule.isRecurring
+    ? formatDate(schedule.recurringEndDate ?? schedule.recurringStartDate)
+    : "";
 
   if (shouldIncludeNurse) {
     if (schedule.isRecurring) {
-      if (nurseScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(nurseRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.nurse = slots;
-        }
+      const slots =
+        nurseScheduleType.value === "custom"
+          ? buildRecurringSlots(nurseRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.nurse = slots;
       }
     } else {
       const nurseSlotStart = formatTime(nurseSchedule.startTime);
@@ -1485,11 +1675,12 @@ const handleSave = () => {
 
   if (shouldIncludeDoctor) {
     if (schedule.isRecurring) {
-      if (doctorScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(doctorRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.doctor = slots;
-        }
+      const slots =
+        doctorScheduleType.value === "custom"
+          ? buildRecurringSlots(doctorRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.doctor = slots;
       }
     } else {
       const doctorSlotStart = formatTime(doctorSchedule.startTime);
@@ -1505,11 +1696,12 @@ const handleSave = () => {
 
   if (shouldIncludeSocialWorker) {
     if (schedule.isRecurring) {
-      if (socialWorkerScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(socialWorkerRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.social_worker = slots;
-        }
+      const slots =
+        socialWorkerScheduleType.value === "custom"
+          ? buildRecurringSlots(socialWorkerRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.social_worker = slots;
       }
     } else {
       const socialSlotStart = formatTime(socialWorkerSchedule.startTime);
@@ -1525,11 +1717,12 @@ const handleSave = () => {
 
   if (shouldIncludeDriver) {
     if (schedule.isRecurring) {
-      if (driverScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(driverRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.driver = slots;
-        }
+      const slots =
+        driverScheduleType.value === "custom"
+          ? buildRecurringSlots(driverRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.driver = slots;
       }
     } else {
       const driverSlotStart = formatTime(driverSchedule.startTime);
@@ -1553,7 +1746,7 @@ const handleSave = () => {
     : "";
 
   const payload: CreateAppointmentPayload = {
-    patient_id: selectedPatient.value.id,
+    patient_id: String(selectedPatient.value.id ?? "").trim(),
     new_address: {
       address: locationAddress,
       lat: locationLat,
@@ -1564,20 +1757,38 @@ const handleSave = () => {
     date: formattedDate,
     start_time: formattedStartTime,
     end_time: formattedEndTime,
+    start_date: schedule.isRecurring ? recurringStartDate : undefined,
+    end_date: schedule.isRecurring ? recurringEndDate : undefined,
+    appointments:
+      schedule.isRecurring && recurringAppointments.length
+        ? recurringAppointments
+        : undefined,
     main_nurse:
       showNurseSection.value && nurseAssignmentMode.value === "primary"
         ? "1"
         : "0",
+    main_nurse_id:
+      showNurseSection.value && nurseAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("nurse")
+        : "",
     nurse_schedule_type: schedule.isRecurring
       ? nurseScheduleType.value
       : "same",
-    employee_slots: Object.keys(employeeSlots).length
+    employee_slots: !schedule.isRecurring && Object.keys(employeeSlots).length
       ? employeeSlots
       : undefined,
+    employee_recurring_slots:
+      schedule.isRecurring && Object.keys(employeeRecurringSlots).length
+        ? employeeRecurringSlots
+        : undefined,
     main_doctor:
       showDoctorSection.value && doctorAssignmentMode.value === "primary"
         ? "1"
         : "0",
+    main_doctor_id:
+      showDoctorSection.value && doctorAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("doctor")
+        : "",
     doctor_id: "",
     doctor_schedule_type: schedule.isRecurring
       ? doctorScheduleType.value
@@ -1587,6 +1798,11 @@ const handleSave = () => {
         socialWorkerAssignmentMode.value === "primary"
         ? "1"
         : "0",
+    main_social_worker_id:
+      showSocialWorkerSection.value &&
+        socialWorkerAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("social_worker")
+        : "",
     social_worker_id: "",
     social_worker_schedule_type: schedule.isRecurring
       ? socialWorkerScheduleType.value
@@ -1595,6 +1811,10 @@ const handleSave = () => {
       ? driverScheduleType.value
       : "same",
     driver_id: "",
+    main_driver_id:
+      showDriverSection.value && driverAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("driver")
+        : "",
     instructions: trimmedInstructions,
   };
 

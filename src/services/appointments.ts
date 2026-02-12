@@ -75,6 +75,12 @@ export type AppointmentCardsResponse = {
   message: string;
 };
 
+type EmployeeRecurringSlot = {
+  day: string;
+  start_time: string;
+  end_time: string;
+};
+
 export type CreateAppointmentPayload = {
   patient_id: string;
   new_address: {
@@ -84,34 +90,39 @@ export type CreateAppointmentPayload = {
   };
   visit_type_id: string;
   is_recurring: "0" | "1";
-  date: string;
-  start_time: string;
-  end_time: string;
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  start_date?: string;
+  end_date?: string;
+  appointments?: EmployeeRecurringSlot[];
   main_nurse?: string;
+  main_nurse_id?: string;
   nurse_schedule_type?: string;
   employee_slots?: {
-    nurse?: { start_time: string; end_time: string } | EmployeeRecurringSlot[];
-    doctor?: { start_time: string; end_time: string } | EmployeeRecurringSlot[];
-    social_worker?:
-      | { start_time: string; end_time: string }
-      | EmployeeRecurringSlot[];
-    driver?: { start_time: string; end_time: string } | EmployeeRecurringSlot[];
+    nurse?: { start_time: string; end_time: string };
+    doctor?: { start_time: string; end_time: string };
+    social_worker?: { start_time: string; end_time: string };
+    driver?: { start_time: string; end_time: string };
+  };
+  employee_recurring_slots?: {
+    nurse?: EmployeeRecurringSlot[];
+    doctor?: EmployeeRecurringSlot[];
+    social_worker?: EmployeeRecurringSlot[];
+    driver?: EmployeeRecurringSlot[];
   };
   main_doctor?: string;
+  main_doctor_id?: string;
   doctor_id?: string;
   doctor_schedule_type?: string;
   main_social_worker?: string;
+  main_social_worker_id?: string;
   social_worker_id?: string;
   social_worker_schedule_type?: string;
   driver_schedule_type?: string;
   driver_id?: string;
+  main_driver_id?: string;
   instructions?: string;
-};
-
-type EmployeeRecurringSlot = {
-  day: string;
-  start_time: string;
-  end_time: string;
 };
 
 export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
