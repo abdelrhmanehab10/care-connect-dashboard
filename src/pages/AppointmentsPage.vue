@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
-import { useRouter } from "vue-router";
 import Button from "primevue/button";
 import Tab from "primevue/tab";
 import TabList from "primevue/tablist";
@@ -51,7 +50,6 @@ const isSaving = ref(false);
 const saveError = ref<string | null>(null);
 const isInlineSaving = ref(false);
 const queryClient = useQueryClient();
-const router = useRouter();
 const toast = useToast();
 const visitTypes = ref<VisitType[]>([]);
 
@@ -577,11 +575,6 @@ const openDetails = async (appointment: Appointment) => {
   }
 };
 
-const openLogPage = (appointmentId: number) => {
-  isDetailsOpen.value = false;
-  void router.push(`/log/${appointmentId}`);
-};
-
 const canGoPrev = computed(
   () => (appointmentsResponse.value?.currentPage ?? 1) > 1,
 );
@@ -842,7 +835,6 @@ onMounted(() => {
     <AppointmentDetailsDialog
       v-model="isDetailsOpen"
       :appointment="selectedAppointment"
-      @log="openLogPage"
       @edit="openEditDialog"
       @confirm-all="refreshAppointments"
       @confirm-employee="refreshAppointments"

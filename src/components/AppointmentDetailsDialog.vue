@@ -1,10 +1,12 @@
 ﻿<script setup lang="ts">
-import { computed, getCurrentInstance, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { CheckCircle, XCircle, Ban, Loader2, X } from "lucide-vue-next";
 import Dialog from "primevue/dialog";
 import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
 import type { Appointment, Confirmation } from "../types";
 import {
+  fetchAppointmentLog,
+  type AppointmentLogEntry,
   cancelAppointment as cancelAppointmentApi,
   confirmAppointmentAll,
   confirmAppointmentEmployee,
@@ -19,7 +21,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: "check-in"): void;
-  (event: "log", payload: number): void;
   (event: "edit", payload: Appointment): void;
   (event: "confirm-all", payload: Appointment): void;
   (event: "confirm-employee", payload: Appointment): void;
@@ -27,23 +28,20 @@ const emit = defineEmits<{
   (event: "cancel", payload: Appointment): void;
 }>();
 
-type RouterLike = {
-  push?: (to: string) => unknown;
-};
-
-const instance = getCurrentInstance();
-const appRouter = (instance?.proxy as { $router?: RouterLike } | null)?.$router;
-
 const appointmentData = computed(() => props.appointment);
 const appointmentId = computed(() => appointmentData.value?.id ?? null);
 const isConfirming = ref(false);
 const isNoShowLoading = ref(false);
 const isCancelLoading = ref(false);
 const statusOverride = ref<string | null>(null);
+const activeView = ref<"details" | "log">("details");
 const confirmingEmployeeIds = ref<number[]>([]);
 const optimisticConfirmedEmployeeIds = ref<number[]>([]);
 const reasonDialogVisible = ref(false);
 const reasonText = ref("");
+const logs = ref<AppointmentLogEntry[]>([]);
+const isLogLoading = ref(false);
+const logErrorMessage = ref<string | null>(null);
 
 type PendingReasonAction =
   {
@@ -107,11 +105,32 @@ const resetReasonDialogState = () => {
   pendingReasonAction.value = null;
 };
 
+const resetLogViewState = () => {
+  activeView.value = "details";
+  logs.value = [];
+  logErrorMessage.value = null;
+  isLogLoading.value = false;
+};
+
+const loadingRows = computed(() =>
+  Array.from({ length: 7 }, (_, index) => ({
+    id: `loading-${index + 1}`,
+  })),
+);
+
+const logRows = computed(() =>
+  logs.value.map((entry, index) => ({
+    index: index + 1,
+    ...entry,
+  })),
+);
+
 watch(
   () => appointmentData.value?.id ?? null,
   () => {
     resetRowConfirmState();
     resetReasonDialogState();
+    resetLogViewState();
   },
 );
 
@@ -119,6 +138,7 @@ watch(visible, (value) => {
   if (!value) {
     resetRowConfirmState();
     resetReasonDialogState();
+    resetLogViewState();
   }
 });
 
@@ -479,15 +499,52 @@ const cancelReasonModal = () => {
   resetReasonDialogState();
 };
 
-const handleCheckIn = () => {
-  if (!appointmentId.value) return;
-  const destination = `/visits/start/${appointmentId.value}`;
-  emit("check-in");
-  if (appRouter?.push) {
-    void appRouter.push(destination);
+const loadLogs = async (id: number | null) => {
+  if (!id) {
+    logs.value = [];
+    logErrorMessage.value = "Invalid appointment id.";
     return;
   }
-  window.location.assign(destination);
+
+  isLogLoading.value = true;
+  logErrorMessage.value = null;
+  try {
+    logs.value = await fetchAppointmentLog(id);
+  } catch (error) {
+    console.error("Failed to load appointment log.", error);
+    logs.value = [];
+    logErrorMessage.value = "Failed to load appointment log.";
+  } finally {
+    isLogLoading.value = false;
+  }
+};
+
+watch(
+  [activeView, appointmentId],
+  ([view, id]) => {
+    if (!visible.value || view !== "log") {
+      return;
+    }
+    void loadLogs(id);
+  },
+  { immediate: true },
+);
+
+const showLogView = () => {
+  if (!appointmentId.value) {
+    return;
+  }
+  activeView.value = "log";
+};
+
+const showDetailsView = () => {
+  activeView.value = "details";
+};
+
+const handleCheckIn = () => {
+  if (!appointmentId.value) return;
+  emit("check-in");
+  window.location.assign(`/visits/start/${appointmentId.value}`);
 };
 
 const handleEditAppointment = () => {
@@ -617,7 +674,7 @@ const handleEditAppointment = () => {
     </template>
 
     <!-- BODY -->
-    <div class="cc-body">
+    <div v-if="activeView === 'details'" class="cc-body">
       <div class="cc-card">
         <div class="cc-card-title">Care Team</div>
 
@@ -682,10 +739,64 @@ const handleEditAppointment = () => {
             type="button"
             class="cc-btn cc-btn-warn"
             :disabled="!appointmentId"
-            @click="appointmentId && emit('log', appointmentId)"
+            @click="showLogView"
           >
             Log
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="cc-log-view">
+      <div class="cc-log-toolbar">
+        <h3 class="cc-log-title">Appointment Log</h3>
+        <button type="button" class="cc-btn cc-btn-outline" @click="showDetailsView">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>Back to Details</span>
+        </button>
+      </div>
+
+      <div class="cc-card cc-log-card">
+        <div class="cc-log-table-wrap">
+          <table class="cc-log-table">
+            <thead class="cc-log-head">
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Employee</th>
+                <th scope="col">Patient</th>
+                <th scope="col">Action</th>
+                <th scope="col">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody class="cc-log-body">
+              <template v-if="isLogLoading">
+                <tr v-for="row in loadingRows" :key="row.id">
+                  <td><span class="cc-skeleton cc-skeleton-sm"></span></td>
+                  <td><span class="cc-skeleton cc-skeleton-md"></span></td>
+                  <td><span class="cc-skeleton cc-skeleton-md"></span></td>
+                  <td><span class="cc-skeleton cc-skeleton-pill"></span></td>
+                  <td><span class="cc-skeleton cc-skeleton-lg"></span></td>
+                </tr>
+              </template>
+              <tr v-else-if="logErrorMessage">
+                <td colspan="5" class="cc-help-text">
+                  {{ logErrorMessage }}
+                </td>
+              </tr>
+              <tr v-else-if="logRows.length === 0">
+                <td colspan="5" class="cc-help-text">
+                  No log entries yet.
+                </td>
+              </tr>
+              <tr v-for="row in logRows" :key="row.index">
+                <td>{{ row.index }}</td>
+                <td>{{ row.employee }}</td>
+                <td>{{ row.patient }}</td>
+                <td>{{ row.action }}</td>
+                <td>{{ row.time }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1075,5 +1186,87 @@ const handleEditAppointment = () => {
 
 .cc-btn-secondary:hover {
   filter: brightness(0.97);
+}
+
+.cc-btn-outline {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cc-btn-outline:hover {
+  filter: none;
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.cc-log-view {
+  display: grid;
+  gap: 12px;
+}
+
+.cc-log-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cc-log-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.cc-log-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.cc-log-table-wrap {
+  overflow: auto;
+}
+
+.cc-log-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 720px;
+}
+
+.cc-log-head th {
+  background: #f8fafc;
+  color: #111827;
+  font-weight: 800;
+  font-size: 13px;
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cc-log-body td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 13px;
+  color: #111827;
+  vertical-align: middle;
+}
+
+.cc-log-body tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.cc-log-body tr:hover {
+  background: #f3f4f6;
+}
+
+.cc-help-text {
+  text-align: center;
+  color: #6b7280;
 }
 </style>
