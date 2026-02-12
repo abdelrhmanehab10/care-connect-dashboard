@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { CheckCircle, XCircle, Ban, Loader2 } from "lucide-vue-next";
 import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
@@ -25,6 +26,57 @@ const emit = defineEmits<{
 }>();
 
 const displayValue = (value: string | null | undefined) => value ?? "-";
+const formatRoleLabel = (role: string | null | undefined) => {
+  const normalized = String(role ?? "").trim().toLowerCase();
+  if (!normalized) return "Team";
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+type TeamMemberDisplay = {
+  role: string;
+  name: string;
+};
+
+const buildTeamMembers = () => {
+  const members: TeamMemberDisplay[] = [];
+  const seen = new Set<string>();
+  const appointment = props.event.appointment;
+  const addMember = (role: string | null | undefined, name: string | null | undefined) => {
+    const normalizedName = String(name ?? "").trim();
+    if (!normalizedName) return;
+    const roleLabel = formatRoleLabel(role);
+    const key = `${roleLabel.toLowerCase()}::${normalizedName.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    members.push({ role: roleLabel, name: normalizedName });
+  };
+
+  for (const member of appointment.care_team ?? []) {
+    addMember(member.role, member.employee?.name);
+  }
+  addMember("doctor", appointment.doctor?.name);
+  addMember("nurse", appointment.nurse?.name);
+  addMember("social_worker", appointment.social_worker?.name);
+
+  return members;
+};
+
+const teamMembers = computed<TeamMemberDisplay[]>(() => buildTeamMembers());
+
+const primaryTeamMemberLabel = computed(() => {
+  const primary = teamMembers.value[0];
+  if (!primary) return "Team: -";
+  return `${primary.role}: ${primary.name}`;
+});
+
+const teamInfoTitle = computed(() => {
+  if (!teamMembers.value.length) return "No team assigned";
+  return teamMembers.value
+    .map((member) => `${member.role}: ${member.name}`)
+    .join(", ");
+});
 
 const onEdit = () => emit("edit", props.event.appointment);
 const onConfirm = () => emit("confirm", props.event.appointment);
@@ -48,8 +100,12 @@ const onCancel = () => emit("cancel", props.event.appointment);
         {{ formatTimeRange(event.appointment) }}
       </span>
       <span class="cc-calendar-event-provider">
-        Dr: {{ displayValue(event.appointment.doctor?.name) }}<i class="fa-solid fa-circle-info mx-1"></i>
-
+        {{ primaryTeamMemberLabel }}
+        <i
+          class="fa-solid fa-circle-info mx-1"
+          :title="teamInfoTitle"
+          aria-label="Assigned team details"
+        ></i>
       </span>
     </div>
     <span
