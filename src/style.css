@@ -1024,12 +1024,6 @@ body {
 .v-calendar-daily__intervals-body{
   background: ghostwhite;
 }
-.v-event-timed{
-  width: 20%;
-}
-.cc-calendar-event{
-  width: 25%;
-}
 .cc-calendar-event {
   display: flex;
   flex-direction: column;
