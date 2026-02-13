@@ -35,6 +35,7 @@ const emit = defineEmits<{
   (event: "toggle-patient"): void;
   (event: "toggle-doctor"): void;
   (event: "filter-state", payload: string): void;
+  (event: "clear-filters"): void;
 }>();
 
 const { cards: cardsData } = useAppointmentCardsQuery();
@@ -118,6 +119,7 @@ const cards = computed<Card[]>(() => {
 const handleCardClick = (card: Card) => {
   if (isDisabled.value) return;
   if (isCardAlreadyActive(card)) return;
+  emit("clear-filters");
   if (card.filter.type === "period") {
     if (card.filter.value === "today") {
       emit("toggle-today");

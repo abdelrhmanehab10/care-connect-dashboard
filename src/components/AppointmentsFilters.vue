@@ -467,7 +467,7 @@ watch(
       :quick-doctor-label="quickDoctorLabel" :patient-filter="patientFilter" :employee-filter="employeeFilter"
       :is-disabled="isCalendarView" @toggle-today="toggleToday" @toggle-week="toggleThisWeek"
       @toggle-status="toggleStatusTag" @filter-state="toggleStateFilter" @toggle-patient="toggleQuickPatient"
-      @toggle-doctor="toggleQuickDoctor" />
+      @toggle-doctor="toggleQuickDoctor" @clear-filters="clearFilters" />
     <div class="row">
       <div class="col-md-2">
         <label for="employeeFilter" class="cc-label">Employee</label>
