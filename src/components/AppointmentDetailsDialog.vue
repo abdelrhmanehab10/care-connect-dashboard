@@ -85,6 +85,23 @@ const isStatusConfirmed = computed(() =>
 const checkInButtonLabel = computed(() =>
   isCompletedStatus.value ? "View Visit" : "Check In",
 );
+const hasValidDateValue = (value: Date) => !Number.isNaN(value.getTime());
+const isSameCalendarDate = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+const isAppointmentToday = computed(() => {
+  const rawDate = String(appointmentData.value?.date ?? "").trim();
+  if (!rawDate) {
+    return false;
+  }
+  const normalizedDate = rawDate.split("T")[0] ?? rawDate;
+  const parsed = new Date(normalizedDate);
+  if (!hasValidDateValue(parsed)) {
+    return false;
+  }
+  return isSameCalendarDate(parsed, new Date());
+});
 
 watch(
   () => appointmentData.value?.status ?? null,
@@ -365,6 +382,25 @@ const careTeam = computed<TeamItem[]>(() => {
 
   return list;
 });
+const hasAnyCareTeamEmployee = computed(() =>
+  careTeam.value.some((member) => member.employeeId !== null),
+);
+const areAllCareTeamEmployeesConfirmed = computed(() => {
+  const membersWithIds = careTeam.value.filter(
+    (member) => member.employeeId !== null,
+  );
+  if (!membersWithIds.length) {
+    return false;
+  }
+  return membersWithIds.every((member) => member.confirmed);
+});
+const canCheckIn = computed(
+  () =>
+    Boolean(appointmentId.value) &&
+    hasAnyCareTeamEmployee.value &&
+    areAllCareTeamEmployeesConfirmed.value &&
+    isAppointmentToday.value,
+);
 
 const openReasonForAction = (action: PendingReasonAction) => {
   if (reasonDialogVisible.value) {
@@ -542,7 +578,7 @@ const showDetailsView = () => {
 };
 
 const handleCheckIn = () => {
-  if (!appointmentId.value) return;
+  if (!canCheckIn.value || !appointmentId.value) return;
   emit("check-in");
   window.location.assign(`/visits/start/${appointmentId.value}`);
 };
@@ -711,6 +747,7 @@ const handleEditAppointment = () => {
           <button
             type="button"
             class="cc-btn cc-btn-primary"
+            :disabled="!canCheckIn"
             @click="handleCheckIn"
           >
             {{ checkInButtonLabel }}
