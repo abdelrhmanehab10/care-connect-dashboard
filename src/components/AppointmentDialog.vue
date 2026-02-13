@@ -600,6 +600,34 @@ const validationSchema = z
       }
     }
 
+    if (values.isRecurring) {
+      recurrenceRows.value.forEach((row, index) => {
+        const start = formatTime(row.startTime);
+        const end = formatTime(row.endTime);
+        if (!start) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["startTime"],
+            message: `Start time is required for recurring row ${index + 1}.`,
+          });
+        }
+        if (!end) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["endTime"],
+            message: `End time is required for recurring row ${index + 1}.`,
+          });
+        }
+        if (start && end && start >= end) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["endTime"],
+            message: `End time must be after start time for recurring row ${index + 1}.`,
+          });
+        }
+      });
+    }
+
     if (values.nurseRequired && !(values.nurseName?.trim() ?? "")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1256,14 +1284,23 @@ const applyRecurringDurationDefaults = (durationHours: number) => {
   const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   schedule.recurringStartDate = dateOnly;
   schedule.recurringEndDate = dateOnly;
-  recurrenceRows.value = [
-    {
-      id: `row-${recurrenceRowId++}`,
-      day: resolveWeekdayFromDate(dateOnly),
-      startTime: now,
-      endTime: end,
-    },
-  ];
+  if (!recurrenceRows.value.length) {
+    recurrenceRows.value = [
+      {
+        id: `row-${recurrenceRowId++}`,
+        day: resolveWeekdayFromDate(dateOnly),
+        startTime: now,
+        endTime: end,
+      },
+    ];
+    return;
+  }
+
+  recurrenceRows.value = recurrenceRows.value.map((row) => ({
+    ...row,
+    startTime: new Date(now.getTime()),
+    endTime: new Date(end.getTime()),
+  }));
 };
 
 const loadVisitTypes = async () => {
@@ -1891,11 +1928,22 @@ const handleSave = () => {
 };
 
 const addRecurrenceRow = () => {
+  const previousRow = recurrenceRows.value[recurrenceRows.value.length - 1];
+  const durationHours = selectedVisitDurationHours.value;
+  const fallbackStart = new Date();
+  const fallbackEnd =
+    durationHours === null
+      ? new Date(fallbackStart.getTime())
+      : new Date(
+          fallbackStart.getTime() +
+            Math.round(durationHours * 60 * 60 * 1000),
+        );
+
   recurrenceRows.value.push({
     id: `row-${recurrenceRowId++}`,
     day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
+    startTime: cloneDateValue(previousRow?.startTime ?? fallbackStart),
+    endTime: cloneDateValue(previousRow?.endTime ?? fallbackEnd),
   });
 };
 
