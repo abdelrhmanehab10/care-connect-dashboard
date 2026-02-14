@@ -16,6 +16,12 @@ import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { fetchEmployeeOptionsByTitle } from "../services/employees";
+import {
+  getStatusLevel as getBaseStatusLevel,
+  isFinalStatus as isBaseFinalStatus,
+  isStatusTransitionAllowed as isBaseStatusTransitionAllowed,
+  normalizeStatusKey,
+} from "../lib/statusTransitions";
 
 const reasonDialogVisible = ref(false);
 const reasonText = ref("");
@@ -512,27 +518,8 @@ const normalizeDateInput = (value: string | null | undefined) => {
   return getTodayIsoDate();
 };
 
-const normalizeStatusKey = (value: unknown) =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-
-const statusLevelLookup: Record<string, number> = {
-  new: 1,
-  waiting: 1,
-  confirmed: 2,
-  patient_confirmed: 2,
-  rescheduled: 2,
-  canceled: 3,
-  cancelled: 3,
-  completed: 3,
-  no_show: 3,
-};
-
 const fallbackStatusMeta = (value: unknown) => {
-  const normalized = normalizeStatusKey(value);
-  const level = statusLevelLookup[normalized] ?? 1;
+  const level = getBaseStatusLevel(value);
   return { level, isFinal: level >= 3 };
 };
 
@@ -625,7 +612,7 @@ const isFinalStatus = (value: unknown) => {
   if (option) {
     return option.isFinal || option.level >= 3;
   }
-  return fallbackStatusMeta(value).isFinal;
+  return isBaseFinalStatus(value);
 };
 
 const getStatusOptionsForRow = (
@@ -663,6 +650,9 @@ const getStatusOptionsForRow = (
 };
 
 const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
+  if (!getStatusOption(from) && !getStatusOption(to)) {
+    return isBaseStatusTransitionAllowed(from, to);
+  }
   const fromKey = normalizeStatusKey(from);
   const toKey = normalizeStatusKey(to);
   if (!fromKey || fromKey === toKey) return true;

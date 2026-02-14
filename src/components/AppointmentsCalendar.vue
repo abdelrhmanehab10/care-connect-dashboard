@@ -9,6 +9,10 @@ import {
   quickNoShowAppointment,
   cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
+import {
+  isStatusTransitionAllowed,
+  normalizeStatusKey,
+} from "../lib/statusTransitions";
 import type { Appointment } from "../types";
 
 type AppointmentCalendarEvent = {
@@ -134,41 +138,7 @@ const getEarliestAppointmentFocus = (
 };
 
 const normalizeStatus = (status: string | null | undefined) =>
-  status?.trim().toLowerCase().replace(/[\s-]+/g, "_") ?? "";
-
-const normalizeStatusKey = (value: unknown) =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-
-const statusLevelLookup: Record<string, number> = {
-  new: 1,
-  waiting: 1,
-  confirmed: 2,
-  patient_confirmed: 2,
-  rescheduled: 2,
-  canceled: 3,
-  cancelled: 3,
-  completed: 3,
-  no_show: 3,
-};
-
-const getStatusLevel = (value: unknown) =>
-  statusLevelLookup[normalizeStatusKey(value)] ?? 1;
-
-const isFinalStatus = (value: unknown) => getStatusLevel(value) >= 3;
-
-const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
-  const fromKey = normalizeStatusKey(from);
-  const toKey = normalizeStatusKey(to);
-  if (!fromKey || fromKey === toKey) return true;
-  if (isFinalStatus(from)) return false;
-  if (getStatusLevel(from) >= 2) {
-    return isFinalStatus(to);
-  }
-  return true;
-};
+  normalizeStatusKey(status);
 
 const statusToColor = (status: string | null | undefined) => {
   switch (normalizeStatus(status)) {
