@@ -84,7 +84,17 @@ const teamInfoTitle = computed(() => {
 const onEdit = () => emit("edit", props.event.appointment);
 const onConfirm = () => emit("confirm", props.event.appointment);
 const onNoShow = () => emit("no-show", props.event.appointment);
-const onCancel = () => emit("cancel", props.event.appointment);
+const isCanceledStatus = computed(() => {
+  const status = String(props.event.appointment.status ?? "").trim().toLowerCase();
+  return status === "canceled" || status === "cancelled";
+});
+const isCancelDisabled = computed(
+  () => props.isCancelLoading || !props.canCancelAction || isCanceledStatus.value,
+);
+const onCancel = () => {
+  if (isCancelDisabled.value) return;
+  emit("cancel", props.event.appointment);
+};
 </script>
 
 <template>
@@ -145,7 +155,7 @@ const onCancel = () => emit("cancel", props.event.appointment);
         class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--cancel"
         aria-label="Cancel appointment"
         title="Cancel"
-        :disabled="isCancelLoading || !canCancelAction"
+        :disabled="isCancelDisabled"
         @click.stop="onCancel"
       >
         <Loader2 v-if="isCancelLoading" class="cc-icon cc-icon-spinner" />
