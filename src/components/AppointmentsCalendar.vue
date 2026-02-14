@@ -9,7 +9,6 @@ import {
   quickNoShowAppointment,
   cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
-import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
 
 type AppointmentCalendarEvent = {
@@ -171,7 +170,7 @@ const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
   return true;
 };
 
-const statusToColor = (status: AppointmentStatus | string) => {
+const statusToColor = (status: string | null | undefined) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
     case "patient_confirmed":
@@ -191,7 +190,7 @@ const statusToColor = (status: AppointmentStatus | string) => {
   }
 };
 
-const statusBadgeClass = (status: AppointmentStatus | string) => {
+const statusBadgeClass = (status: string | null | undefined) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
     case "patient_confirmed":
@@ -258,9 +257,23 @@ const calendarHeight = computed(() =>
 );
 const eventHeight = computed(() => (viewType.value === "month" ? 96 : 52));
 const showEventMore = computed(() => viewType.value !== "month");
-const confirmingIds = ref<number[]>([]);
-const noShowIds = ref<number[]>([]);
-const cancelIds = ref<number[]>([]);
+const createLoadingIdsState = () => {
+  const ids = ref<number[]>([]);
+  const isLoading = (appointmentId: number) => ids.value.includes(appointmentId);
+  const setLoading = (appointmentId: number, value: boolean) => {
+    if (value) {
+      if (!ids.value.includes(appointmentId)) {
+        ids.value = [...ids.value, appointmentId];
+      }
+      return;
+    }
+    ids.value = ids.value.filter((id) => id !== appointmentId);
+  };
+  return { ids, isLoading, setLoading };
+};
+const confirmState = createLoadingIdsState();
+const noShowState = createLoadingIdsState();
+const cancelState = createLoadingIdsState();
 const reasonDialogVisible = ref(false);
 const reasonText = ref("");
 
@@ -275,43 +288,13 @@ const asAppointmentEvent = (event: unknown) =>
   event as AppointmentCalendarEvent;
 
 const isConfirming = (appointmentId: number) =>
-  confirmingIds.value.includes(appointmentId);
-
-const setConfirming = (appointmentId: number, value: boolean) => {
-  if (value) {
-    if (!confirmingIds.value.includes(appointmentId)) {
-      confirmingIds.value = [...confirmingIds.value, appointmentId];
-    }
-    return;
-  }
-  confirmingIds.value = confirmingIds.value.filter((id) => id !== appointmentId);
-};
+  confirmState.isLoading(appointmentId);
 
 const isNoShowLoading = (appointmentId: number) =>
-  noShowIds.value.includes(appointmentId);
-
-const setNoShowLoading = (appointmentId: number, value: boolean) => {
-  if (value) {
-    if (!noShowIds.value.includes(appointmentId)) {
-      noShowIds.value = [...noShowIds.value, appointmentId];
-    }
-    return;
-  }
-  noShowIds.value = noShowIds.value.filter((id) => id !== appointmentId);
-};
+  noShowState.isLoading(appointmentId);
 
 const isCancelLoading = (appointmentId: number) =>
-  cancelIds.value.includes(appointmentId);
-
-const setCancelLoading = (appointmentId: number, value: boolean) => {
-  if (value) {
-    if (!cancelIds.value.includes(appointmentId)) {
-      cancelIds.value = [...cancelIds.value, appointmentId];
-    }
-    return;
-  }
-  cancelIds.value = cancelIds.value.filter((id) => id !== appointmentId);
-};
+  cancelState.isLoading(appointmentId);
 
 const openReasonForAction = (action: PendingCalendarAction) => {
   if (reasonDialogVisible.value) {
@@ -338,7 +321,7 @@ const requestConfirmAll = (appointment: Appointment) => {
     return;
   }
 
-  setConfirming(appointment.id, true);
+  confirmState.setLoading(appointment.id, true);
   void confirmAppointmentPatient(appointment.id)
     .then(() => {
       toast.add({
@@ -353,7 +336,7 @@ const requestConfirmAll = (appointment: Appointment) => {
       console.error("Failed to confirm appointment.", error);
     })
     .finally(() => {
-      setConfirming(appointment.id, false);
+      confirmState.setLoading(appointment.id, false);
     });
 };
 
@@ -366,7 +349,7 @@ const requestNoShow = (appointment: Appointment) => {
     return;
   }
 
-  setNoShowLoading(appointment.id, true);
+  noShowState.setLoading(appointment.id, true);
   void quickNoShowAppointment(appointment.id)
     .then(() => {
       toast.add({
@@ -381,7 +364,7 @@ const requestNoShow = (appointment: Appointment) => {
       console.error("Failed to mark appointment as no show.", error);
     })
     .finally(() => {
-      setNoShowLoading(appointment.id, false);
+      noShowState.setLoading(appointment.id, false);
     });
 };
 
@@ -416,7 +399,7 @@ const confirmReasonAndRun = async () => {
         return;
       }
 
-      setCancelLoading(appointment.id, true);
+      cancelState.setLoading(appointment.id, true);
       try {
         await cancelAppointmentApi(appointment.id, { reason });
         toast.add({
@@ -429,7 +412,7 @@ const confirmReasonAndRun = async () => {
       } catch (error) {
         console.error("Failed to cancel appointment.", error);
       } finally {
-        setCancelLoading(appointment.id, false);
+        cancelState.setLoading(appointment.id, false);
       }
       return;
     }
@@ -483,7 +466,7 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
           })`,
         start,
         end,
-        color: statusToColor(appointment.status as AppointmentStatus),
+        color: statusToColor(appointment.status),
         timed: hasTimes,
         appointment,
       },
@@ -496,15 +479,18 @@ const setToday = () => {
   viewType.value = "day";
 };
 
-const viewDay = (_event: Event, timestamp: { date: string }) => {
+type CalendarTimestamp = { date: string };
+
+const focusDay = (timestamp: CalendarTimestamp) => {
   focus.value = timestamp.date;
   viewType.value = "day";
 };
 
-const viewMore = (_event: Event, timestamp: { date: string }) => {
-  focus.value = timestamp.date;
-  viewType.value = "day";
-};
+const viewDay = (_event: Event, timestamp: CalendarTimestamp) =>
+  focusDay(timestamp);
+
+const viewMore = (_event: Event, timestamp: CalendarTimestamp) =>
+  focusDay(timestamp);
 
 const viewWeek = () => {
   viewType.value = "week";
@@ -515,12 +501,13 @@ const viewMonth = () => {
 };
 
 const parseFocusDate = (value: string) => {
+  const normalized = normalizeDate(value);
   const [yearRaw = Number.NaN, monthRaw = Number.NaN, dayRaw = Number.NaN] =
-    value.split("-").map(Number);
+    normalized.split("-").map(Number);
   const fallback = new Date();
-  const year = Number.isFinite(yearRaw) ? yearRaw : fallback.getFullYear();
-  const month = Number.isFinite(monthRaw) ? monthRaw : fallback.getMonth() + 1;
-  const day = Number.isFinite(dayRaw) ? dayRaw : fallback.getDate();
+  const year = Number.isInteger(yearRaw) ? yearRaw : fallback.getFullYear();
+  const month = Number.isInteger(monthRaw) ? monthRaw : fallback.getMonth() + 1;
+  const day = Number.isInteger(dayRaw) ? dayRaw : fallback.getDate();
   return new Date(year, month - 1, day);
 };
 
@@ -569,13 +556,7 @@ const goNext = () => {
   shiftFocus(viewType.value === "week" ? 7 : 1);
 };
 
-watch(
-  [focus, viewType],
-  () => {
-    syncRange();
-  },
-  { immediate: true },
-);
+watch([focus, viewType], syncRange, { immediate: true });
 </script>
 
 <template>
