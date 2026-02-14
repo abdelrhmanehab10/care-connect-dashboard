@@ -50,7 +50,6 @@ type PendingReasonAction = {
 
 const pendingReasonAction = ref<PendingReasonAction | null>(null);
 
-type OptionalName = { name?: string | null };
 type OptionalAddress = {
   address?: string | null;
   city?: string | null;

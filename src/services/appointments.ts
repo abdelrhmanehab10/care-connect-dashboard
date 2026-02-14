@@ -37,6 +37,10 @@ export type AppointmentLogEntry = {
   action: string;
   time: string;
   reason?: string | null;
+  changes?: {
+    old?: Record<string, unknown>;
+    attributes?: Record<string, unknown>;
+  } | null;
 };
 
 export type AppointmentLogResponse = {
