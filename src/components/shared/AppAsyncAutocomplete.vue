@@ -33,16 +33,12 @@ const props = withDefaults(
     showEmptyMessage?: boolean;
   }>(),
   {
-    optionLabel: undefined,
-    inputId: undefined,
     placeholder: "",
     minChars: 2,
     debounceMs: 300,
     showCachedOnFocus: true,
     appendTo: "body",
     panelClass: "cc-autocomplete-panel",
-    inputClass: undefined,
-    pt: undefined,
     forceSelection: true,
     completeOnFocus: true,
     autoOptionFocus: true,
@@ -58,9 +54,9 @@ const emit = defineEmits<{
 
 const { suggestions, isLoading, search } = useAsyncAutocomplete<unknown>({
   fetcher: props.fetcher,
-  debounceMs: props.debounceMs,
-  minChars: props.minChars,
-  showCachedOnFocus: props.showCachedOnFocus,
+  debounceMs: () => props.debounceMs,
+  minChars: () => props.minChars,
+  showCachedOnFocus: () => props.showCachedOnFocus,
   onError: (error) => {
     emit("error", error);
   },
@@ -76,7 +72,13 @@ const handleModelUpdate = (value: unknown) => {
   emit("update:modelValue", value);
 };
 
+let optionSelectEmitLocked = false;
 const handleOptionSelect = (event: AutoCompleteOptionSelectEvent) => {
+  if (optionSelectEmitLocked) return;
+  optionSelectEmitLocked = true;
+  queueMicrotask(() => {
+    optionSelectEmitLocked = false;
+  });
   emit("option-select", event);
 };
 </script>

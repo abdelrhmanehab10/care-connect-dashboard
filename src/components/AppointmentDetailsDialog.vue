@@ -43,22 +43,54 @@ const logs = ref<AppointmentLogEntry[]>([]);
 const isLogLoading = ref(false);
 const logErrorMessage = ref<string | null>(null);
 
-type PendingReasonAction =
-  {
-      type: "cancel";
-      appointment: Appointment;
-    };
+type PendingReasonAction = {
+  type: "cancel";
+  appointment: Appointment;
+};
 
 const pendingReasonAction = ref<PendingReasonAction | null>(null);
 
-const v = (x: any) =>
+type OptionalName = { name?: string | null };
+type OptionalAddress = {
+  address?: string | null;
+  city?: string | null;
+  lat?: unknown;
+  lng?: unknown;
+};
+type OptionalEmployeeRef = { id?: unknown; name?: string | null };
+type CareTeamLike = {
+  role?: string | null;
+  name?: string | null;
+  employee?: OptionalEmployeeRef | null;
+  employee_id?: unknown;
+  start_time?: string | null;
+  end_time?: string | null;
+};
+type AppointmentWithExtras = AppointmentWithConfirmations & {
+  patient_address?: OptionalAddress | null;
+  location?: string | null;
+  address?: string | null;
+  city?: string | null;
+  socialWorker?: OptionalEmployeeRef | null;
+  social_worker_name?: string | null;
+  care_team?: CareTeamLike[] | null;
+  doctor?: OptionalEmployeeRef | null;
+  nurse?: OptionalEmployeeRef | null;
+  social_worker?: (OptionalEmployeeRef & { full_name?: string | null }) | null;
+};
+
+const appointmentRecord = computed<AppointmentWithExtras | null>(
+  () => appointmentData.value as AppointmentWithExtras | null,
+);
+
+const v = (x: unknown) =>
   x === null || x === undefined || x === "" ? "-" : String(x);
 
-const statusText = (s: any) => {
+const statusText = (s: unknown) => {
   const t = String(s ?? "").trim();
   return t || "-";
 };
-const statusClass = (s: any) => {
+const statusClass = (s: unknown) => {
   const t = String(s ?? "").toLowerCase();
   if (t.includes("confirm")) return "cc-badge cc-badge-success";
   if (t.includes("complete")) return "cc-badge cc-badge-success";
@@ -90,13 +122,27 @@ const isSameCalendarDate = (left: Date, right: Date) =>
   left.getFullYear() === right.getFullYear() &&
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate();
+const parseLocalDateOnly = (value: string): Date | null => {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return null;
+  }
+  const [, yearRaw, monthRaw, dayRaw] = match;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) {
+    return null;
+  }
+  const parsed = new Date(year, month - 1, day);
+  return hasValidDateValue(parsed) ? parsed : null;
+};
 const isAppointmentToday = computed(() => {
-  const rawDate = String(appointmentData.value?.date ?? "").trim();
+  const rawDate = String(appointmentRecord.value?.date ?? "").trim();
   if (!rawDate) {
     return false;
   }
-  const normalizedDate = rawDate.split("T")[0] ?? rawDate;
-  const parsed = new Date(normalizedDate);
+  const parsed = parseLocalDateOnly(rawDate) ?? new Date(rawDate);
   if (!hasValidDateValue(parsed)) {
     return false;
   }
@@ -128,6 +174,11 @@ const resetLogViewState = () => {
   logErrorMessage.value = null;
   isLogLoading.value = false;
 };
+const resetDialogState = () => {
+  resetRowConfirmState();
+  resetReasonDialogState();
+  resetLogViewState();
+};
 
 const loadingRows = computed(() =>
   Array.from({ length: 7 }, (_, index) => ({
@@ -135,36 +186,46 @@ const loadingRows = computed(() =>
   })),
 );
 
-const logRows = computed(() =>
-  logs.value.map((entry, index) => ({
-    index: index + 1,
-    ...entry,
-  })),
-);
+const logRows = computed(() => {
+  const duplicateCountByBaseKey = new Map<string, number>();
+  return logs.value.map((entry, index) => {
+    const base = [
+      String(entry.time ?? "").trim(),
+      String(entry.employee ?? "").trim(),
+      String(entry.patient ?? "").trim(),
+      String(entry.action ?? "").trim(),
+      String(entry.reason ?? "").trim(),
+    ].join("|");
+    const count = (duplicateCountByBaseKey.get(base) ?? 0) + 1;
+    duplicateCountByBaseKey.set(base, count);
+    return {
+      index: index + 1,
+      key: `${base}|${count}`,
+      ...entry,
+    };
+  });
+});
 
 watch(
   () => appointmentData.value?.id ?? null,
   () => {
-    resetRowConfirmState();
-    resetReasonDialogState();
-    resetLogViewState();
+    resetDialogState();
   },
 );
 
 watch(visible, (value) => {
   if (!value) {
-    resetRowConfirmState();
-    resetReasonDialogState();
-    resetLogViewState();
+    resetDialogState();
   }
 });
 
-const patientName = () => v(appointmentData.value?.patient?.name);
-const patientPhone = () =>
+const patientName = computed(() => v(appointmentRecord.value?.patient?.name));
+const patientPhone = computed(() =>
   v(
-    appointmentData.value?.patient?.mobile ??
-      appointmentData.value?.patient?.phone,
-  );
+    appointmentRecord.value?.patient?.mobile ??
+      appointmentRecord.value?.patient?.phone,
+  ),
+);
 
 const normalizeCoordinate = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -178,7 +239,7 @@ const normalizeCoordinate = (value: unknown): number | null => {
 };
 
 const locationMapUrl = computed(() => {
-  const patientAddress = (appointmentData.value as any)?.patient_address;
+  const patientAddress = appointmentRecord.value?.patient_address;
   if (!patientAddress || typeof patientAddress !== "object") {
     return null;
   }
@@ -199,9 +260,9 @@ const locationMapUrl = computed(() => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 });
 
-const locationText = () => {
-  const address = (appointmentData.value as any)?.patient_address?.address;
-  const city = (appointmentData.value as any)?.patient_address?.city;
+const locationText = computed(() => {
+  const address = appointmentRecord.value?.patient_address?.address;
+  const city = appointmentRecord.value?.patient_address?.city;
   if (address && city) {
     const normalized = String(address);
     if (normalized.toLowerCase().includes(String(city).toLowerCase())) {
@@ -212,14 +273,16 @@ const locationText = () => {
   return v(
     address ??
       city ??
-      (appointmentData.value as any)?.location ??
-      (appointmentData.value as any)?.address ??
-      (appointmentData.value as any)?.city,
+      appointmentRecord.value?.location ??
+      appointmentRecord.value?.address ??
+      appointmentRecord.value?.city,
   );
-};
+});
 
-const scheduleText = () =>
-  `${v(appointmentData.value?.date)} - ${v(appointmentData.value?.start_time)} - ${v(appointmentData.value?.end_time)}`;
+const scheduleText = computed(
+  () =>
+    `${v(appointmentRecord.value?.date)} - ${v(appointmentRecord.value?.start_time)} - ${v(appointmentRecord.value?.end_time)}`,
+);
 
 type TeamItem = {
   role: string;
@@ -316,7 +379,7 @@ const buildTeamItem = (base: {
 };
 
 const careTeam = computed<TeamItem[]>(() => {
-  const appointment: any = appointmentData.value;
+  const appointment = appointmentRecord.value;
   const list: TeamItem[] = [];
 
   if (Array.isArray(appointment?.care_team) && appointment.care_team.length > 0) {
@@ -584,7 +647,6 @@ const showDetailsView = () => {
 const handleCheckIn = () => {
   if (!canCheckIn.value || !appointmentId.value) return;
   emit("check-in");
-  window.location.assign(`/visits/start/${appointmentId.value}`);
 };
 
 const handleEditAppointment = () => {
@@ -608,7 +670,7 @@ const handleEditAppointment = () => {
       <div class="cc-head">
         <div class="cc-head-top">
           <span class="cc-title cc-link">
-            {{ patientName() }}
+            {{ patientName }}
           </span>
 
           <div class="cc-head-actions">
@@ -671,14 +733,14 @@ const handleEditAppointment = () => {
         <div class="cc-sub">
           <div class="cc-sub-item">
             <span class="cc-sub-ic"><i class="fa-solid fa-phone"></i></span>
-            <span dir="ltr">{{ patientPhone() }}</span>
+            <span dir="ltr">{{ patientPhone }}</span>
           </div>
 
           <div class="cc-sub-item">
             <span class="cc-sub-ic"
               ><i class="fa-solid fa-location-dot"></i
             ></span>
-            <span class="cc-sub-text">{{ locationText() }}</span>
+            <span class="cc-sub-text">{{ locationText }}</span>
           </div>
           <a
             v-if="locationMapUrl"
@@ -699,7 +761,7 @@ const handleEditAppointment = () => {
               ><i class="fa-regular fa-calendar"></i
             ></span>
             <span class="cc-chip-lbl">Schedule:</span>
-            <span class="cc-chip-val">{{ scheduleText() }}</span>
+            <span class="cc-chip-val">{{ scheduleText }}</span>
           </div>
 
           <div class="cc-chip">
@@ -831,7 +893,7 @@ const handleEditAppointment = () => {
                   No log entries yet.
                 </td>
               </tr>
-              <tr v-for="row in logRows" :key="row.index">
+              <tr v-for="row in logRows" :key="row.key">
                 <td>{{ row.index }}</td>
                 <td>{{ row.employee }}</td>
                 <td>{{ row.patient }}</td>
@@ -845,7 +907,7 @@ const handleEditAppointment = () => {
       </div>
     </div>
 
-    <!-- footer ÙØ§Ø¶ÙŠ Ø²ÙŠ Ø§Ù„ØµÙˆØ±Ø© -->
+    <!-- Empty footer for layout parity -->
     <template #footer>
       <div style="height: 0" />
     </template>

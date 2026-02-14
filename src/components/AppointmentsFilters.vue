@@ -191,10 +191,6 @@ const isThisWeekActive = computed(() => {
   );
 });
 
-const toggleStatusTag = (status: AppointmentStatus) => {
-  statusTagFilter.value = statusTagFilter.value === status ? null : status;
-};
-
 const toggleToday = () => {
   if (isTodayActive.value) {
     startDate.value = null;
@@ -246,34 +242,6 @@ const toggleStateFilter = (value: string) => {
     return;
   }
   stateFilter.value = match;
-};
-
-const toggleQuickPatient = () => {
-  const patientName = props.quickPatientLabel;
-  if (!patientName || patientName === "Patient") return;
-  const match = props.patientOptions.find(
-    (option) => option.name.toLowerCase() === patientName.toLowerCase(),
-  );
-  if (!match) return;
-  if (patientFilter.value?.id === match.id) {
-    patientFilter.value = null;
-    patientInput.value = null;
-    return;
-  }
-  patientFilter.value = match;
-  patientInput.value = match;
-};
-
-const toggleQuickDoctor = () => {
-  const doctorName = props.quickDoctorLabel;
-  if (!doctorName || doctorName === "Doctor") return;
-  if (employeeFilter.value === doctorName) {
-    employeeFilter.value = null;
-    employeeInput.value = null;
-    return;
-  }
-  employeeFilter.value = doctorName;
-  employeeInput.value = doctorName;
 };
 
 const clearFilters = () => {
@@ -463,11 +431,8 @@ watch(
   <div class="border p-3 rounded mb-2">
     <AppointmentCards :is-today-active="isTodayActive" :is-this-week-active="isThisWeekActive"
       :active-state-filter="stateFilter?.value ?? stateFilter?.key ?? null"
-      :status-tag-filter="statusTagFilter" :quick-patient-label="quickPatientLabel"
-      :quick-doctor-label="quickDoctorLabel" :patient-filter="patientFilter" :employee-filter="employeeFilter"
       :is-disabled="isCalendarView" @toggle-today="toggleToday" @toggle-week="toggleThisWeek"
-      @toggle-status="toggleStatusTag" @filter-state="toggleStateFilter" @toggle-patient="toggleQuickPatient"
-      @toggle-doctor="toggleQuickDoctor" @clear-filters="clearFilters" />
+      @filter-state="toggleStateFilter" @clear-filters="clearFilters" />
     <div class="row">
       <div class="col-md-2">
         <label for="employeeFilter" class="cc-label">Employee</label>
