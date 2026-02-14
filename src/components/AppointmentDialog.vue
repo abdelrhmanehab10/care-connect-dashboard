@@ -222,6 +222,19 @@ const resolveWeekdayFromDate = (value: Date): Weekday => {
   }) as Weekday;
   return weekdayOptions.value.includes(weekday) ? weekday : getDefaultWeekday();
 };
+const getNextWeekday = (day: Weekday): Weekday => {
+  if (!weekdayOptions.value.length) {
+    return getDefaultWeekday();
+  }
+  const currentIndex = weekdayOptions.value.indexOf(day);
+  if (currentIndex < 0) {
+    return getDefaultWeekday();
+  }
+  return (
+    weekdayOptions.value[(currentIndex + 1) % weekdayOptions.value.length] ??
+    getDefaultWeekday()
+  );
+};
 const cloneDateValue = (value: Date | null) =>
   value ? new Date(value.getTime()) : null;
 const weekdayToApiDay = (day: Weekday) => {
@@ -229,46 +242,41 @@ const weekdayToApiDay = (day: Weekday) => {
   return String(index >= 0 ? index : 0);
 };
 let recurrenceRowId = 1;
-const recurrenceRows = ref<RecurrenceRow[]>([
-  {
-    id: `row-${recurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
-]);
 let employeeRecurrenceRowId = 1;
+
+const createRecurrenceRow = (overrides: Partial<RecurrenceRow> = {}): RecurrenceRow => ({
+  id: `row-${recurrenceRowId++}`,
+  day: getDefaultWeekday(),
+  startTime: null,
+  endTime: null,
+  ...overrides,
+});
+
+const createEmployeeRecurrenceRow = (
+  prefix: string,
+  overrides: Partial<EmployeeRecurrenceRow> = {},
+): EmployeeRecurrenceRow => ({
+  id: `${prefix}-row-${employeeRecurrenceRowId++}`,
+  day: getDefaultWeekday(),
+  startTime: null,
+  endTime: null,
+  ...overrides,
+});
+
+const recurrenceRows = ref<RecurrenceRow[]>([
+  createRecurrenceRow(),
+]);
 const nurseRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `nurse-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("nurse"),
 ]);
 const doctorRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `doctor-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("doctor"),
 ]);
 const socialWorkerRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `social-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("social"),
 ]);
 const driverRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `driver-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("driver"),
 ]);
 
 const isPatientOption = (value: unknown): value is PatientOption => {
@@ -1113,6 +1121,27 @@ const resolveSelectedPrimaryDriverName = (
   return name || null;
 };
 
+const clearTimeRange = (range: { startTime: Date | null; endTime: Date | null }) => {
+  range.startTime = null;
+  range.endTime = null;
+};
+
+const resetEmployeeRecurrenceRows = () => {
+  nurseRecurrenceRows.value = [createEmployeeRecurrenceRow("nurse")];
+  doctorRecurrenceRows.value = [createEmployeeRecurrenceRow("doctor")];
+  socialWorkerRecurrenceRows.value = [createEmployeeRecurrenceRow("social")];
+  driverRecurrenceRows.value = [createEmployeeRecurrenceRow("driver")];
+};
+
+const resetMainSchedule = () => {
+  schedule.isRecurring = false;
+  schedule.appointmentDate = null;
+  schedule.appointmentStartTime = null;
+  schedule.appointmentEndTime = null;
+  schedule.recurringStartDate = null;
+  schedule.recurringEndDate = null;
+};
+
 const resetForm = () => {
   hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
@@ -1132,72 +1161,17 @@ const resetForm = () => {
   doctorScheduleType.value = "same";
   socialWorkerScheduleType.value = "same";
   driverScheduleType.value = "same";
-  nurseName.value = null;
-  doctorName.value = null;
-  socialWorkerName.value = null;
-  driverName.value = null;
-  primaryNurseName.value = null;
-  primaryDoctorName.value = null;
-  primarySocialWorkerName.value = null;
-  primaryDriverName.value = null;
   visit.type = "";
-  nurseSchedule.startTime = null;
-  nurseSchedule.endTime = null;
-  doctorSchedule.startTime = null;
-  doctorSchedule.endTime = null;
-  socialWorkerSchedule.startTime = null;
-  socialWorkerSchedule.endTime = null;
-  driverSchedule.startTime = null;
-  driverSchedule.endTime = null;
-  nurseRecurrenceRows.value = [
-    {
-      id: `nurse-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  doctorRecurrenceRows.value = [
-    {
-      id: `doctor-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  socialWorkerRecurrenceRows.value = [
-    {
-      id: `social-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  driverRecurrenceRows.value = [
-    {
-      id: `driver-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  schedule.isRecurring = false;
-  schedule.appointmentDate = null;
-  schedule.appointmentStartTime = null;
-  schedule.appointmentEndTime = null;
-  schedule.recurringStartDate = null;
-  schedule.recurringEndDate = null;
+  clearTimeRange(nurseSchedule);
+  clearTimeRange(doctorSchedule);
+  clearTimeRange(socialWorkerSchedule);
+  clearTimeRange(driverSchedule);
+  resetEmployeeRecurrenceRows();
+  resetMainSchedule();
   instructions.value = "";
   mapLocation.value = { ...defaultMapLocation };
   recurrenceRowId = 1;
-  recurrenceRows.value = [
-    {
-      id: `row-${recurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
+  recurrenceRows.value = [createRecurrenceRow()];
 };
 
 const resolveAppointmentPatient = (
@@ -1297,7 +1271,7 @@ const resolveAppointmentPatient = (
 
 const applyDurationTimeDefaults = (durationHours: number) => {
   const now = new Date();
-  const durationMs = Math.round(durationHours * 60 * 60 * 1000);
+  const durationMs = durationHoursToMs(durationHours);
   const end = new Date(now.getTime() + durationMs);
   schedule.appointmentDate = new Date(
     now.getFullYear(),
@@ -1310,7 +1284,7 @@ const applyDurationTimeDefaults = (durationHours: number) => {
 
 const applyRecurringDurationDefaults = (durationHours: number) => {
   const now = new Date();
-  const durationMs = Math.round(durationHours * 60 * 60 * 1000);
+  const durationMs = durationHoursToMs(durationHours);
   const end = new Date(now.getTime() + durationMs);
   const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   schedule.recurringStartDate = dateOnly;
@@ -2051,26 +2025,12 @@ const addRecurrenceRow = () => {
           fallbackStart.getTime() +
             durationHoursToMs(durationHours),
         );
-  const getNextWeekday = (day: Weekday): Weekday => {
-    if (!weekdayOptions.value.length) {
-      return getDefaultWeekday();
-    }
-    const currentIndex = weekdayOptions.value.indexOf(day);
-    if (currentIndex < 0) {
-      return getDefaultWeekday();
-    }
-    return (
-      weekdayOptions.value[(currentIndex + 1) % weekdayOptions.value.length] ??
-      getDefaultWeekday()
-    );
-  };
 
-  recurrenceRows.value.push({
-    id: `row-${recurrenceRowId++}`,
+  recurrenceRows.value.push(createRecurrenceRow({
     day: previousRow ? getNextWeekday(previousRow.day) : getDefaultWeekday(),
     startTime: cloneDateValue(previousRow?.startTime ?? fallbackStart),
     endTime: cloneDateValue(previousRow?.endTime ?? fallbackEnd),
-  });
+  }));
 };
 
 const submitForm = handleSubmit(() => {
