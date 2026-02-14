@@ -97,10 +97,7 @@ const cancelReasonModal = () => {
     if (previousValue !== undefined) {
       applyFieldValue(pending.data, pending.field, previousValue);
     }
-    editSnapshots.delete(pending.key);
-    editDrafts.delete(pending.key);
-    explicitSaveKeys.delete(pending.key);
-    editReasons.delete(pending.key);
+    clearEditTracking(pending.key);
     pending.cancelCb(pending.originalEvent);
   }
   reasonDialogVisible.value = false;
@@ -210,6 +207,23 @@ const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
 const editDrafts = new Map<string, unknown>();
 const editSnapshots = new Map<string, unknown>();
 const explicitSaveKeys = new Set<string>();
+const clearEditTracking = (key: string) => {
+  editSnapshots.delete(key);
+  editDrafts.delete(key);
+  explicitSaveKeys.delete(key);
+  editReasons.delete(key);
+};
+const revertFieldAndClear = (
+  data: Appointment,
+  field: string,
+  value: unknown,
+  key: string,
+) => {
+  if (value !== undefined) {
+    applyFieldValue(data, field, value);
+  }
+  clearEditTracking(key);
+};
 
 const closeCellEditor = () => {
   if (typeof document === "undefined") return;
@@ -666,21 +680,21 @@ const isStatusLocked = (data: Appointment) => {
   const snapshot = getSnapshotValue(data, "status");
   return isFinalStatus(snapshot ?? data.status);
 };
+const blockCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
+  const originalEvent = event.originalEvent as Event | undefined;
+  originalEvent?.preventDefault?.();
+  originalEvent?.stopPropagation?.();
+  setTimeout(closeCellEditor, 0);
+};
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   if (isStatusLocked(event.data)) {
-    const originalEvent = event.originalEvent as Event | undefined;
-    originalEvent?.preventDefault?.();
-    originalEvent?.stopPropagation?.();
-    setTimeout(closeCellEditor, 0);
+    blockCellEditInit(event);
     return;
   }
 
   if (isStaffEditBlocked(event.data, event.field)) {
-    const originalEvent = event.originalEvent as Event | undefined;
-    originalEvent?.preventDefault?.();
-    originalEvent?.stopPropagation?.();
-    setTimeout(closeCellEditor, 0);
+    blockCellEditInit(event);
     return;
   }
 
@@ -709,10 +723,7 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
   }
 
   applyFieldValue(data, event.field, editSnapshots.get(key));
-  editSnapshots.delete(key);
-  editDrafts.delete(key);
-  explicitSaveKeys.delete(key);
-  editReasons.delete(key);
+  clearEditTracking(key);
 };
 
 const handleCellEditComplete = (
@@ -729,35 +740,19 @@ const handleCellEditComplete = (
   }
   const previousValue = editSnapshots.get(key);
   if (isStaffEditBlocked(event.data, event.field)) {
-    if (previousValue !== undefined) {
-      applyFieldValue(event.data, event.field, previousValue);
-    }
-    editSnapshots.delete(key);
-    editDrafts.delete(key);
-    explicitSaveKeys.delete(key);
-    editReasons.delete(key);
+    revertFieldAndClear(event.data, event.field, previousValue, key);
     return;
   }
 
   const isExplicitSave = explicitSaveKeys.has(key);
   if (!isExplicitSave) {
-    if (previousValue !== undefined) {
-      applyFieldValue(event.data, event.field, previousValue);
-    }
-    editSnapshots.delete(key);
-    editDrafts.delete(key);
-    explicitSaveKeys.delete(key);
-    editReasons.delete(key);
+    revertFieldAndClear(event.data, event.field, previousValue, key);
     return;
   }
 
   if (event.field === "status" && previousValue !== undefined) {
     if (!isStatusTransitionAllowed(previousValue, event.data.status)) {
-      applyFieldValue(event.data, event.field, previousValue);
-      editSnapshots.delete(key);
-      editDrafts.delete(key);
-      explicitSaveKeys.delete(key);
-      editReasons.delete(key);
+      revertFieldAndClear(event.data, event.field, previousValue, key);
       return;
     }
   }

@@ -69,24 +69,30 @@ const isStatesBusy = computed(
 
 const stateOptions = computed(() => appointmentStatuses.value);
 const isCalendarView = computed(() => Boolean(props.isCalendarView));
+const employeePlaceholder = computed(() =>
+  isEmployeesLoading.value ? "Loading employees..." : "Search nurse or doctor",
+);
+const visitTypePlaceholder = computed(() =>
+  isVisitTypesLoading.value ? "Loading visit types..." : "Select visit type",
+);
+const statePlaceholder = computed(() =>
+  isStatesBusy.value ? "Loading states..." : "Select Status",
+);
+
+const filterByQuery = (source: string[], query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return [...source];
+  return source.filter((entry) =>
+    entry.toLowerCase().includes(normalizedQuery),
+  );
+};
 
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredEmployees.value = [
-      ...(fetchedEmployees.value.length
-        ? fetchedEmployees.value
-        : props.employeeOptions),
-    ];
-    return;
-  }
   const source =
     fetchedEmployees.value.length > 0
       ? fetchedEmployees.value
       : props.employeeOptions;
-  filteredEmployees.value = source.filter((name) =>
-    name.toLowerCase().includes(query),
-  );
+  filteredEmployees.value = filterByQuery(source, event.query ?? "");
 };
 
 const handleEmployeeSelect = (event: AutoCompleteOptionSelectEvent) => {
@@ -116,6 +122,10 @@ const handlePatientModelUpdate = (value: unknown) => {
   patientFilter.value = null;
 };
 
+const handlePatientSuggestionError = (error: unknown) => {
+  console.error("Failed to load patient suggestions.", error);
+};
+
 const handleVisitTypeSelect = (event: AutoCompleteOptionSelectEvent) => {
   visitTypeFilter.value = event.value as string;
   visitTypeInput.value = event.value as string;
@@ -127,22 +137,11 @@ const handleStateSelect = (event: AutoCompleteOptionSelectEvent) => {
 };
 
 const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
-  const query = event.query.trim().toLowerCase();
-  if (!query) {
-    filteredVisitTypes.value = [
-      ...((fetchedVisitTypes.value.length
-        ? fetchedVisitTypes.value.map((type) => type.name)
-        : props.visitTypeOptions) as string[]),
-    ];
-    return;
-  }
   const source =
     fetchedVisitTypes.value.length > 0
       ? fetchedVisitTypes.value.map((type) => type.name)
       : props.visitTypeOptions;
-  filteredVisitTypes.value = source.filter((name) =>
-    name.toLowerCase().includes(query),
-  );
+  filteredVisitTypes.value = filterByQuery(source, event.query ?? "");
 };
 
 const searchStates = (event: AutoCompleteCompleteEvent) => {
@@ -191,27 +190,28 @@ const isThisWeekActive = computed(() => {
   );
 });
 
+const setDateRange = (start: Date | null, end: Date | null) => {
+  startDate.value = start;
+  endDate.value = end;
+};
+
 const toggleToday = () => {
   if (isTodayActive.value) {
-    startDate.value = null;
-    endDate.value = null;
+    setDateRange(null, null);
     return;
   }
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  startDate.value = today;
-  endDate.value = new Date(today);
+  setDateRange(today, new Date(today));
 };
 
 const toggleThisWeek = () => {
   if (isThisWeekActive.value) {
-    startDate.value = null;
-    endDate.value = null;
+    setDateRange(null, null);
     return;
   }
   const now = new Date();
-  startDate.value = startOfWeek(now);
-  endDate.value = endOfWeek(now);
+  setDateRange(startOfWeek(now), endOfWeek(now));
 };
 
 const normalizeStateValue = (value: string) => value.trim().toLowerCase();
@@ -302,8 +302,7 @@ const setDefaultTodayRange = () => {
   if (startDate.value || endDate.value) return;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  startDate.value = today;
-  endDate.value = new Date(today);
+  setDateRange(today, new Date(today));
 };
 
 const formatDateInputValue = (value: Date | null) => {
@@ -439,7 +438,7 @@ watch(
         <AutoComplete v-model="employeeInput" inputId="employeeFilter" :suggestions="filteredEmployees"
           :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
           panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt"
-          :placeholder="isEmployeesLoading ? 'Loading employees...' : 'Search nurse or doctor'"
+          :placeholder="employeePlaceholder"
           @complete="searchEmployees" @option-select="handleEmployeeSelect" @item-select="handleEmployeeSelect" />
       </div>
       <div class="col-md-2">
@@ -456,27 +455,9 @@ watch(
           :fetcher="fetchPatientSuggestions"
           @update:modelValue="handlePatientModelUpdate"
           @option-select="handlePatientSelect"
-          @error="(error) => console.error('Failed to load patient suggestions.', error)"
+          @error="handlePatientSuggestionError"
         />
       </div>
-      <!-- <div class="col-md-2">
-        <label for="filterStartDate" class="cc-label">Start date</label>
-        <DatePicker v-model="startDate" inputId="filterStartDate" dateFormat="yy-mm-dd" appendTo="body"
-          panelClass="cc-datepicker-panel" :pt="datePickerPt" placeholder="Start date" :disabled="isCalendarView" />
-      </div> -->
-      <!-- <div class="col-md-2">
-        <label for="filterEndDate" class="cc-label">End date</label>
-        <DatePicker
-          v-model="endDate"
-          inputId="filterEndDate"
-          dateFormat="yy-mm-dd"
-          appendTo="body"
-          panelClass="cc-datepicker-panel"
-          :pt="datePickerPt"
-          placeholder="End date"
-          :disabled="isCalendarView"
-        />
-      </div> -->
       <div class="col-md-2">
         <label for="filterStartDate" class="cc-label">Start Date</label>
         <input
@@ -504,7 +485,7 @@ watch(
         <AutoComplete v-model="visitTypeInput" inputId="visitTypeFilter" :suggestions="filteredVisitTypes"
           :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
           panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt"
-          :placeholder="isVisitTypesLoading ? 'Loading visit types...' : 'Select visit type'"
+          :placeholder="visitTypePlaceholder"
           @complete="searchVisitTypes" @option-select="handleVisitTypeSelect" @item-select="handleVisitTypeSelect" />
       </div>
 
@@ -513,7 +494,7 @@ watch(
         <AutoComplete v-model="stateInput" inputId="stateFilter" :suggestions="filteredStates" optionLabel="key"
           :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
           panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt"
-          :placeholder="isStatesBusy ? 'Loading states...' : 'Select Status'" @complete="searchStates"
+          :placeholder="statePlaceholder" @complete="searchStates"
           @option-select="handleStateSelect" @item-select="handleStateSelect" />
       </div>
       <div class="cc-filters-actions">
