@@ -412,6 +412,26 @@ const primarySocialWorkerLabel = computed(() =>
 const primaryDriverLabel = computed(() =>
   formatPrimaryLabel("Primary driver", primaryDriverName.value),
 );
+const hasPrimaryNurse = computed(
+  () =>
+    Boolean(primaryNurseName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("nurse")),
+);
+const hasPrimaryDoctor = computed(
+  () =>
+    Boolean(primaryDoctorName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("doctor")),
+);
+const hasPrimarySocialWorker = computed(
+  () =>
+    Boolean(primarySocialWorkerName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("social_worker")),
+);
+const hasPrimaryDriver = computed(
+  () =>
+    Boolean(primaryDriverName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("driver")),
+);
 
 const normalizeRole = (role: string) =>
   role.trim().toLowerCase().replace(/\s+/g, "_");
@@ -1438,6 +1458,8 @@ const applyAppointment = (appointment: Appointment) => {
     driverAssignmentMode.value = "custom";
     driverName.value = driverMember.employee.name;
   }
+
+  enforceAssignmentModesForPrimaryAvailability();
 };
 
 const syncEmployeeRowsWithRecurringRows = (
@@ -1477,6 +1499,24 @@ const syncCustomEmployeeRecurringRows = () => {
   }
   if (showDriverSection.value && driverScheduleType.value === "custom") {
     syncEmployeeRowsWithRecurringRows(driverRecurrenceRows);
+  }
+};
+
+const enforceAssignmentModesForPrimaryAvailability = () => {
+  if (!hasPrimaryNurse.value && nurseAssignmentMode.value === "primary") {
+    nurseAssignmentMode.value = "custom";
+  }
+  if (!hasPrimaryDoctor.value && doctorAssignmentMode.value === "primary") {
+    doctorAssignmentMode.value = "custom";
+  }
+  if (
+    !hasPrimarySocialWorker.value &&
+    socialWorkerAssignmentMode.value === "primary"
+  ) {
+    socialWorkerAssignmentMode.value = "custom";
+  }
+  if (!hasPrimaryDriver.value && driverAssignmentMode.value === "primary") {
+    driverAssignmentMode.value = "custom";
   }
 };
 
@@ -1551,6 +1591,7 @@ watch(selectedPatient, (value) => {
     primaryDoctorName.value = null;
     primarySocialWorkerName.value = null;
     primaryDriverName.value = null;
+    enforceAssignmentModesForPrimaryAvailability();
     return;
   }
 
@@ -1563,6 +1604,7 @@ watch(selectedPatient, (value) => {
   primaryDoctorName.value = resolveSelectedPrimaryDoctorName(value);
   primarySocialWorkerName.value = resolveSelectedPrimarySocialWorkerName(value);
   primaryDriverName.value = resolveSelectedPrimaryDriverName(value);
+  enforceAssignmentModesForPrimaryAvailability();
 });
 
 watch(
@@ -2186,7 +2228,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showNurseSection" class="cc-panel">
           <div class="cc-section-title">Nurse</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimaryNurse" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="nurseAssignmentMode" type="radio" name="nurseAssignmentMode" value="primary" />
                 <span class="cc-label-inline">{{ primaryNurseLabel }}</span>
@@ -2276,7 +2318,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showDoctorSection" class="cc-panel">
           <div class="cc-section-title">Doctor</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimaryDoctor" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="doctorAssignmentMode" type="radio" name="doctorAssignmentMode" value="primary" />
                 <span class="cc-label-inline">{{ primaryDoctorLabel }}</span>
@@ -2369,7 +2411,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showSocialWorkerSection" class="cc-panel">
           <div class="cc-section-title">Social worker</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimarySocialWorker" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="socialWorkerAssignmentMode" type="radio" name="socialWorkerAssignmentMode"
                   value="primary" />
@@ -2474,7 +2516,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showDriverSection" class="cc-panel">
           <div class="cc-section-title">Driver</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimaryDriver" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="driverAssignmentMode" type="radio" name="driverAssignmentMode" value="primary" />
                 <span class="cc-label-inline">{{ primaryDriverLabel }}</span>
