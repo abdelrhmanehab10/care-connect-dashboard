@@ -1012,6 +1012,24 @@ body {
 }
 .v-calendar .v-event {
   margin: auto !important;
+  z-index: 1;
+  transition: z-index 0.12s ease;
+}
+
+.cc-calendar .v-event:hover,
+.cc-calendar .v-event:focus-within {
+  z-index: 20;
+}
+
+.cc-calendar .v-event-timed {
+  position: relative;
+  z-index: 1;
+  transition: z-index 0.12s ease;
+}
+
+.cc-calendar .v-event-timed:hover,
+.cc-calendar .v-event-timed:focus-within {
+  z-index: 30;
 }
 .cc-calendar--month .v-calendar-weekly__body {
   overflow: visible;
