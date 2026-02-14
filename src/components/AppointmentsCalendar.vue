@@ -493,6 +493,7 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
 
 const setToday = () => {
   focus.value = toIsoDate(new Date());
+  viewType.value = "day";
 };
 
 const viewDay = (_event: Event, timestamp: { date: string }) => {

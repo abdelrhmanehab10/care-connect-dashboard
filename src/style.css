@@ -1071,6 +1071,16 @@ body {
   min-width: 0;
 }
 
+.cc-calendar--day .v-event {
+  width: fit-content !important;
+  max-width: 100%;
+}
+
+.cc-calendar--day .cc-calendar-event {
+  width: fit-content;
+  max-width: min(30rem, 100%);
+}
+
 .cc-calendar-event-actions {
   display: flex;
   gap: 0.25rem;
