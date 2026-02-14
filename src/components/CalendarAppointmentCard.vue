@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { CheckCircle, XCircle, Ban, Loader2 } from "lucide-vue-next";
-import type { AppointmentStatus } from "../data/options";
 import type { Appointment } from "../types";
 
 type CalendarAppointmentEvent = {
@@ -12,7 +11,7 @@ type CalendarAppointmentEvent = {
 const props = defineProps<{
   event: CalendarAppointmentEvent;
   formatTimeRange: (appointment: Appointment) => string;
-  statusBadgeClass: (status: AppointmentStatus | string) => string;
+  statusBadgeClass: (status: string | null | undefined) => string;
   isConfirming: boolean;
   isNoShowLoading: boolean;
   isCancelLoading: boolean;
@@ -42,10 +41,11 @@ type TeamMemberDisplay = {
   name: string;
 };
 
-const buildTeamMembers = () => {
+const appointment = computed(() => props.event.appointment);
+
+const buildTeamMembers = (appointment: Appointment) => {
   const members: TeamMemberDisplay[] = [];
   const seen = new Set<string>();
-  const appointment = props.event.appointment;
   const addMember = (role: string | null | undefined, name: string | null | undefined) => {
     const normalizedName = String(name ?? "").trim();
     if (!normalizedName) return;
@@ -66,7 +66,9 @@ const buildTeamMembers = () => {
   return members;
 };
 
-const teamMembers = computed<TeamMemberDisplay[]>(() => buildTeamMembers());
+const teamMembers = computed<TeamMemberDisplay[]>(() =>
+  buildTeamMembers(appointment.value),
+);
 
 const primaryTeamMemberLabel = computed(() => {
   const primary = teamMembers.value[0];
@@ -81,11 +83,11 @@ const teamInfoTitle = computed(() => {
     .join(", ");
 });
 
-const onEdit = () => emit("edit", props.event.appointment);
-const onConfirm = () => emit("confirm", props.event.appointment);
-const onNoShow = () => emit("no-show", props.event.appointment);
+const onEdit = () => emit("edit", appointment.value);
+const onConfirm = () => emit("confirm", appointment.value);
+const onNoShow = () => emit("no-show", appointment.value);
 const isCanceledStatus = computed(() => {
-  const status = String(props.event.appointment.status ?? "").trim().toLowerCase();
+  const status = String(appointment.value.status ?? "").trim().toLowerCase();
   return status === "canceled" || status === "cancelled";
 });
 const isCancelDisabled = computed(
@@ -93,7 +95,7 @@ const isCancelDisabled = computed(
 );
 const onCancel = () => {
   if (isCancelDisabled.value) return;
-  emit("cancel", props.event.appointment);
+  emit("cancel", appointment.value);
 };
 </script>
 
@@ -106,11 +108,11 @@ const onCancel = () => {
     @click="onEdit"
   >
     <div class="cc-calendar-event-title">
-      {{ displayValue(event.appointment.patient?.name) }}
+      {{ displayValue(appointment.patient?.name) }}
     </div>
     <div class="cc-calendar-event-meta">
       <span class="cc-calendar-event-time">
-        {{ formatTimeRange(event.appointment) }}
+        {{ formatTimeRange(appointment) }}
       </span>
       <span class="cc-calendar-event-provider">
         {{ primaryTeamMemberLabel }}
@@ -123,9 +125,9 @@ const onCancel = () => {
     </div>
     <span
       class="cc-calendar-event-status"
-      :class="statusBadgeClass(event.appointment.status as AppointmentStatus)"
+      :class="statusBadgeClass(appointment.status)"
     >
-      {{ displayValue(event.appointment.status) }}
+      {{ displayValue(appointment.status) }}
     </span>
     <div class="cc-calendar-event-actions">
       <button
