@@ -505,6 +505,17 @@ const parseClockToMinutes = (value: string) => {
   return hours * 60 + minutes;
 };
 
+const formatMinutesToClock = (value: number) => {
+  const minutesInDay = 24 * 60;
+  const normalized = ((value % minutesInDay) + minutesInDay) % minutesInDay;
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+};
+
+const durationHoursToMs = (durationHours: number) =>
+  Math.round(durationHours * 60 * 60 * 1000);
+
 const formatDurationHoursLabel = (hours: number) =>
   Number.isInteger(hours)
     ? `${hours} hour${hours === 1 ? "" : "s"}`
@@ -1666,6 +1677,66 @@ watch(
   },
 );
 
+watch(
+  () => schedule.appointmentStartTime,
+  (startTime) => {
+    if (!visible.value || schedule.isRecurring) {
+      return;
+    }
+
+    const durationHours = selectedVisitDurationHours.value;
+    if (durationHours === null || !startTime) {
+      return;
+    }
+
+    const startMinutes = parseClockToMinutes(startTime);
+    if (startMinutes === null) {
+      return;
+    }
+
+    const endTime = formatMinutesToClock(
+      startMinutes + Math.round(durationHours * 60),
+    );
+    if (schedule.appointmentEndTime !== endTime) {
+      schedule.appointmentEndTime = endTime;
+    }
+  },
+);
+
+watch(
+  () =>
+    recurrenceRows.value.map((row) =>
+      row.startTime instanceof Date && !Number.isNaN(row.startTime.getTime())
+        ? row.startTime.getTime()
+        : null,
+    ),
+  () => {
+    if (!visible.value || !schedule.isRecurring) {
+      return;
+    }
+
+    const durationHours = selectedVisitDurationHours.value;
+    if (durationHours === null) {
+      return;
+    }
+
+    const durationMs = durationHoursToMs(durationHours);
+    recurrenceRows.value.forEach((row) => {
+      if (!(row.startTime instanceof Date) || Number.isNaN(row.startTime.getTime())) {
+        return;
+      }
+      const nextEnd = new Date(row.startTime.getTime() + durationMs);
+      const currentEndMs =
+        row.endTime instanceof Date && !Number.isNaN(row.endTime.getTime())
+          ? row.endTime.getTime()
+          : null;
+      if (currentEndMs !== nextEnd.getTime()) {
+        row.endTime = nextEnd;
+      }
+    });
+  },
+);
+
 watch(selectedVisitDurationHours, (durationHours) => {
   if (!visible.value || props.appointment || durationHours === null) {
     return;
@@ -1978,12 +2049,25 @@ const addRecurrenceRow = () => {
       ? new Date(fallbackStart.getTime())
       : new Date(
           fallbackStart.getTime() +
-            Math.round(durationHours * 60 * 60 * 1000),
+            durationHoursToMs(durationHours),
         );
+  const getNextWeekday = (day: Weekday): Weekday => {
+    if (!weekdayOptions.value.length) {
+      return getDefaultWeekday();
+    }
+    const currentIndex = weekdayOptions.value.indexOf(day);
+    if (currentIndex < 0) {
+      return getDefaultWeekday();
+    }
+    return (
+      weekdayOptions.value[(currentIndex + 1) % weekdayOptions.value.length] ??
+      getDefaultWeekday()
+    );
+  };
 
   recurrenceRows.value.push({
     id: `row-${recurrenceRowId++}`,
-    day: getDefaultWeekday(),
+    day: previousRow ? getNextWeekday(previousRow.day) : getDefaultWeekday(),
     startTime: cloneDateValue(previousRow?.startTime ?? fallbackStart),
     endTime: cloneDateValue(previousRow?.endTime ?? fallbackEnd),
   });
