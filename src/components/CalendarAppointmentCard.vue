@@ -16,6 +16,9 @@ const props = defineProps<{
   isConfirming: boolean;
   isNoShowLoading: boolean;
   isCancelLoading: boolean;
+  canConfirmAction: boolean;
+  canNoShowAction: boolean;
+  canCancelAction: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -120,7 +123,7 @@ const onCancel = () => emit("cancel", props.event.appointment);
         class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--confirm"
         aria-label="Confirm appointment"
         title="Confirm"
-        :disabled="isConfirming"
+        :disabled="isConfirming || !canConfirmAction"
         @click.stop="onConfirm"
       >
         <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
@@ -131,7 +134,7 @@ const onCancel = () => emit("cancel", props.event.appointment);
         class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--no-show"
         aria-label="Mark as no show"
         title="No show"
-        :disabled="isNoShowLoading"
+        :disabled="isNoShowLoading || !canNoShowAction"
         @click.stop="onNoShow"
       >
         <Loader2 v-if="isNoShowLoading" class="cc-icon cc-icon-spinner" />
@@ -142,7 +145,7 @@ const onCancel = () => emit("cancel", props.event.appointment);
         class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--cancel"
         aria-label="Cancel appointment"
         title="Cancel"
-        :disabled="isCancelLoading"
+        :disabled="isCancelLoading || !canCancelAction"
         @click.stop="onCancel"
       >
         <Loader2 v-if="isCancelLoading" class="cc-icon cc-icon-spinner" />

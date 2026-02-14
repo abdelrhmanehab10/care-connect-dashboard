@@ -137,6 +137,40 @@ const getEarliestAppointmentFocus = (
 const normalizeStatus = (status: string | null | undefined) =>
   status?.trim().toLowerCase().replace(/[\s-]+/g, "_") ?? "";
 
+const normalizeStatusKey = (value: unknown) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+const statusLevelLookup: Record<string, number> = {
+  new: 1,
+  waiting: 1,
+  confirmed: 2,
+  patient_confirmed: 2,
+  rescheduled: 2,
+  canceled: 3,
+  cancelled: 3,
+  completed: 3,
+  no_show: 3,
+};
+
+const getStatusLevel = (value: unknown) =>
+  statusLevelLookup[normalizeStatusKey(value)] ?? 1;
+
+const isFinalStatus = (value: unknown) => getStatusLevel(value) >= 3;
+
+const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
+  const fromKey = normalizeStatusKey(from);
+  const toKey = normalizeStatusKey(to);
+  if (!fromKey || fromKey === toKey) return true;
+  if (isFinalStatus(from)) return false;
+  if (getStatusLevel(from) >= 2) {
+    return isFinalStatus(to);
+  }
+  return true;
+};
+
 const statusToColor = (status: AppointmentStatus | string) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
@@ -296,7 +330,11 @@ const resetReasonDialogState = () => {
 };
 
 const requestConfirmAll = (appointment: Appointment) => {
-  if (!appointment?.id || isConfirming(appointment.id)) {
+  if (
+    !appointment?.id ||
+    isConfirming(appointment.id) ||
+    !isStatusTransitionAllowed(appointment.status, "confirmed")
+  ) {
     return;
   }
 
@@ -320,7 +358,11 @@ const requestConfirmAll = (appointment: Appointment) => {
 };
 
 const requestNoShow = (appointment: Appointment) => {
-  if (!appointment?.id || isNoShowLoading(appointment.id)) {
+  if (
+    !appointment?.id ||
+    isNoShowLoading(appointment.id) ||
+    !isStatusTransitionAllowed(appointment.status, "no_show")
+  ) {
     return;
   }
 
@@ -344,7 +386,11 @@ const requestNoShow = (appointment: Appointment) => {
 };
 
 const requestCancelAppointment = (appointment: Appointment) => {
-  if (!appointment?.id || isCancelLoading(appointment.id)) {
+  if (
+    !appointment?.id ||
+    isCancelLoading(appointment.id) ||
+    !isStatusTransitionAllowed(appointment.status, "canceled")
+  ) {
     return;
   }
 
@@ -582,7 +628,10 @@ watch(
           <CalendarAppointmentCard :event="asAppointmentEvent(event)" :format-time-range="formatTimeRange"
             :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
-            :is-cancel-loading="isCancelLoading(event.appointment.id)" @edit="emit('edit', $event)"
+            :is-cancel-loading="isCancelLoading(event.appointment.id)"
+            :can-confirm-action="isStatusTransitionAllowed(event.appointment.status, 'confirmed')"
+            :can-no-show-action="isStatusTransitionAllowed(event.appointment.status, 'no_show')"
+            :can-cancel-action="isStatusTransitionAllowed(event.appointment.status, 'canceled')" @edit="emit('edit', $event)"
             @confirm="requestConfirmAll" @no-show="requestNoShow" @cancel="requestCancelAppointment" />
         </template>
       </VCalendar>
