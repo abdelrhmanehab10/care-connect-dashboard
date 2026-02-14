@@ -6,6 +6,66 @@ type LocationValue = {
   lng: number;
   address?: string;
 };
+type MapsLatLng = {
+  lat: () => number;
+  lng: () => number;
+};
+type MapsGeocoderResult = {
+  formatted_address?: string;
+};
+type MapClickEvent = {
+  latLng?: MapsLatLng;
+};
+type MapsMap = {
+  panTo: (position: { lat: number; lng: number }) => void;
+  addListener: (eventName: "click", handler: (event: MapClickEvent) => void) => void;
+};
+type MapsMarker = {
+  setPosition: (position: { lat: number; lng: number }) => void;
+  getPosition: () => MapsLatLng | null;
+  addListener: (eventName: "dragend", handler: () => void) => void;
+};
+type MapsGeocoder = {
+  geocode: (
+    request: { location: { lat: number; lng: number } },
+    callback: (results: MapsGeocoderResult[] | null, status: string) => void,
+  ) => void;
+};
+type MapsPlace = {
+  geometry?: { location?: MapsLatLng };
+  formatted_address?: string;
+  name?: string;
+};
+type MapsAutocomplete = {
+  addListener: (eventName: "place_changed", handler: () => void) => void;
+  getPlace: () => MapsPlace;
+};
+type GoogleMapsApi = {
+  maps: {
+    Map: new (
+      element: HTMLElement,
+      options: {
+        center: { lat: number; lng: number };
+        zoom: number;
+        mapTypeControl: boolean;
+        streetViewControl: boolean;
+        fullscreenControl: boolean;
+      },
+    ) => MapsMap;
+    Marker: new (options: {
+      map: MapsMap;
+      position: { lat: number; lng: number };
+      draggable: boolean;
+    }) => MapsMarker;
+    Geocoder: new () => MapsGeocoder;
+    places: {
+      Autocomplete: new (
+        element: HTMLInputElement,
+        options: { fields: string[] },
+      ) => MapsAutocomplete;
+    };
+  };
+};
 
 const props = withDefaults(
   defineProps<{
@@ -42,24 +102,26 @@ const mapError = ref<string | null>(null);
 const isLoading = ref(true);
 const selected = ref<LocationValue | null>(null);
 
-const mapInstance = ref<any>(null);
-const markerInstance = ref<any>(null);
-const geocoderInstance = ref<any>(null);
-const autocompleteInstance = ref<any>(null);
+const mapInstance = ref<MapsMap | null>(null);
+const markerInstance = ref<MapsMarker | null>(null);
+const geocoderInstance = ref<MapsGeocoder | null>(null);
+const autocompleteInstance = ref<MapsAutocomplete | null>(null);
 
-const mapHeight = computed(() => props.height || "320px");
+const mapHeight = computed(() => props.height);
+
+const DEFAULT_CENTER: LocationValue = { lat: 24.7136, lng: 46.6753 };
 
 const initialCenter = computed<LocationValue>(() => {
   if (props.modelValue) return props.modelValue;
   if (typeof props.lat === "number" && typeof props.lng === "number") {
     return { lat: props.lat, lng: props.lng };
   }
-  return { lat: 24.7136, lng: 46.6753 };
+  return DEFAULT_CENTER;
 });
 
-let googleMapsLoader: Promise<any> | null = null;
+let googleMapsLoader: Promise<GoogleMapsApi> | null = null;
 const loadGoogleMaps = (apiKey: string) => {
-  const win = window as any;
+  const win = window as Window & { google?: GoogleMapsApi };
   if (win.google?.maps) {
     return Promise.resolve(win.google);
   }
@@ -69,9 +131,18 @@ const loadGoogleMaps = (apiKey: string) => {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve(win.google);
-    script.onerror = () =>
+    script.onload = () => {
+      if (win.google?.maps) {
+        resolve(win.google);
+        return;
+      }
+      googleMapsLoader = null;
+      reject(new Error("Google Maps API did not initialize correctly."));
+    };
+    script.onerror = () => {
+      googleMapsLoader = null;
       reject(new Error("Failed to load Google Maps JavaScript API."));
+    };
     document.head.appendChild(script);
   });
   return googleMapsLoader;
@@ -112,7 +183,7 @@ const reverseGeocode = (lat: number, lng: number) => {
   }
   geocoderInstance.value.geocode(
     { location: { lat, lng } },
-    (results: any, status: string) => {
+    (results: MapsGeocoderResult[] | null, status: string) => {
       if (status === "OK" && results?.length) {
         updateSelection(
           { lat, lng, address: results[0]?.formatted_address },
@@ -125,18 +196,21 @@ const reverseGeocode = (lat: number, lng: number) => {
   );
 };
 
+const finishLoading = (errorMessage?: string) => {
+  mapError.value = errorMessage ?? null;
+  isLoading.value = false;
+};
+
 onMounted(async () => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as
     | string
     | undefined;
   if (!apiKey) {
-    mapError.value = "Missing Google Maps API key.";
-    isLoading.value = false;
+    finishLoading("Missing Google Maps API key.");
     return;
   }
   if (!mapEl.value) {
-    mapError.value = "Map container missing.";
-    isLoading.value = false;
+    finishLoading("Map container missing.");
     return;
   }
   try {
@@ -156,13 +230,15 @@ onMounted(async () => {
     geocoderInstance.value = new google.maps.Geocoder();
 
     markerInstance.value.addListener("dragend", () => {
-      const pos = markerInstance.value.getPosition();
+      const marker = markerInstance.value;
+      if (!marker) return;
+      const pos = marker.getPosition();
       if (!pos) return;
       reverseGeocode(pos.lat(), pos.lng());
     });
 
     if (props.allowClick) {
-      mapInstance.value.addListener("click", (event: any) => {
+      mapInstance.value.addListener("click", (event: MapClickEvent) => {
         const lat = event?.latLng?.lat?.();
         const lng = event?.latLng?.lng?.();
         if (typeof lat !== "number" || typeof lng !== "number") return;
@@ -178,7 +254,9 @@ onMounted(async () => {
         },
       );
       autocompleteInstance.value.addListener("place_changed", () => {
-        const place = autocompleteInstance.value.getPlace();
+        const autocomplete = autocompleteInstance.value;
+        if (!autocomplete) return;
+        const place = autocomplete.getPlace();
         const location = place?.geometry?.location;
         if (!location) return;
         const lat = location.lat();
@@ -195,11 +273,10 @@ onMounted(async () => {
     }
 
     updateSelection(initialCenter.value, { emit: false, pan: false });
-    isLoading.value = false;
+    finishLoading();
   } catch (error) {
     console.error(error);
-    mapError.value = "Failed to load Google Maps.";
-    isLoading.value = false;
+    finishLoading("Failed to load Google Maps.");
   }
 });
 
@@ -210,12 +287,14 @@ onBeforeUnmount(() => {
   mapInstance.value = null;
 });
 
+const hasSameSelection = (lat: number, lng: number) =>
+  selected.value?.lat === lat && selected.value?.lng === lng;
+
 watch(
   () => props.modelValue,
   (value) => {
     if (!value) return;
-    if (selected.value?.lat === value.lat && selected.value?.lng === value.lng)
-      return;
+    if (hasSameSelection(value.lat, value.lng)) return;
     updateSelection(value, { emit: false });
   },
   { deep: true },
@@ -226,7 +305,7 @@ watch(
   ([lat, lng]) => {
     if (props.modelValue) return;
     if (typeof lat !== "number" || typeof lng !== "number") return;
-    if (selected.value?.lat === lat && selected.value?.lng === lng) return;
+    if (hasSameSelection(lat, lng)) return;
     updateSelection({ lat, lng }, { emit: false });
   },
 );
