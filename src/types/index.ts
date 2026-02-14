@@ -23,7 +23,8 @@ export type Appointment = {
     id: number | string;
     name: string;
     date_of_birth: string;
-    phone: string;
+    phone?: string;
+    mobile?: string;
   };
   patient_address?: {
     id?: number;

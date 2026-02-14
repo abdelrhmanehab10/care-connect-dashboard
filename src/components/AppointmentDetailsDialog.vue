@@ -160,7 +160,11 @@ watch(visible, (value) => {
 });
 
 const patientName = () => v(appointmentData.value?.patient?.name);
-const patientPhone = () => v(appointmentData.value?.patient?.phone);
+const patientPhone = () =>
+  v(
+    appointmentData.value?.patient?.mobile ??
+      appointmentData.value?.patient?.phone,
+  );
 
 const normalizeCoordinate = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
