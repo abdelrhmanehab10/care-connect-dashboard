@@ -5,7 +5,7 @@ import { useToast } from "primevue/usetoast";
 import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
 import CalendarAppointmentCard from "./CalendarAppointmentCard.vue";
 import {
-  confirmAppointmentAll,
+  confirmAppointmentPatient,
   quickNoShowAppointment,
   cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
@@ -333,18 +333,18 @@ const requestConfirmAll = (appointment: Appointment) => {
   if (
     !appointment?.id ||
     isConfirming(appointment.id) ||
-    !isStatusTransitionAllowed(appointment.status, "confirmed")
+    !isStatusTransitionAllowed(appointment.status, "patient_confirmed")
   ) {
     return;
   }
 
   setConfirming(appointment.id, true);
-  void confirmAppointmentAll(appointment.id)
+  void confirmAppointmentPatient(appointment.id)
     .then(() => {
       toast.add({
         severity: "success",
-        summary: "Appointment confirmed",
-        detail: "Appointment confirmed successfully.",
+        summary: "Patient confirmed",
+        detail: "Appointment marked as patient confirmed.",
         life: 3000,
       });
       emit("confirm-all", appointment);
@@ -629,7 +629,7 @@ watch(
             :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
             :is-cancel-loading="isCancelLoading(event.appointment.id)"
-            :can-confirm-action="isStatusTransitionAllowed(event.appointment.status, 'confirmed')"
+            :can-confirm-action="isStatusTransitionAllowed(event.appointment.status, 'patient_confirmed')"
             :can-no-show-action="isStatusTransitionAllowed(event.appointment.status, 'no_show')"
             :can-cancel-action="isStatusTransitionAllowed(event.appointment.status, 'canceled')" @edit="emit('edit', $event)"
             @confirm="requestConfirmAll" @no-show="requestNoShow" @cancel="requestCancelAppointment" />

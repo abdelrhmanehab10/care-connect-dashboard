@@ -236,6 +236,13 @@ export const confirmAppointmentAll = async (
   return response.data;
 };
 
+export const confirmAppointmentPatient = async (
+  appointmentId: number,
+): Promise<unknown> => {
+  const response = await http.get(`/vue/appointments/patient-confirmed/${appointmentId}`);
+  return response.data;
+};
+
 export const confirmAppointmentEmployee = async (
   appointmentId: number,
   employeeId: number,
