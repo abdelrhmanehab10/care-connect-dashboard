@@ -37,13 +37,50 @@ type PendingSave = {
   wasCanceled?: boolean;
 };
 
-const editReasons = new Map<string, string>();
+type EditTrackingState = {
+  drafts: Map<string, unknown>;
+  snapshots: Map<string, unknown>;
+  explicitSaveKeys: Set<string>;
+  reasons: Map<string, string>;
+};
+
+const createEditTrackingState = (): EditTrackingState => ({
+  drafts: new Map<string, unknown>(),
+  snapshots: new Map<string, unknown>(),
+  explicitSaveKeys: new Set<string>(),
+  reasons: new Map<string, string>(),
+});
+
+const editTracking = createEditTrackingState();
+const getSnapshot = (key: string) => editTracking.snapshots.get(key);
+const setSnapshot = (key: string, value: unknown) =>
+  editTracking.snapshots.set(key, value);
+const hasSnapshot = (key: string) => editTracking.snapshots.has(key);
+const clearSnapshot = (key: string) => editTracking.snapshots.delete(key);
+const getDraft = (key: string) => editTracking.drafts.get(key);
+const setDraft = (key: string, value: unknown) => editTracking.drafts.set(key, value);
+const clearDraft = (key: string) => editTracking.drafts.delete(key);
+const markExplicitSave = (key: string) => editTracking.explicitSaveKeys.add(key);
+const hasExplicitSave = (key: string) => editTracking.explicitSaveKeys.has(key);
+const clearExplicitSave = (key: string) => editTracking.explicitSaveKeys.delete(key);
+const setReason = (key: string, reason: string) => editTracking.reasons.set(key, reason);
+const consumeReason = (key: string) => {
+  const reason = editTracking.reasons.get(key) ?? "";
+  editTracking.reasons.delete(key);
+  return reason;
+};
+const clearEditTracking = (key: string) => {
+  editTracking.snapshots.delete(key);
+  editTracking.drafts.delete(key);
+  editTracking.explicitSaveKeys.delete(key);
+  editTracking.reasons.delete(key);
+};
 
 const reasonAction = useReasonRequiredAction<PendingSave>({
   onConfirm: ({ action: pending, reason }) => {
     const { key, saveCb, originalEvent } = pending;
-    editReasons.set(key, reason);
-    explicitSaveKeys.add(key);
+    setReason(key, reason);
+    markExplicitSave(key);
 
     if (pending.completedEvent) {
       handleCellEditComplete(pending.completedEvent);
@@ -51,8 +88,8 @@ const reasonAction = useReasonRequiredAction<PendingSave>({
     }
 
     if (pending.wasCanceled) {
-      const previousValue = editSnapshots.get(key);
-      const draftValue = editDrafts.get(key);
+      const previousValue = getSnapshot(key);
+      const draftValue = getDraft(key);
       const currentValue =
         draftValue !== undefined
           ? draftValue
@@ -74,7 +111,7 @@ const reasonAction = useReasonRequiredAction<PendingSave>({
   },
   onCancel: (pending) => {
     if (!pending) return;
-    const previousValue = editSnapshots.get(pending.key);
+    const previousValue = getSnapshot(pending.key);
     if (previousValue !== undefined) {
       applyFieldValue(pending.data, pending.field, previousValue);
     }
@@ -189,15 +226,6 @@ const normalizeStaffId = (value: unknown): number => {
 };
 
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
-const editDrafts = new Map<string, unknown>();
-const editSnapshots = new Map<string, unknown>();
-const explicitSaveKeys = new Set<string>();
-const clearEditTracking = (key: string) => {
-  editSnapshots.delete(key);
-  editDrafts.delete(key);
-  explicitSaveKeys.delete(key);
-  editReasons.delete(key);
-};
 const revertFieldAndClear = (
   data: Appointment,
   field: string,
@@ -326,7 +354,7 @@ const shouldIgnoreStringDraft = (
   ) {
     return false;
   }
-  const draft = editDrafts.get(snapshotKey(data, field));
+  const draft = getDraft(snapshotKey(data, field));
   return isOptionValue(draft);
 };
 
@@ -334,7 +362,7 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
   if (shouldIgnoreStringDraft(field, value, data)) {
     return;
   }
-  editDrafts.set(snapshotKey(data, field), value);
+  setDraft(snapshotKey(data, field), value);
   applyFieldValue(data, field, value);
 };
 
@@ -606,7 +634,7 @@ const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
 };
 
 const getSnapshotValue = (data: Appointment, field: string) =>
-  editSnapshots.get(snapshotKey(data, field));
+  getSnapshot(snapshotKey(data, field));
 const isStatusLocked = (data: Appointment) => {
   const snapshot = getSnapshotValue(data, "status");
   return isFinalStatus(snapshot ?? data.status);
@@ -630,12 +658,12 @@ const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   }
 
   const key = snapshotKey(event.data, event.field);
-  explicitSaveKeys.delete(key);
-  if (editSnapshots.has(key)) {
+  clearExplicitSave(key);
+  if (hasSnapshot(key)) {
     return;
   }
 
-  editSnapshots.set(key, cloneSnapshotValue(getFieldValue(event.data, event.field)));
+  setSnapshot(key, cloneSnapshotValue(getFieldValue(event.data, event.field)));
 };
 
 const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
@@ -649,11 +677,11 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
     pendingSave.value.wasCanceled = true;
     return;
   }
-  if (!editSnapshots.has(key)) {
+  if (!hasSnapshot(key)) {
     return;
   }
 
-  applyFieldValue(data, event.field, editSnapshots.get(key));
+  applyFieldValue(data, event.field, getSnapshot(key));
   clearEditTracking(key);
 };
 
@@ -669,13 +697,13 @@ const handleCellEditComplete = (
     pendingSave.value.completedEvent = event;
     return;
   }
-  const previousValue = editSnapshots.get(key);
+  const previousValue = getSnapshot(key);
   if (isStaffEditBlocked(event.data, event.field)) {
     revertFieldAndClear(event.data, event.field, previousValue, key);
     return;
   }
 
-  const isExplicitSave = explicitSaveKeys.has(key);
+  const isExplicitSave = hasExplicitSave(key);
   if (!isExplicitSave) {
     revertFieldAndClear(event.data, event.field, previousValue, key);
     return;
@@ -688,21 +716,20 @@ const handleCellEditComplete = (
     }
   }
 
-  const draftValue = editDrafts.get(key);
+  const draftValue = getDraft(key);
   if (draftValue !== undefined) {
     applyFieldValue(event.data, event.field, draftValue);
     event.newValue = draftValue;
-    editDrafts.delete(key);
+    clearDraft(key);
   }
 
   // Ensure consumers see the same mutated row for nested edits.
   (event as DataTableCellEditCompleteEvent<Appointment>).newData = event.data;
 
-  editSnapshots.delete(key);
-  explicitSaveKeys.delete(key);
+  clearSnapshot(key);
+  clearExplicitSave(key);
   const reasonKey = snapshotKey(event.data, event.field);
-  const reason = editReasons.get(reasonKey) ?? "";
-  editReasons.delete(reasonKey);
+  const reason = consumeReason(reasonKey);
   // Pass reason to parent alongside the cell edit payload.
   (event as any).reason = reason;
 
