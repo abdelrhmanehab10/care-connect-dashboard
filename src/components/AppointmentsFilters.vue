@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, type Ref } from "vue";
 import AutoComplete from "primevue/autocomplete";
 import type {
   AutoCompleteCompleteEvent,
@@ -310,6 +310,29 @@ const setDefaultTodayRange = () => {
   setDateRange(today, new Date(today));
 };
 
+const syncNullableFilterMirror = <T>(
+  filterModel: Ref<T | null>,
+  inputModel: Ref<T | null>,
+) => {
+  watch(
+    filterModel,
+    (value) => {
+      if (inputModel.value !== value) {
+        inputModel.value = value;
+      }
+    },
+  );
+
+  watch(
+    inputModel,
+    (value) => {
+      if (value === null) {
+        filterModel.value = null;
+      }
+    },
+  );
+};
+
 const formatDateInputValue = (value: Date | null) => {
   if (!value) return "";
   const year = value.getFullYear();
@@ -360,23 +383,7 @@ watch(isCalendarView, (value) => {
   }
 });
 
-watch(
-  () => employeeFilter.value,
-  (value) => {
-    if (employeeInput.value !== value) {
-      employeeInput.value = value;
-    }
-  },
-);
-
-watch(
-  () => employeeInput.value,
-  (value) => {
-    if (value === null) {
-      employeeFilter.value = null;
-    }
-  },
-);
+syncNullableFilterMirror(employeeFilter, employeeInput);
 
 watch(
   () => patientFilter.value,
@@ -389,23 +396,7 @@ watch(
   },
 );
 
-watch(
-  () => visitTypeFilter.value,
-  (value) => {
-    if (visitTypeInput.value !== value) {
-      visitTypeInput.value = value;
-    }
-  },
-);
-
-watch(
-  () => visitTypeInput.value,
-  (value) => {
-    if (value === null) {
-      visitTypeFilter.value = null;
-    }
-  },
-);
+syncNullableFilterMirror(visitTypeFilter, visitTypeInput);
 
 watch(
   () => stateFilter.value,

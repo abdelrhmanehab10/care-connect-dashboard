@@ -377,11 +377,13 @@ const cloneAppointment = (appointment: Appointment): Appointment => ({
 
 const editableAppointments = ref<Appointment[]>([]);
 
+const syncEditableAppointments = (items: ReadonlyArray<Appointment>) => {
+  editableAppointments.value = items.map(cloneAppointment);
+};
+
 watch(
   () => props.appointments,
-  (items) => {
-    editableAppointments.value = items.map(cloneAppointment);
-  },
+  syncEditableAppointments,
   { immediate: true, deep: true },
 );
 
