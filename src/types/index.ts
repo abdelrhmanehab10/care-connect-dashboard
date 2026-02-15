@@ -51,6 +51,7 @@ export type Appointment = {
     id: number;
     name: string;
   } | null;
+  instructions?: string | null;
   visit_type: string;
   state?: string | null;
 };

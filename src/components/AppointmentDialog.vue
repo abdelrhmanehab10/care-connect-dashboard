@@ -1232,6 +1232,7 @@ const applyAppointment = (appointment: Appointment) => {
   resetForm();
   selectedPatient.value = resolveAppointmentPatient(appointment);
   mapLocation.value = resolveAppointmentLocation(appointment);
+  instructions.value = String(appointment.instructions ?? "").trim();
 
   visit.type = appointment.visit_type ?? "";
   schedule.isRecurring = false;
@@ -1556,7 +1557,6 @@ watch(selectedPatient, (value) => {
     primaryDoctorName.value = null;
     primarySocialWorkerName.value = null;
     primaryDriverName.value = null;
-    enforceAssignmentModesForPrimaryAvailability();
     return;
   }
 
@@ -1713,7 +1713,9 @@ watch(selectedVisitDurationHours, (durationHours) => {
 
 watch(visible, (value) => {
   if (!value) {
-    pendingSaveAction.value = null;
+    if (!props.isSaving) {
+      pendingSaveAction.value = null;
+    }
     resetReasonDialogState();
     resetForm();
   }
@@ -1913,14 +1915,25 @@ const handleSave = () => {
   const locationLng = Number.isFinite(resolvedLocation.lng)
     ? String(resolvedLocation.lng)
     : "";
+  const selectedPatientAddressId = normalizeOptionalId(
+    selectedPatient.value.address?.id,
+  );
+  const hasSelectedPatientAddress = Boolean(selectedPatientAddressId);
+  const isEditing = Boolean(props.appointment);
+  const shouldSendAddressObject = isEditing || !hasSelectedPatientAddress;
 
   const payload: CreateAppointmentPayload = {
     patient_id: String(selectedPatient.value.id ?? "").trim(),
-    new_address: {
-      address: locationAddress,
-      lat: locationLat,
-      lng: locationLng,
-    },
+    address_id: !isEditing && hasSelectedPatientAddress
+      ? selectedPatientAddressId
+      : undefined,
+    new_address: shouldSendAddressObject
+      ? {
+        address: locationAddress,
+        lat: locationLat,
+        lng: locationLng,
+      }
+      : undefined,
     visit_type_id: visitTypeId,
     is_recurring: schedule.isRecurring ? "1" : "0",
     date: formattedDate,
