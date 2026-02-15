@@ -456,11 +456,13 @@ watch([focus, viewType], syncRange, { immediate: true });
     <div class="cc-card-body">
       <div class="cc-row cc-row-between cc-row-wrap cc-section-header">
         <div>
-          <div class="cc-section-title">Calendar View</div>
-          <div class="cc-help-text">Click a date to focus on that day.</div>
-          <div class="cc-month-title" v-if="viewType === 'month'">
+          <div class="cc-section-title">
+             <div class="cc-month-title" v-if="viewType === 'month'">
             {{ monthTitle }}
           </div>
+          </div>
+          <div class="cc-help-text">Click a date to focus on that day.</div>
+         
         </div>
         <div class="cc-btn-group" role="group" aria-label="Calendar navigation">
           <button type="button" class="cc-btn cc-btn-outline cc-btn-sm scheduler" @click="goPrev">
