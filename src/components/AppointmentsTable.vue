@@ -491,7 +491,7 @@ const baseStatusOptions = computed<NormalizedStatusOption[]>(() => {
       const meta = fallbackStatusMeta(key);
       options.push({
         key,
-        label: option,
+        label: formatStatusLabel(option),
         level: meta.level,
         isFinal: meta.isFinal,
       });

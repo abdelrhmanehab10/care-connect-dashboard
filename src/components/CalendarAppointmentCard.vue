@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { CheckCircle, XCircle, Ban, Loader2 } from "lucide-vue-next";
 import type { Appointment } from "../types";
+import { formatStatusLabel } from "../lib/statusTransitions";
 
 type CalendarAppointmentEvent = {
   color: string;
@@ -28,6 +29,8 @@ const emit = defineEmits<{
 }>();
 
 const displayValue = (value: string | null | undefined) => value ?? "-";
+const displayStatus = (value: string | null | undefined) =>
+  formatStatusLabel(value);
 const formatRoleLabel = (role: string | null | undefined) => {
   const normalized = String(role ?? "").trim().toLowerCase();
   if (!normalized) return "Team";
@@ -127,7 +130,7 @@ const onCancel = () => {
       class="cc-calendar-event-status"
       :class="statusBadgeClass(appointment.status)"
     >
-      {{ displayValue(appointment.status) }}
+      {{ displayStatus(appointment.status) }}
     </span>
     <div class="cc-calendar-event-actions">
       <button

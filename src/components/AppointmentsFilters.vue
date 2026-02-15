@@ -19,6 +19,7 @@ import {
   isSameCalendarDay,
   startOfWeekMonday,
 } from "../lib/dateUtils";
+import { formatStatusLabel } from "../lib/statusTransitions";
 
 const props = defineProps<{
   employeeOptions: string[];
@@ -59,8 +60,17 @@ const filteredVisitTypes = ref<string[]>([]);
 const fetchedVisitTypes = ref<VisitType[]>([]);
 const isVisitTypesLoading = ref(false);
 const visitTypeInput = ref<string | null>(null);
-const filteredStates = ref<AppointmentStatusOption[]>([]);
-const stateInput = ref<AppointmentStatusOption | null>(null);
+type StatusOptionView = AppointmentStatusOption & { displayLabel: string };
+
+const toStatusOptionView = (
+  option: AppointmentStatusOption,
+): StatusOptionView => ({
+  ...option,
+  displayLabel: formatStatusLabel(option.value || option.key),
+});
+
+const filteredStates = ref<StatusOptionView[]>([]);
+const stateInput = ref<StatusOptionView | null>(null);
 
 const {
   statuses: appointmentStatuses,
@@ -72,7 +82,9 @@ const isStatesBusy = computed(
   () => isStatesLoading.value || isStatesFetching.value,
 );
 
-const stateOptions = computed(() => appointmentStatuses.value);
+const stateOptions = computed<StatusOptionView[]>(() =>
+  appointmentStatuses.value.map(toStatusOptionView),
+);
 const isCalendarView = computed(() => Boolean(props.isCalendarView));
 const employeePlaceholder = computed(() =>
   isEmployeesLoading.value ? "Loading employees..." : "Search nurse or doctor",
@@ -138,7 +150,7 @@ const handleVisitTypeSelect = (event: AutoCompleteOptionSelectEvent) => {
 
 const handleStateSelect = (event: AutoCompleteOptionSelectEvent) => {
   stateFilter.value = event.value as AppointmentStatusOption;
-  stateInput.value = event.value as AppointmentStatusOption;
+  stateInput.value = event.value as StatusOptionView;
 };
 
 const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
@@ -157,7 +169,9 @@ const searchStates = (event: AutoCompleteCompleteEvent) => {
     return;
   }
   filteredStates.value = source.filter((option) =>
-    option.key.toLowerCase().includes(query),
+    option.key.toLowerCase().includes(query) ||
+    String(option.value ?? "").toLowerCase().includes(query) ||
+    option.displayLabel.toLowerCase().includes(query),
   );
 };
 
@@ -396,8 +410,19 @@ watch(
 watch(
   () => stateFilter.value,
   (value) => {
-    if (stateInput.value !== value) {
-      stateInput.value = value;
+    const current = stateInput.value;
+    if (!value) {
+      if (current !== null) stateInput.value = null;
+      return;
+    }
+    const normalizedValue = String(value.value ?? value.key ?? "").trim().toLowerCase();
+    const matched =
+      stateOptions.value.find((option) =>
+        String(option.value ?? option.key ?? "").trim().toLowerCase() === normalizedValue,
+      ) ??
+      toStatusOptionView(value);
+    if (current !== matched) {
+      stateInput.value = matched;
     }
   },
 );
@@ -482,7 +507,7 @@ watch(
 
       <div class="col-md-2">
         <label for="stateFilter" class="cc-label">Status</label>
-        <AutoComplete v-model="stateInput" inputId="stateFilter" :suggestions="filteredStates" optionLabel="key"
+        <AutoComplete v-model="stateInput" inputId="stateFilter" :suggestions="filteredStates" optionLabel="displayLabel"
           :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
           panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt"
           :placeholder="statePlaceholder" @complete="searchStates"

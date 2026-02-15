@@ -15,6 +15,7 @@ import {
 import { dialogPt } from "../ui/primevuePt";
 import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
 import { isSameCalendarDay, parseLocalDateOnly } from "../lib/dateUtils";
+import { formatStatusLabel } from "../lib/statusTransitions";
 
 const visible = defineModel<boolean>({ required: true });
 const props = defineProps<{
@@ -111,8 +112,7 @@ const v = (x: unknown) =>
   x === null || x === undefined || x === "" ? "-" : String(x);
 
 const statusText = (s: unknown) => {
-  const t = String(s ?? "").trim();
-  return t || "-";
+  return formatStatusLabel(s);
 };
 const statusClass = (s: unknown) => {
   const t = String(s ?? "").toLowerCase();

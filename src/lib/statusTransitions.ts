@@ -4,6 +4,20 @@ export const normalizeStatusKey = (value: unknown) =>
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
 
+export const formatStatusLabel = (value: unknown) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return "-";
+  }
+
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export const statusLevelLookup: Record<string, number> = {
   new: 1,
   waiting: 1,
