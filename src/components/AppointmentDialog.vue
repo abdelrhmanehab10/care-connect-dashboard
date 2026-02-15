@@ -538,6 +538,17 @@ const resolveScheduleTimes = () => {
   return { date, startTime, endTime };
 };
 
+const minutesPerDay = 24 * 60;
+const resolveRangeDurationMinutes = (startTime: string, endTime: string) => {
+  const startMinutes = parseClockToMinutes(startTime);
+  const endMinutes = parseClockToMinutes(endTime);
+  if (startMinutes === null || endMinutes === null) {
+    return null;
+  }
+  const duration = (endMinutes - startMinutes + minutesPerDay) % minutesPerDay;
+  return duration;
+};
+
 const validationSchema = z
   .object({
     patientSelected: z.boolean(),
@@ -611,16 +622,18 @@ const validationSchema = z
       });
     }
 
-    if (
-      values.startTime.trim() &&
-      values.endTime.trim() &&
-      values.startTime >= values.endTime
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["endTime"],
-        message: "End time must be after start time.",
-      });
+    if (values.startTime.trim() && values.endTime.trim()) {
+      const durationMinutes = resolveRangeDurationMinutes(
+        values.startTime,
+        values.endTime,
+      );
+      if (durationMinutes !== null && durationMinutes <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["endTime"],
+          message: "End time must be after start time.",
+        });
+      }
     }
 
     if (
@@ -629,15 +642,12 @@ const validationSchema = z
       values.startTime.trim() &&
       values.endTime.trim()
     ) {
-      const startMinutes = parseClockToMinutes(values.startTime);
-      const endMinutes = parseClockToMinutes(values.endTime);
-      if (
-        startMinutes !== null &&
-        endMinutes !== null &&
-        endMinutes > startMinutes
-      ) {
+      const actualMinutes = resolveRangeDurationMinutes(
+        values.startTime,
+        values.endTime,
+      );
+      if (actualMinutes !== null && actualMinutes > 0) {
         const allowedMinutes = Math.round(values.visitTypeDurationHours * 60);
-        const actualMinutes = endMinutes - startMinutes;
         if (actualMinutes > allowedMinutes) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -666,12 +676,15 @@ const validationSchema = z
             message: `End time is required for recurring row ${index + 1}.`,
           });
         }
-        if (start && end && start >= end) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["endTime"],
-            message: `End time must be after start time for recurring row ${index + 1}.`,
-          });
+        if (start && end) {
+          const durationMinutes = resolveRangeDurationMinutes(start, end);
+          if (durationMinutes === null || durationMinutes <= 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["endTime"],
+              message: `End time must be after start time for recurring row ${index + 1}.`,
+            });
+          }
         }
       });
     }
