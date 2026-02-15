@@ -31,6 +31,20 @@ import type { CreateAppointmentPayload } from "../services/appointments";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
+import {
+  cloneDateValue,
+  durationHoursToMs,
+  formatDate,
+  formatDurationHoursLabel,
+  formatMinutesToClock,
+  formatNativeDateValue,
+  formatTime,
+  normalizeTimeInput,
+  parseClockToMinutes,
+  parseDateOnly,
+  parseDateTime,
+  parseNativeDateValue,
+} from "../composables/useAppointmentDialogDateTime";
 
 const visible = defineModel<boolean>({ required: true });
 type ToastMessage = {
@@ -161,32 +175,6 @@ const schedule = reactive({
   recurringEndDate: null as Date | null,
 });
 
-const formatNativeDateValue = (value: Date | null) => {
-  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-    return "";
-  }
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const parseNativeDateValue = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!year || !month || !day) {
-    return null;
-  }
-  const parsed = new Date(year, month - 1, day);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
 const appointmentDateInput = computed({
   get: () => formatNativeDateValue(schedule.appointmentDate),
   set: (value: string) => {
@@ -235,8 +223,6 @@ const getNextWeekday = (day: Weekday): Weekday => {
     getDefaultWeekday()
   );
 };
-const cloneDateValue = (value: Date | null) =>
-  value ? new Date(value.getTime()) : null;
 const weekdayToApiDay = (day: Weekday) => {
   const index = weekdayOptions.value.indexOf(day);
   return String(index >= 0 ? index : 0);
@@ -490,44 +476,6 @@ const resolveScheduleTimes = () => {
 
   return { date, startTime, endTime };
 };
-
-const parseClockToMinutes = (value: string) => {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-  const [, rawHours = "", rawMinutes = ""] = match ?? [];
-  if (!rawHours || !rawMinutes) {
-    return null;
-  }
-  const hours = Number(rawHours);
-  const minutes = Number(rawMinutes);
-  if (
-    !Number.isInteger(hours) ||
-    !Number.isInteger(minutes) ||
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59
-  ) {
-    return null;
-  }
-  return hours * 60 + minutes;
-};
-
-const formatMinutesToClock = (value: number) => {
-  const minutesInDay = 24 * 60;
-  const normalized = ((value % minutesInDay) + minutesInDay) % minutesInDay;
-  const hours = Math.floor(normalized / 60);
-  const minutes = normalized % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-};
-
-const durationHoursToMs = (durationHours: number) =>
-  Math.round(durationHours * 60 * 60 * 1000);
-
-const formatDurationHoursLabel = (hours: number) =>
-  Number.isInteger(hours)
-    ? `${hours} hour${hours === 1 ? "" : "s"}`
-    : `${hours} hours`;
 
 const validationSchema = z
   .object({
@@ -920,50 +868,6 @@ const validationErrors = computed(() => {
   return errors;
 });
 
-const formatDate = (value: Date | null) => {
-  if (!value) {
-    return "";
-  }
-
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatTime = (value: Date | string | null) => {
-  if (!value) {
-    return "";
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-    const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
-    const [, rawHours = "", rawMinutes = ""] = match ?? [];
-    if (!rawHours || !rawMinutes) return "";
-    const hours = rawHours.padStart(2, "0");
-    const minutes = rawMinutes;
-    return `${hours}:${minutes}`;
-  }
-  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-    return "";
-  }
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
-};
-
-const normalizeTimeInput = (value: string | null | undefined) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
-  const [, rawHours = "", rawMinutes = ""] = match ?? [];
-  if (!rawHours || !rawMinutes) return null;
-  const hours = rawHours.padStart(2, "0");
-  const minutes = rawMinutes;
-  return `${hours}:${minutes}`;
-};
-
 type RecurringRowLike = {
   day: Weekday;
   startTime: Date | null;
@@ -978,57 +882,6 @@ const buildRecurringSlots = (rows: RecurringRowLike[]) =>
       end_time: formatTime(row.endTime),
     }))
     .filter((row) => row.start_time && row.end_time);
-
-const normalizeDateValue = (value: string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const normalizedSeparators = trimmed.replace(/\//g, "-");
-  const splitByT = normalizedSeparators.split("T")[0] ?? "";
-  const splitBySpace = splitByT.split(" ")[0] ?? "";
-  return splitBySpace;
-};
-
-const isValidTime = (value: string) => /^\d{1,2}:\d{2}(:\d{2})?$/.test(value);
-
-const parseDateOnly = (value: string | null | undefined) => {
-  const normalized = normalizeDateValue(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed;
-};
-
-const parseDateTime = (
-  dateValue: string | null | undefined,
-  timeValue: string | null | undefined,
-) => {
-  const normalizedDate = normalizeDateValue(dateValue);
-  if (!normalizedDate) {
-    return null;
-  }
-
-  if (timeValue && isValidTime(timeValue)) {
-    const parsed = new Date(`${normalizedDate}T${timeValue}`);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed;
-    }
-  }
-
-  return parseDateOnly(normalizedDate);
-};
 
 const resolveAppointmentLocation = (
   appointment: Appointment | null,
