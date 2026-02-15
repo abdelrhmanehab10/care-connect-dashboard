@@ -29,7 +29,10 @@ import {
 import type { Appointment } from "../types";
 import type { CreateAppointmentPayload } from "../services/appointments";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
-import { fetchEmployeesByTitle } from "../services/employees";
+import {
+  fetchEmployeeOptionsByTitle,
+  type EmployeeOption,
+} from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
 import {
   cloneDateValue,
@@ -113,10 +116,11 @@ const pendingSaveAction = ref<"create" | "update" | null>(null);
 const reasonDialogVisible = ref(false);
 const reasonText = ref("");
 const pendingSavePayload = ref<CreateAppointmentPayload | null>(null);
-const nurseName = ref<string | null>(null);
-const doctorName = ref<string | null>(null);
-const socialWorkerName = ref<string | null>(null);
-const driverName = ref<string | null>(null);
+type SelectedEmployee = EmployeeOption | string | null;
+const nurseName = ref<SelectedEmployee>(null);
+const doctorName = ref<SelectedEmployee>(null);
+const socialWorkerName = ref<SelectedEmployee>(null);
+const driverName = ref<SelectedEmployee>(null);
 const primaryNurseName = ref<string | null>(null);
 const primaryDoctorName = ref<string | null>(null);
 const primarySocialWorkerName = ref<string | null>(null);
@@ -297,6 +301,38 @@ const normalizeOptionalId = (value: unknown) => {
     return String(asNumber);
   }
   return normalized;
+};
+
+const resolveEmployeeName = (value: SelectedEmployee) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  return String(value?.name ?? "").trim();
+};
+
+const resolveEmployeeId = (value: SelectedEmployee) => {
+  if (value && typeof value === "object") {
+    return normalizeOptionalId(value.id);
+  }
+  return "";
+};
+
+const toEmployeeSelection = (
+  name: string,
+  id?: unknown,
+): SelectedEmployee => {
+  const normalizedName = String(name).trim();
+  if (!normalizedName) {
+    return null;
+  }
+  const normalizedId = normalizeOptionalId(id);
+  if (!normalizedId) {
+    return normalizedName;
+  }
+  return {
+    id: Number(normalizedId),
+    name: normalizedName,
+  };
 };
 
 const resolveSelectedPatientPrimaryId = (
@@ -835,26 +871,26 @@ const buildValidationPayload = () => {
     endTime: formatTime(endTime),
     nurseRequired:
       showNurseSection.value && nurseAssignmentMode.value === "custom",
-    nurseName: nurseName.value ?? "",
+    nurseName: resolveEmployeeName(nurseName.value),
     nurseTimesRequired,
     nurseTimesValid,
     nurseTimesWithinRange,
     doctorRequired:
       showDoctorSection.value && doctorAssignmentMode.value === "custom",
-    doctorName: doctorName.value ?? "",
+    doctorName: resolveEmployeeName(doctorName.value),
     doctorTimesRequired,
     doctorTimesValid,
     doctorTimesWithinRange,
     socialWorkerRequired:
       showSocialWorkerSection.value &&
       socialWorkerAssignmentMode.value === "custom",
-    socialWorkerName: socialWorkerName.value ?? "",
+    socialWorkerName: resolveEmployeeName(socialWorkerName.value),
     socialWorkerTimesRequired,
     socialWorkerTimesValid,
     socialWorkerTimesWithinRange,
     driverRequired:
       showDriverSection.value && driverAssignmentMode.value === "custom",
-    driverName: driverName.value ?? "",
+    driverName: resolveEmployeeName(driverName.value),
     driverTimesRequired,
     driverTimesValid,
     driverTimesWithinRange,
@@ -1221,7 +1257,9 @@ const applyAppointment = (appointment: Appointment) => {
     : nurseNameValue
       ? "custom"
       : "primary";
-  nurseName.value = isPrimaryNurse ? null : nurseNameValue || null;
+  nurseName.value = isPrimaryNurse
+    ? null
+    : toEmployeeSelection(nurseNameValue, appointment.nurse?.id);
   nurseScheduleType.value = "same";
 
   const isPrimaryDoctor = isPrimaryFlag(
@@ -1232,7 +1270,9 @@ const applyAppointment = (appointment: Appointment) => {
     : doctorNameValue
       ? "custom"
       : "primary";
-  doctorName.value = isPrimaryDoctor ? null : doctorNameValue || null;
+  doctorName.value = isPrimaryDoctor
+    ? null
+    : toEmployeeSelection(doctorNameValue, appointment.doctor?.id);
   doctorScheduleType.value = "same";
 
   const isPrimarySocialWorker = isPrimaryFlag(
@@ -1246,7 +1286,7 @@ const applyAppointment = (appointment: Appointment) => {
       : "primary";
   socialWorkerName.value = isPrimarySocialWorker
     ? null
-    : socialWorkerNameValue || null;
+    : toEmployeeSelection(socialWorkerNameValue, appointment.social_worker?.id);
   socialWorkerScheduleType.value = "same";
 
   const isPrimaryDriver = isPrimaryFlag(
@@ -1257,7 +1297,12 @@ const applyAppointment = (appointment: Appointment) => {
     : driverNameValue
       ? "custom"
       : "primary";
-  driverName.value = isPrimaryDriver ? null : driverNameValue || null;
+  driverName.value = isPrimaryDriver
+    ? null
+    : toEmployeeSelection(
+      driverNameValue,
+      (appointment as Appointment & { driver?: { id?: unknown } }).driver?.id,
+    );
   driverScheduleType.value = "same";
 
   const careTeam = appointment.care_team ?? [];
@@ -1295,11 +1340,17 @@ const applyAppointment = (appointment: Appointment) => {
 
   if (!isPrimaryNurse && !nurseName.value && nurseMember?.employee?.name) {
     nurseAssignmentMode.value = "custom";
-    nurseName.value = nurseMember.employee.name;
+    nurseName.value = toEmployeeSelection(
+      nurseMember.employee.name,
+      nurseMember.employee.id,
+    );
   }
   if (!isPrimaryDoctor && !doctorName.value && doctorMember?.employee?.name) {
     doctorAssignmentMode.value = "custom";
-    doctorName.value = doctorMember.employee.name;
+    doctorName.value = toEmployeeSelection(
+      doctorMember.employee.name,
+      doctorMember.employee.id,
+    );
   }
   if (
     !isPrimarySocialWorker &&
@@ -1307,11 +1358,17 @@ const applyAppointment = (appointment: Appointment) => {
     socialWorkerMember?.employee?.name
   ) {
     socialWorkerAssignmentMode.value = "custom";
-    socialWorkerName.value = socialWorkerMember.employee.name;
+    socialWorkerName.value = toEmployeeSelection(
+      socialWorkerMember.employee.name,
+      socialWorkerMember.employee.id,
+    );
   }
   if (!isPrimaryDriver && !driverName.value && driverMember?.employee?.name) {
     driverAssignmentMode.value = "custom";
-    driverName.value = driverMember.employee.name;
+    driverName.value = toEmployeeSelection(
+      driverMember.employee.name,
+      driverMember.employee.id,
+    );
   }
 
   enforceAssignmentModesForPrimaryAvailability();
@@ -1854,9 +1911,9 @@ const handleSave = () => {
       showNurseSection.value && nurseAssignmentMode.value === "primary"
         ? "1"
         : "0",
-    main_nurse_id:
-      showNurseSection.value && nurseAssignmentMode.value === "primary"
-        ? resolveSelectedPatientPrimaryId("nurse")
+    nurse_id:
+      showNurseSection.value && nurseAssignmentMode.value === "custom"
+        ? resolveEmployeeId(nurseName.value)
         : "",
     nurse_schedule_type: schedule.isRecurring
       ? nurseScheduleType.value
@@ -1872,11 +1929,10 @@ const handleSave = () => {
       showDoctorSection.value && doctorAssignmentMode.value === "primary"
         ? "1"
         : "0",
-    main_doctor_id:
-      showDoctorSection.value && doctorAssignmentMode.value === "primary"
-        ? resolveSelectedPatientPrimaryId("doctor")
+    doctor_id:
+      showDoctorSection.value && doctorAssignmentMode.value === "custom"
+        ? resolveEmployeeId(doctorName.value)
         : "",
-    doctor_id: "",
     doctor_schedule_type: schedule.isRecurring
       ? doctorScheduleType.value
       : "same",
@@ -1885,22 +1941,20 @@ const handleSave = () => {
         socialWorkerAssignmentMode.value === "primary"
         ? "1"
         : "0",
-    main_social_worker_id:
+    social_worker_id:
       showSocialWorkerSection.value &&
-        socialWorkerAssignmentMode.value === "primary"
-        ? resolveSelectedPatientPrimaryId("social_worker")
+        socialWorkerAssignmentMode.value === "custom"
+        ? resolveEmployeeId(socialWorkerName.value)
         : "",
-    social_worker_id: "",
     social_worker_schedule_type: schedule.isRecurring
       ? socialWorkerScheduleType.value
       : "same",
     driver_schedule_type: schedule.isRecurring
       ? driverScheduleType.value
       : "same",
-    driver_id: "",
-    main_driver_id:
-      showDriverSection.value && driverAssignmentMode.value === "primary"
-        ? resolveSelectedPatientPrimaryId("driver")
+    driver_id:
+      showDriverSection.value && driverAssignmentMode.value === "custom"
+        ? resolveEmployeeId(driverName.value)
         : "",
     instructions: trimmedInstructions,
   };
@@ -1989,16 +2043,16 @@ const fetchPatientSuggestions = (query: string, signal: AbortSignal) =>
   fetchPatientAutocomplete(query, signal);
 
 const fetchNurseSuggestions = (query: string, signal: AbortSignal) =>
-  fetchEmployeesByTitle("nurse", query.trim().toLowerCase(), signal);
+  fetchEmployeeOptionsByTitle("nurse", query.trim().toLowerCase(), signal);
 
 const fetchDoctorSuggestions = (query: string, signal: AbortSignal) =>
-  fetchEmployeesByTitle("doctor", query.trim().toLowerCase(), signal);
+  fetchEmployeeOptionsByTitle("doctor", query.trim().toLowerCase(), signal);
 
 const fetchSocialWorkerSuggestions = (query: string, signal: AbortSignal) =>
-  fetchEmployeesByTitle("social_worker", query.trim().toLowerCase(), signal);
+  fetchEmployeeOptionsByTitle("social_worker", query.trim().toLowerCase(), signal);
 
 const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
-  fetchEmployeesByTitle("driver", query.trim().toLowerCase(), signal);
+  fetchEmployeeOptionsByTitle("driver", query.trim().toLowerCase(), signal);
 
 </script>
 <template>
@@ -2196,7 +2250,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
             <div class="cc-stack">
               <div v-if="nurseAssignmentMode === 'custom'" class="cc-grid">
                 <label for="nurseName" class="cc-label">Nurse name</label>
-                <AppAsyncAutocomplete v-model="nurseName" inputId="nurseName" appendTo="body"
+                <AppAsyncAutocomplete v-model="nurseName" inputId="nurseName" optionLabel="name" appendTo="body"
                   panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search nurse"
                   :fetcher="fetchNurseSuggestions" @error="(error) => console.error('Failed to load nurses.', error)" />
                 <div v-if="hasAttemptedSubmit && validationErrors.nurse" class="cc-help-text cc-help-text--error">
@@ -2294,7 +2348,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
             <div class="cc-stack">
               <div v-if="doctorAssignmentMode === 'custom'" class="cc-grid">
                 <label for="doctorName" class="cc-label">Doctor name</label>
-                <AppAsyncAutocomplete v-model="doctorName" inputId="doctorName" appendTo="body"
+                <AppAsyncAutocomplete v-model="doctorName" inputId="doctorName" optionLabel="name" appendTo="body"
                   panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search doctor"
                   :fetcher="fetchDoctorSuggestions"
                   @error="(error) => console.error('Failed to load doctors.', error)" />
@@ -2400,7 +2454,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                 <label for="socialWorkerName" class="cc-label">
                   Social worker name
                 </label>
-                <AppAsyncAutocomplete v-model="socialWorkerName" inputId="socialWorkerName" appendTo="body"
+                <AppAsyncAutocomplete v-model="socialWorkerName" inputId="socialWorkerName" optionLabel="name" appendTo="body"
                   panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search social worker"
                   :fetcher="fetchSocialWorkerSuggestions"
                   @error="(error) => console.error('Failed to load social workers.', error)" />
@@ -2504,7 +2558,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
             <div class="cc-stack">
               <div v-if="driverAssignmentMode === 'custom'" class="cc-grid">
                 <label for="driverName" class="cc-label">Driver name</label>
-                <AppAsyncAutocomplete v-model="driverName" inputId="driverName" appendTo="body"
+                <AppAsyncAutocomplete v-model="driverName" inputId="driverName" optionLabel="name" appendTo="body"
                   panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search driver"
                   :fetcher="fetchDriverSuggestions"
                   @error="(error) => console.error('Failed to load drivers.', error)" />

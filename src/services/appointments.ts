@@ -102,7 +102,7 @@ export type CreateAppointmentPayload = {
   end_date?: string;
   appointments?: EmployeeRecurringSlot[];
   main_nurse?: string;
-  main_nurse_id?: string;
+  nurse_id?: string;
   nurse_schedule_type?: string;
   employee_slots?: {
     nurse?: { start_time: string; end_time: string };
@@ -117,21 +117,17 @@ export type CreateAppointmentPayload = {
     driver?: EmployeeRecurringSlot[];
   };
   main_doctor?: string;
-  main_doctor_id?: string;
   doctor_id?: string;
   doctor_schedule_type?: string;
   main_social_worker?: string;
-  main_social_worker_id?: string;
   social_worker_id?: string;
   social_worker_schedule_type?: string;
   driver_schedule_type?: string;
   driver_id?: string;
-  main_driver_id?: string;
   instructions?: string;
 };
 
 export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
-  nurse_id?: string;
   status?: string;
   reason?: string;
 };

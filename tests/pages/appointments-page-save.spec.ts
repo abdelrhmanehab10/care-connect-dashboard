@@ -138,7 +138,7 @@ describe("AppointmentsPage save API flow", () => {
         { day: "4", start_time: "02:50", end_time: "04:50" },
       ],
       main_nurse: "1",
-      main_nurse_id: "4",
+      nurse_id: "",
       nurse_schedule_type: "custom",
       employee_recurring_slots: {
         nurse: [
@@ -147,16 +147,13 @@ describe("AppointmentsPage save API flow", () => {
         ],
       },
       main_doctor: "1",
-      main_doctor_id: "",
       doctor_id: "",
       doctor_schedule_type: "same",
       main_social_worker: "1",
-      main_social_worker_id: "",
       social_worker_id: "",
       social_worker_schedule_type: "same",
       driver_schedule_type: "same",
       driver_id: "",
-      main_driver_id: "",
       instructions: "",
     } as const;
 

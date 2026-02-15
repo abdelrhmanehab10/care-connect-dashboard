@@ -14,7 +14,7 @@ vi.mock("../../src/services/visitTypes", () => ({
 }));
 
 vi.mock("../../src/services/employees", () => ({
-  fetchEmployeesByTitle: vi.fn().mockResolvedValue([]),
+  fetchEmployeeOptionsByTitle: vi.fn().mockResolvedValue([]),
 }));
 
 const DialogStub = {
@@ -96,12 +96,12 @@ describe("AppointmentDialog payload contract", () => {
 
     expect(payload.is_recurring).toBe("0");
     expect(payload.main_nurse).toBe("1");
-    expect(payload.main_nurse_id).toBe("4");
+    expect(payload.nurse_id).toBe("");
     expect(payload.main_doctor).toBe("1");
-    expect(payload.main_doctor_id).toBe("8");
+    expect(payload.doctor_id).toBe("");
     expect(payload.main_social_worker).toBe("1");
-    expect(payload.main_social_worker_id).toBe("9");
-    expect(payload.main_driver_id).toBe("");
+    expect(payload.social_worker_id).toBe("");
+    expect(payload.driver_id).toBe("");
     expect(payload.employee_slots).toBeUndefined();
     expect(payload.employee_recurring_slots).toBeUndefined();
   });
@@ -130,7 +130,7 @@ describe("AppointmentDialog payload contract", () => {
     ];
     vm.doctorAssignmentMode = "custom";
     vm.doctorScheduleType = "custom";
-    vm.doctorName = "Doctor A";
+    vm.doctorName = { id: 8, name: "Doctor A" };
     vm.doctorRecurrenceRows = [
       {
         id: "doc-row-1",
@@ -164,6 +164,8 @@ describe("AppointmentDialog payload contract", () => {
       { day: "0", start_time: "03:50", end_time: "04:50" },
       { day: "4", start_time: "03:50", end_time: "04:50" },
     ]);
+    expect(payload.main_doctor).toBe("0");
+    expect(payload.doctor_id).toBe("8");
     expect(payload.employee_slots).toBeUndefined();
   });
 

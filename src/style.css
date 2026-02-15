@@ -348,6 +348,7 @@ body {
 .cc-help-text {
   color: var(--cc-muted);
   font-size: 0.85rem;
+  text-align: left;
 }
 
 .cc-help-text--error {
