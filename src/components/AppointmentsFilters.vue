@@ -9,7 +9,10 @@ import AppointmentCards from "./AppointmentCards.vue";
 import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import type { AppointmentStatus, PatientOption } from "../data/options";
 import { autoCompletePt } from "../ui/primevuePt";
-import { fetchEmployeesByTitle } from "../services/employees";
+import {
+  fetchEmployeeOptionsByTitle,
+  type EmployeeOption,
+} from "../services/employees";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useAppointmentStatusesQuery } from "../composables/useAppointmentStatusesQuery";
@@ -22,7 +25,6 @@ import {
 import { formatStatusLabel } from "../lib/statusTransitions";
 
 const props = defineProps<{
-  employeeOptions: string[];
   patientOptions: PatientOption[];
   visitTypeOptions: string[];
   quickPatientLabel: string;
@@ -30,7 +32,7 @@ const props = defineProps<{
   isCalendarView?: boolean;
 }>();
 
-const employeeFilter = defineModel<string | null>("employeeFilter", {
+const employeeFilter = defineModel<EmployeeOption | null>("employeeFilter", {
   default: null,
 });
 const patientFilter = defineModel<PatientOption | null>("patientFilter", {
@@ -51,11 +53,11 @@ const statusTagFilter = defineModel<AppointmentStatus | null>(
 const startDate = defineModel<Date | null>("startDate", { default: null });
 const endDate = defineModel<Date | null>("endDate", { default: null });
 
-const filteredEmployees = ref<string[]>([]);
-const fetchedEmployees = ref<string[]>([]);
+const filteredEmployees = ref<EmployeeOption[]>([]);
+const fetchedEmployees = ref<EmployeeOption[]>([]);
 const isEmployeesLoading = ref(false);
 const patientInput = ref<PatientOption | string | null>(null);
-const employeeInput = ref<string | null>(null);
+const employeeInput = ref<EmployeeOption | null>(null);
 const filteredVisitTypes = ref<string[]>([]);
 const fetchedVisitTypes = ref<VisitType[]>([]);
 const isVisitTypesLoading = ref(false);
@@ -105,16 +107,19 @@ const filterByQuery = (source: string[], query: string) => {
 };
 
 const searchEmployees = (event: AutoCompleteCompleteEvent) => {
-  const source =
-    fetchedEmployees.value.length > 0
-      ? fetchedEmployees.value
-      : props.employeeOptions;
-  filteredEmployees.value = filterByQuery(source, event.query ?? "");
+  const query = (event.query ?? "").trim().toLowerCase();
+  if (!query) {
+    filteredEmployees.value = [...fetchedEmployees.value];
+    return;
+  }
+  filteredEmployees.value = fetchedEmployees.value.filter((option) =>
+    option.name.toLowerCase().includes(query),
+  );
 };
 
 const handleEmployeeSelect = (event: AutoCompleteOptionSelectEvent) => {
-  employeeFilter.value = event.value as string;
-  employeeInput.value = event.value as string;
+  employeeFilter.value = event.value as EmployeeOption;
+  employeeInput.value = event.value as EmployeeOption;
 };
 
 const fetchPatientSuggestions = (query: string, signal: AbortSignal) =>
@@ -270,10 +275,12 @@ const loadEmployees = async () => {
   isEmployeesLoading.value = true;
   try {
     const [nurses, doctors] = await Promise.all([
-      fetchEmployeesByTitle("nurse"),
-      fetchEmployeesByTitle("doctor"),
+      fetchEmployeeOptionsByTitle("nurse"),
+      fetchEmployeeOptionsByTitle("doctor"),
     ]);
-    const unique = Array.from(new Set([...nurses, ...doctors]));
+    const unique = Array.from(
+      new Map([...nurses, ...doctors].map((option) => [option.id, option])).values(),
+    );
     fetchedEmployees.value = unique;
     if (filteredEmployees.value.length === 0) {
       filteredEmployees.value = [...unique];
@@ -441,6 +448,7 @@ watch(
       <div class="col-md-2">
         <label for="employeeFilter" class="cc-label">Employee</label>
         <AutoComplete v-model="employeeInput" inputId="employeeFilter" :suggestions="filteredEmployees"
+          optionLabel="name"
           :forceSelection="true" :completeOnFocus="true" :autoOptionFocus="true" appendTo="body"
           panelClass="cc-autocomplete-panel" inputClass="cc-input" :pt="autoCompletePt"
           :placeholder="employeePlaceholder"

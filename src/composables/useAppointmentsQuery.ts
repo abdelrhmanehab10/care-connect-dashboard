@@ -10,6 +10,7 @@ type UseAppointmentsQueryParams = {
   end?: Ref<string> | string;
   status?: Ref<string> | string;
   employee?: Ref<string> | string;
+  employee_ids?: Ref<number[]> | number[];
   patient?: Ref<string> | string;
   patient_id?: Ref<string> | string;
   visit_type?: Ref<string> | string;
@@ -49,6 +50,10 @@ export const useAppointmentsQuery = (params: UseAppointmentsQueryParams) => {
       computed(() => unref(params.end ?? "")),
       computed(() => unref(params.status ?? "")),
       computed(() => unref(params.employee ?? "")),
+      computed(() => {
+        const ids = unref(params.employee_ids ?? []);
+        return Array.isArray(ids) ? ids.join(",") : "";
+      }),
       computed(() => unref(params.patient ?? "")),
       computed(() => unref(params.patient_id ?? "")),
       computed(() => unref(params.visit_type ?? "")),
@@ -62,6 +67,7 @@ export const useAppointmentsQuery = (params: UseAppointmentsQueryParams) => {
         end: params.end ? unref(params.end) : undefined,
         status: params.status ? unref(params.status) : undefined,
         employee: params.employee ? unref(params.employee) : undefined,
+        employee_ids: params.employee_ids ? unref(params.employee_ids) : undefined,
         patient: params.patient ? unref(params.patient) : undefined,
         patient_id: params.patient_id ? unref(params.patient_id) : undefined,
         visit_type: params.visit_type ? unref(params.visit_type) : undefined,

@@ -7,6 +7,7 @@ export type AppointmentsQueryParams = {
   end?: string;
   status?: string;
   employee?: string;
+  employee_ids?: number[];
   patient?: string;
   patient_id?: string;
   visit_type?: string;
@@ -135,7 +136,7 @@ export type UpdateAppointmentPayload = Partial<CreateAppointmentPayload> & {
 export const fetchAppointments = async (
   params: AppointmentsQueryParams,
 ): Promise<AppointmentsResponse> => {
-  const body: Record<string, string | boolean | undefined> = {
+  const body: Record<string, string | boolean | number[] | undefined> = {
     start: params.start ?? "",
     end: params.end ?? "",
     view_pagination: true,
@@ -143,6 +144,7 @@ export const fetchAppointments = async (
 
   if (params.status) body.status = params.status;
   if (params.employee) body.employee = params.employee;
+  if (params.employee_ids?.length) body.employee_ids = params.employee_ids;
   if (params.patient) body.patient = params.patient;
   if (params.patient_id) body.patient_id = params.patient_id;
   if (params.visit_type) body.visit_type = params.visit_type;

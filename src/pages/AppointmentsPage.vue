@@ -22,6 +22,7 @@ import {
   type UpdateAppointmentPayload,
   type AppointmentStatusOption,
 } from "../services/appointments";
+import type { EmployeeOption } from "../services/employees";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import {
   statusBadgeClass,
@@ -53,10 +54,7 @@ const queryClient = useQueryClient();
 const toast = useToast();
 const visitTypes = ref<VisitType[]>([]);
 
-const employeeFilter = ref<string | null>(null);
-const employeeOptions = Array.from(
-  new Set([...doctorOptions, ...nurseOptions]),
-);
+const employeeFilter = ref<EmployeeOption | null>(null);
 
 const patientFilter = ref<PatientOption | null>(null);
 
@@ -172,6 +170,10 @@ const apiStart = computed(() =>
 );
 const apiEnd = computed(() => (endDate.value ? formatDate(endDate.value) : ""));
 const patientIdFilter = computed(() => patientFilter.value?.id ?? "");
+const employeeIdsFilter = computed<number[]>(() => {
+  const id = employeeFilter.value?.id;
+  return typeof id === "number" && Number.isFinite(id) ? [id] : [];
+});
 
 const resolveStateFilter = () => {
   return stateFilter.value?.value ?? stateFilter.value?.key ?? "";
@@ -202,7 +204,7 @@ const {
   start: apiStart,
   end: apiEnd,
   status: computed(() => statusTagFilter.value ?? ""),
-  employee: computed(() => employeeFilter.value ?? ""),
+  employee_ids: employeeIdsFilter,
   patient_id: patientIdFilter,
   visit_type: computed(() =>
     visitTypeFilterId.value ? "" : (visitTypeFilter.value ?? ""),
@@ -737,7 +739,6 @@ onMounted(() => {
           :end-date="endDate"
           @update:start-date="setStartDateFromFilter"
           @update:end-date="setEndDateFromFilter"
-          :employee-options="employeeOptions"
           :patient-options="patientOptions"
           :visit-type-options="visitTypeOptions"
           :quick-patient-label="quickPatientLabel"
