@@ -91,6 +91,7 @@ export type CreateAppointmentPayload = {
   patient_id: string;
   address_id?: string;
   new_address?: {
+    id?: string;
     address: string;
     lat: string;
     lng: string;

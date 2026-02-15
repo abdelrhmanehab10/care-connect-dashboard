@@ -1918,6 +1918,9 @@ const handleSave = () => {
   const selectedPatientAddressId = normalizeOptionalId(
     selectedPatient.value.address?.id,
   );
+  const existingAddressId = normalizeOptionalId(
+    props.appointment?.patient_address?.id ?? selectedPatient.value.address?.id,
+  );
   const hasSelectedPatientAddress = Boolean(selectedPatientAddressId);
   const isEditing = Boolean(props.appointment);
   const shouldSendAddressObject = isEditing || !hasSelectedPatientAddress;
@@ -1929,6 +1932,7 @@ const handleSave = () => {
       : undefined,
     new_address: shouldSendAddressObject
       ? {
+        id: isEditing && existingAddressId ? existingAddressId : undefined,
         address: locationAddress,
         lat: locationLat,
         lng: locationLng,

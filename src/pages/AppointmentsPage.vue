@@ -304,6 +304,11 @@ const resolveInlineAddress = (appointment: Appointment) => {
   if (!address) {
     return null;
   }
+  const addressId = appointment.patient_address?.id;
+  const normalizedAddressId =
+    typeof addressId === "number"
+      ? String(addressId)
+      : String(addressId ?? "").trim();
   const latRaw = appointment.patient_address?.lat;
   const lngRaw = appointment.patient_address?.lng;
   const lat =
@@ -314,6 +319,7 @@ const resolveInlineAddress = (appointment: Appointment) => {
   const hasLng = Number.isFinite(lng);
 
   return {
+    id: normalizedAddressId || undefined,
     address,
     lat: hasLat ? String(lat) : "",
     lng: hasLng ? String(lng) : "",
