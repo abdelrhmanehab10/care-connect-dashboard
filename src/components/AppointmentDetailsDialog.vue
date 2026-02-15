@@ -889,9 +889,6 @@ const handleEditAppointment = () => {
       <div style="height: 0" />
     </template>
   </Dialog>
-<<<<<<< HEAD
-</template>
-=======
   <AppointmentEditReasonDialog
     v-model:visible="reasonDialogVisible"
     v-model:reasonText="reasonText"
@@ -1356,4 +1353,3 @@ const handleEditAppointment = () => {
   color: #6b7280;
 }
 </style>
->>>>>>> f4a01f110436a1e74eb966d8ea55f44c764e1760
