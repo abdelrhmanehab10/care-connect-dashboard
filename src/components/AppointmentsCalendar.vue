@@ -68,6 +68,24 @@ const normalizeTime = (value: string | null | undefined): string => {
   return match?.[1] ?? "";
 };
 
+const parseTimeToMinutes = (value: string) => {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  const [, rawHours = "", rawMinutes = ""] = match ?? [];
+  const hours = Number(rawHours);
+  const minutes = Number(rawMinutes);
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
 const getEarliestAppointmentFocus = (
   appointments: ReadonlyArray<Appointment>,
 ): string => {
@@ -352,17 +370,37 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
     const startTime = normalizeTime(appointment.start_time);
     const endTime = normalizeTime(appointment.end_time);
     const hasTimes = startTime.length > 0 && endTime.length > 0;
-    const start = hasTimes
-      ? `${normalizedDate} ${startTime}`
-      : normalizedDate;
-    const end = hasTimes ? `${normalizedDate} ${endTime}` : normalizedDate;
+    let timedStart = normalizedDate;
+    let timedEnd = normalizedDate;
+
+    if (hasTimes) {
+      const startMinutes = parseTimeToMinutes(startTime);
+      const endMinutes = parseTimeToMinutes(endTime);
+      let endDate = normalizedDate;
+
+      // Support overnight appointments (e.g., 23:30 -> 01:00 next day).
+      if (
+        startMinutes !== null &&
+        endMinutes !== null &&
+        endMinutes <= startMinutes
+      ) {
+        const baseDate = parseLocalDateOnly(normalizedDate);
+        if (baseDate) {
+          baseDate.setDate(baseDate.getDate() + 1);
+          endDate = toIsoDate(baseDate);
+        }
+      }
+
+      timedStart = `${normalizedDate}T${startTime}`;
+      timedEnd = `${endDate}T${endTime}`;
+    }
 
     return [
       {
         name: `${displayValue(appointment.patient?.name)} (${appointment.doctor?.name || "TBD"
           })`,
-        start,
-        end,
+        start: timedStart,
+        end: timedEnd,
         color: statusToColor(appointment.status),
         timed: hasTimes,
         appointment,

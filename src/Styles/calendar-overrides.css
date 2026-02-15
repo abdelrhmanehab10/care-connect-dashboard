@@ -20,7 +20,7 @@
   margin: auto;
 }
 .v-calendar .v-event {
-  margin: auto !important;
+  margin: 0 !important;
   z-index: 1;
   transition: z-index 0.12s ease;
 }
@@ -31,7 +31,6 @@
 }
 
 .cc-calendar .v-event-timed {
-  position: relative;
   z-index: 1;
   transition: z-index 0.12s ease;
 }
