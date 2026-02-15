@@ -14,6 +14,11 @@ import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useAppointmentStatusesQuery } from "../composables/useAppointmentStatusesQuery";
 import type { AppointmentStatusOption } from "../services/appointments";
+import {
+  endOfWeekMonday,
+  isSameCalendarDay,
+  startOfWeekMonday,
+} from "../lib/dateUtils";
 
 const props = defineProps<{
   employeeOptions: string[];
@@ -156,37 +161,23 @@ const searchStates = (event: AutoCompleteCompleteEvent) => {
   );
 };
 
-const startOfWeek = (value: Date) => {
-  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const day = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - day);
-  return date;
-};
-
-const endOfWeek = (value: Date) => {
-  const date = startOfWeek(value);
-  date.setDate(date.getDate() + 6);
-  return date;
-};
-
-const isSameDay = (left: Date, right: Date) =>
-  left.getFullYear() === right.getFullYear() &&
-  left.getMonth() === right.getMonth() &&
-  left.getDate() === right.getDate();
-
 const isTodayActive = computed(() => {
   if (!startDate.value || !endDate.value) return false;
   const now = new Date();
-  return isSameDay(startDate.value, now) && isSameDay(endDate.value, now);
+  return (
+    isSameCalendarDay(startDate.value, now) &&
+    isSameCalendarDay(endDate.value, now)
+  );
 });
 
 const isThisWeekActive = computed(() => {
   if (!startDate.value || !endDate.value) return false;
   const now = new Date();
-  const weekStart = startOfWeek(now);
-  const weekEnd = endOfWeek(now);
+  const weekStart = startOfWeekMonday(now);
+  const weekEnd = endOfWeekMonday(now);
   return (
-    isSameDay(startDate.value, weekStart) && isSameDay(endDate.value, weekEnd)
+    isSameCalendarDay(startDate.value, weekStart) &&
+    isSameCalendarDay(endDate.value, weekEnd)
   );
 });
 
@@ -211,7 +202,7 @@ const toggleThisWeek = () => {
     return;
   }
   const now = new Date();
-  setDateRange(startOfWeek(now), endOfWeek(now));
+  setDateRange(startOfWeekMonday(now), endOfWeekMonday(now));
 };
 
 const normalizeStateValue = (value: string) => value.trim().toLowerCase();
