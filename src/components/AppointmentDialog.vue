@@ -3,7 +3,6 @@ import {
   computed,
   getCurrentInstance,
   isRef,
-  onMounted,
   reactive,
   ref,
   toRefs,
@@ -28,7 +27,7 @@ import {
 } from "../ui/primevuePt";
 import type { Appointment } from "../types";
 import type { CreateAppointmentPayload } from "../services/appointments";
-import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
+import type { VisitType } from "../services/visitTypes";
 import {
   fetchEmployeeOptionsByTitle,
   type EmployeeOption,
@@ -71,6 +70,7 @@ const props = withDefaults(
     doctorOptions: readonly string[];
     socialWorkerOptions: readonly string[];
     visitTypeOptions: readonly string[];
+    visitTypes?: readonly VisitType[];
     weekdayOptions: readonly Weekday[];
     isSaving?: boolean;
     errorMessage?: string | null;
@@ -80,9 +80,10 @@ const props = withDefaults(
     isLoading: false,
     isSaving: false,
     errorMessage: null,
+    visitTypes: () => [],
   },
 );
-const { patientOptions, visitTypeOptions, weekdayOptions } = toRefs(props);
+const { patientOptions, visitTypeOptions, visitTypes, weekdayOptions } = toRefs(props);
 const dialogTitle = computed(() =>
   props.appointment ? "Edit Appointment" : "Add Appointment",
 );
@@ -107,8 +108,6 @@ const defaultMapLocation: LocationValue = {
 };
 
 const selectedPatient = ref<PatientOption | string | null>(null);
-const fetchedVisitTypes = ref<VisitType[]>([]);
-const isVisitTypesLoading = ref(false);
 const mapLocation = ref<LocationValue | null>(null);
 const instructions = ref("");
 const hasAttemptedSubmit = ref(false);
@@ -173,6 +172,13 @@ const driverSchedule = reactive<EmployeeDateRange>({
 type EmployeeRecurrenceRow = {
   id: string;
   day: Weekday;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+type DriverRecurrenceRow = {
+  id: string;
+  day: Weekday;
   startTime: Date | null;
   endTime: Date | null;
 };
@@ -212,8 +218,8 @@ const recurringEndDateInput = computed({
 type RecurrenceRow = {
   id: string;
   day: Weekday;
-  startTime: Date | null;
-  endTime: Date | null;
+  startTime: string | null;
+  endTime: string | null;
 };
 
 const getDefaultWeekday = () => weekdayOptions.value[0] ?? "Monday";
@@ -262,6 +268,16 @@ const createEmployeeRecurrenceRow = (
   ...overrides,
 });
 
+const createDriverRecurrenceRow = (
+  overrides: Partial<DriverRecurrenceRow> = {},
+): DriverRecurrenceRow => ({
+  id: `driver-row-${employeeRecurrenceRowId++}`,
+  day: getDefaultWeekday(),
+  startTime: null,
+  endTime: null,
+  ...overrides,
+});
+
 const recurrenceRows = ref<RecurrenceRow[]>([
   createRecurrenceRow(),
 ]);
@@ -274,8 +290,8 @@ const doctorRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
 const socialWorkerRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
   createEmployeeRecurrenceRow("social"),
 ]);
-const driverRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  createEmployeeRecurrenceRow("driver"),
+const driverRecurrenceRows = ref<DriverRecurrenceRow[]>([
+  createDriverRecurrenceRow(),
 ]);
 
 const isPatientOption = (value: unknown): value is PatientOption => {
@@ -391,8 +407,8 @@ const fallbackVisitTypes = computed<VisitType[]>(() =>
 );
 
 const availableVisitTypes = computed(() =>
-  fetchedVisitTypes.value.length
-    ? fetchedVisitTypes.value
+  visitTypes.value.length
+    ? visitTypes.value
     : fallbackVisitTypes.value,
 );
 
@@ -767,14 +783,16 @@ const hasCompleteTimeRange = (
   end: Date | string | null,
 ) => Boolean(formatTime(start) && formatTime(end));
 
-const hasValidRecurringTimes = (rows: EmployeeRecurrenceRow[]) =>
+const hasValidRecurringTimes = (
+  rows: Array<{ startTime: Date | string | null; endTime: Date | string | null }>,
+) =>
   rows.every(
     (row) =>
       Boolean(formatTime(row.startTime)) && Boolean(formatTime(row.endTime)),
   );
 
 const isRowWithinRecurringRange = (
-  row: EmployeeRecurrenceRow,
+  row: { startTime: Date | string | null; endTime: Date | string | null },
   baseRow: RecurrenceRow | undefined,
 ) => {
   if (!baseRow) {
@@ -796,7 +814,9 @@ const isRowWithinRecurringRange = (
   return rowStart >= baseStart && rowEnd <= baseEnd;
 };
 
-const hasRecurringRowsWithinRange = (rows: EmployeeRecurrenceRow[]) =>
+const hasRecurringRowsWithinRange = (
+  rows: Array<{ startTime: Date | string | null; endTime: Date | string | null }>,
+) =>
   rows.every((row, index) =>
     isRowWithinRecurringRange(row, recurrenceRows.value[index]),
   );
@@ -915,8 +935,8 @@ const validationErrors = computed(() => {
 
 type RecurringRowLike = {
   day: Weekday;
-  startTime: Date | null;
-  endTime: Date | null;
+  startTime: Date | string | null;
+  endTime: Date | string | null;
 };
 
 const buildRecurringSlots = (rows: RecurringRowLike[]) =>
@@ -1030,7 +1050,7 @@ const resetEmployeeRecurrenceRows = () => {
   nurseRecurrenceRows.value = [createEmployeeRecurrenceRow("nurse")];
   doctorRecurrenceRows.value = [createEmployeeRecurrenceRow("doctor")];
   socialWorkerRecurrenceRows.value = [createEmployeeRecurrenceRow("social")];
-  driverRecurrenceRows.value = [createEmployeeRecurrenceRow("driver")];
+  driverRecurrenceRows.value = [createDriverRecurrenceRow()];
 };
 
 const resetMainSchedule = () => {
@@ -1194,8 +1214,8 @@ const applyRecurringDurationDefaults = (durationHours: number) => {
       {
         id: `row-${recurrenceRowId++}`,
         day: resolveWeekdayFromDate(dateOnly),
-        startTime: now,
-        endTime: end,
+        startTime: formatTime(now),
+        endTime: formatTime(end),
       },
     ];
     return;
@@ -1203,21 +1223,9 @@ const applyRecurringDurationDefaults = (durationHours: number) => {
 
   recurrenceRows.value = recurrenceRows.value.map((row) => ({
     ...row,
-    startTime: new Date(now.getTime()),
-    endTime: new Date(end.getTime()),
+    startTime: formatTime(now),
+    endTime: formatTime(end),
   }));
-};
-
-const loadVisitTypes = async () => {
-  isVisitTypesLoading.value = true;
-  try {
-    fetchedVisitTypes.value = await fetchVisitTypes();
-  } catch (error) {
-    console.error("Failed to load visit types.", error);
-    fetchedVisitTypes.value = [];
-  } finally {
-    isVisitTypesLoading.value = false;
-  }
 };
 
 const applyAppointment = (appointment: Appointment) => {
@@ -1383,14 +1391,40 @@ const syncEmployeeRowsWithRecurringRows = (
       id: existingRow?.id ?? `emp-row-${employeeRecurrenceRowId++}`,
       day: baseRow.day,
       startTime: existingRow?.startTime
-        ? cloneDateValue(existingRow.startTime)
-        : cloneDateValue(baseRow.startTime),
+        ? normalizeTimeInput(existingRow.startTime)
+        : normalizeTimeInput(baseRow.startTime),
       endTime: existingRow?.endTime
-        ? cloneDateValue(existingRow.endTime)
-        : cloneDateValue(baseRow.endTime),
+        ? normalizeTimeInput(existingRow.endTime)
+        : normalizeTimeInput(baseRow.endTime),
     };
   });
   targetRows.value = syncedRows;
+};
+
+const toDriverRowTime = (value: string | null) => {
+  const time = normalizeTimeInput(value);
+  if (!time) {
+    return null;
+  }
+  const date = formatDate(schedule.recurringStartDate) || formatDate(new Date());
+  return parseDateTime(date, time);
+};
+
+const syncDriverRowsWithRecurringRows = () => {
+  const syncedRows = recurrenceRows.value.map((baseRow, index) => {
+    const existingRow = driverRecurrenceRows.value[index];
+    return {
+      id: existingRow?.id ?? `driver-row-${employeeRecurrenceRowId++}`,
+      day: baseRow.day,
+      startTime: existingRow?.startTime
+        ? cloneDateValue(existingRow.startTime)
+        : toDriverRowTime(baseRow.startTime),
+      endTime: existingRow?.endTime
+        ? cloneDateValue(existingRow.endTime)
+        : toDriverRowTime(baseRow.endTime),
+    };
+  });
+  driverRecurrenceRows.value = syncedRows;
 };
 
 const syncCustomEmployeeRecurringRows = () => {
@@ -1410,7 +1444,7 @@ const syncCustomEmployeeRecurringRows = () => {
     syncEmployeeRowsWithRecurringRows(socialWorkerRecurrenceRows);
   }
   if (showDriverSection.value && driverScheduleType.value === "custom") {
-    syncEmployeeRowsWithRecurringRows(driverRecurrenceRows);
+    syncDriverRowsWithRecurringRows();
   }
 };
 
@@ -1639,9 +1673,7 @@ watch(
 watch(
   () =>
     recurrenceRows.value.map((row) =>
-      row.startTime instanceof Date && !Number.isNaN(row.startTime.getTime())
-        ? row.startTime.getTime()
-        : null,
+      normalizeTimeInput(row.startTime),
     ),
   () => {
     if (!visible.value || !schedule.isRecurring) {
@@ -1653,18 +1685,15 @@ watch(
       return;
     }
 
-    const durationMs = durationHoursToMs(durationHours);
+    const durationMinutes = Math.round(durationHours * 60);
     recurrenceRows.value.forEach((row) => {
-      if (!(row.startTime instanceof Date) || Number.isNaN(row.startTime.getTime())) {
+      const startMinutes = parseClockToMinutes(formatTime(row.startTime));
+      if (startMinutes === null) {
         return;
       }
-      const nextEnd = new Date(row.startTime.getTime() + durationMs);
-      const currentEndMs =
-        row.endTime instanceof Date && !Number.isNaN(row.endTime.getTime())
-          ? row.endTime.getTime()
-          : null;
-      if (currentEndMs !== nextEnd.getTime()) {
-        row.endTime = nextEnd;
+      const nextEndTime = formatMinutesToClock(startMinutes + durationMinutes);
+      if (normalizeTimeInput(row.endTime) !== nextEndTime) {
+        row.endTime = nextEndTime;
       }
     });
   },
@@ -1723,10 +1752,6 @@ watch(
     pendingSaveAction.value = null;
   },
 );
-
-onMounted(() => {
-  void loadVisitTypes();
-});
 
 const resetReasonDialogState = () => {
   reasonDialogVisible.value = false;
@@ -1984,8 +2009,12 @@ const addRecurrenceRow = () => {
 
   recurrenceRows.value.push(createRecurrenceRow({
     day: previousRow ? getNextWeekday(previousRow.day) : getDefaultWeekday(),
-    startTime: cloneDateValue(previousRow?.startTime ?? fallbackStart),
-    endTime: cloneDateValue(previousRow?.endTime ?? fallbackEnd),
+    startTime: normalizeTimeInput(
+      previousRow?.startTime ?? formatTime(fallbackStart),
+    ),
+    endTime: normalizeTimeInput(
+      previousRow?.endTime ?? formatTime(fallbackEnd),
+    ),
   }));
 };
 
@@ -2022,9 +2051,41 @@ const addEmployeeRecurrenceRow = (rows: EmployeeRowsLike) => {
   target.push({
     id: `emp-row-${employeeRecurrenceRowId++}`,
     day: matchingRecurringRow.day,
-    startTime: cloneDateValue(matchingRecurringRow.startTime),
-    endTime: cloneDateValue(matchingRecurringRow.endTime),
+    startTime: normalizeTimeInput(matchingRecurringRow.startTime),
+    endTime: normalizeTimeInput(matchingRecurringRow.endTime),
   });
+};
+
+const addDriverRecurrenceRow = (
+  rows: DriverRecurrenceRow[] | Ref<DriverRecurrenceRow[]>,
+) => {
+  const target = isRef(rows) ? rows.value : rows;
+  if (target.length >= recurrenceRows.value.length) {
+    return;
+  }
+  const matchingRecurringRow = recurrenceRows.value[target.length];
+  if (!matchingRecurringRow) {
+    return;
+  }
+  target.push({
+    id: `driver-row-${employeeRecurrenceRowId++}`,
+    day: matchingRecurringRow.day,
+    startTime: toDriverRowTime(matchingRecurringRow.startTime),
+    endTime: toDriverRowTime(matchingRecurringRow.endTime),
+  });
+};
+
+const canAddDriverRecurrenceRow = () =>
+  driverRecurrenceRows.value.length < recurrenceRows.value.length;
+
+const removeDriverRecurrenceRow = (rowId: string) => {
+  if (driverRecurrenceRows.value.length === 1) {
+    return;
+  }
+  const index = driverRecurrenceRows.value.findIndex((row) => row.id === rowId);
+  if (index >= 0) {
+    driverRecurrenceRows.value.splice(index, 1);
+  }
 };
 
 const removeEmployeeRecurrenceRow = (rows: EmployeeRowsLike, rowId: string) => {
@@ -2098,13 +2159,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div>
           <label for="visitType" class="cc-label cc-label-strong">Visit Type</label>
           <select id="visitType" v-model="visit.type" class="cc-select">
-            <option value="" disabled>
-              {{
-                isVisitTypesLoading
-                  ? "Loading visit types..."
-                  : "Select visit Type"
-              }}
-            </option>
+            <option value="" disabled>Select visit Type</option>
             <option v-for="type in availableVisitTypes" :key="type.id" :value="type.name">
               {{ type.name }}
             </option>
@@ -2608,17 +2663,13 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                   <div class="cc-row cc-row-stretch">
                     <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                      :disabled="!canAddEmployeeRecurrenceRow(driverRecurrenceRows)"
-                      @click="addEmployeeRecurrenceRow(driverRecurrenceRows)">
+                      :disabled="!canAddDriverRecurrenceRow()"
+                      @click="addDriverRecurrenceRow(driverRecurrenceRows)">
                       +
                     </button>
                     <button type="button" class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                      :disabled="driverRecurrenceRows.length === 1" @click="
-                        removeEmployeeRecurrenceRow(
-                          driverRecurrenceRows,
-                          row.id,
-                        )
-                        ">
+                      :disabled="driverRecurrenceRows.length === 1"
+                      @click="removeDriverRecurrenceRow(row.id)">
                       -
                     </button>
                   </div>
