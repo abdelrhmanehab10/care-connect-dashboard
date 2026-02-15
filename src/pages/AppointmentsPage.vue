@@ -655,6 +655,7 @@ const handleSaveAppointment = async (
   try {
     if (appointmentId) {
       const updatePayload: UpdateAppointmentPayload = { ...payload };
+      delete (updatePayload as { address_id?: string }).address_id;
       const trimmedReason = reason.trim();
       if (trimmedReason) {
         updatePayload.reason = trimmedReason;

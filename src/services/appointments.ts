@@ -89,7 +89,8 @@ type EmployeeRecurringSlot = {
 
 export type CreateAppointmentPayload = {
   patient_id: string;
-  new_address: {
+  address_id?: string;
+  new_address?: {
     address: string;
     lat: string;
     lng: string;
