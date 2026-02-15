@@ -137,24 +137,33 @@ const visit = reactive({
   type: "",
 });
 
-const nurseSchedule = reactive({
-  startTime: null as Date | null,
-  endTime: null as Date | null,
+type EmployeeClockRange = {
+  startTime: string | null;
+  endTime: string | null;
+};
+type EmployeeDateRange = {
+  startTime: Date | null;
+  endTime: Date | null;
+};
+
+const nurseSchedule = reactive<EmployeeClockRange>({
+  startTime: null,
+  endTime: null,
 });
 
-const doctorSchedule = reactive({
-  startTime: null as Date | null,
-  endTime: null as Date | null,
+const doctorSchedule = reactive<EmployeeClockRange>({
+  startTime: null,
+  endTime: null,
 });
 
-const socialWorkerSchedule = reactive({
-  startTime: null as Date | null,
-  endTime: null as Date | null,
+const socialWorkerSchedule = reactive<EmployeeClockRange>({
+  startTime: null,
+  endTime: null,
 });
 
-const driverSchedule = reactive({
-  startTime: null as Date | null,
-  endTime: null as Date | null,
+const driverSchedule = reactive<EmployeeDateRange>({
+  startTime: null,
+  endTime: null,
 });
 
 type EmployeeRecurrenceRow = {
@@ -974,7 +983,9 @@ const resolveSelectedPrimaryDriverName = (
   return name || null;
 };
 
-const clearTimeRange = (range: { startTime: Date | null; endTime: Date | null }) => {
+const clearTimeRange = (
+  range: EmployeeClockRange | EmployeeDateRange,
+) => {
   range.startTime = null;
   range.endTime = null;
 };
@@ -1256,14 +1267,20 @@ const applyAppointment = (appointment: Appointment) => {
     );
   const mapCareTime = (
     member: (typeof careTeam)[number] | undefined,
-    scheduleTarget: { startTime: Date | null; endTime: Date | null },
+    scheduleTarget: { startTime: string | Date | null; endTime: string | Date | null },
+    asDate = false,
   ) => {
     if (!member) return;
-    scheduleTarget.startTime = parseDateTime(
-      appointment.date,
-      member.start_time,
-    );
-    scheduleTarget.endTime = parseDateTime(appointment.date, member.end_time);
+    if (asDate) {
+      scheduleTarget.startTime = parseDateTime(
+        appointment.date,
+        member.start_time,
+      );
+      scheduleTarget.endTime = parseDateTime(appointment.date, member.end_time);
+      return;
+    }
+    scheduleTarget.startTime = normalizeTimeInput(member.start_time);
+    scheduleTarget.endTime = normalizeTimeInput(member.end_time);
   };
 
   const nurseMember = findCareMember("nurse");
@@ -1274,7 +1291,7 @@ const applyAppointment = (appointment: Appointment) => {
   mapCareTime(nurseMember, nurseSchedule);
   mapCareTime(doctorMember, doctorSchedule);
   mapCareTime(socialWorkerMember, socialWorkerSchedule);
-  mapCareTime(driverMember, driverSchedule);
+  mapCareTime(driverMember, driverSchedule, true);
 
   if (!isPrimaryNurse && !nurseName.value && nurseMember?.employee?.name) {
     nurseAssignmentMode.value = "custom";
@@ -1338,6 +1355,25 @@ const syncCustomEmployeeRecurringRows = () => {
   if (showDriverSection.value && driverScheduleType.value === "custom") {
     syncEmployeeRowsWithRecurringRows(driverRecurrenceRows);
   }
+};
+
+const syncNonRecurringEmployeeTimeRanges = () => {
+  if (schedule.isRecurring || props.appointment) {
+    return;
+  }
+  const startTime = normalizeTimeInput(schedule.appointmentStartTime);
+  const endTime = normalizeTimeInput(schedule.appointmentEndTime);
+
+  nurseSchedule.startTime = startTime;
+  nurseSchedule.endTime = endTime;
+  doctorSchedule.startTime = startTime;
+  doctorSchedule.endTime = endTime;
+  socialWorkerSchedule.startTime = startTime;
+  socialWorkerSchedule.endTime = endTime;
+
+  const appointmentDate = formatDate(schedule.appointmentDate);
+  driverSchedule.startTime = parseDateTime(appointmentDate, startTime);
+  driverSchedule.endTime = parseDateTime(appointmentDate, endTime);
 };
 
 const enforceAssignmentModesForPrimaryAvailability = () => {
@@ -1527,6 +1563,19 @@ watch(
     if (schedule.appointmentEndTime !== endTime) {
       schedule.appointmentEndTime = endTime;
     }
+  },
+);
+
+watch(
+  () =>
+    [
+      schedule.isRecurring,
+      formatDate(schedule.appointmentDate),
+      schedule.appointmentStartTime,
+      schedule.appointmentEndTime,
+    ] as const,
+  () => {
+    syncNonRecurringEmployeeTimeRanges();
   },
 );
 
