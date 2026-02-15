@@ -556,6 +556,7 @@ const validationSchema = z
     visitTypeDurationHours: z.number().nullable(),
     isRecurring: z.boolean(),
     date: z.string(),
+    address: z.string(),
     startTime: z.string(),
     endTime: z.string(),
     nurseRequired: z.boolean(),
@@ -686,6 +687,14 @@ const validationSchema = z
             });
           }
         }
+      });
+    }
+
+    if (!values.address.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address"],
+        message: "Address is required.",
       });
     }
 
@@ -837,6 +846,8 @@ const hasRecurringRowsWithinRange = (
 const buildValidationPayload = () => {
   const { date, startTime, endTime } = resolveScheduleTimes();
   const isRecurring = schedule.isRecurring;
+  const resolvedLocation = mapLocation.value ?? defaultMapLocation;
+  const locationAddress = String(resolvedLocation.address ?? "").trim();
   const nurseTimesRequired = isRecurring
     ? showNurseSection.value && nurseScheduleType.value === "custom"
     : showNurseSection.value && nurseAssignmentMode.value === "custom";
@@ -900,6 +911,7 @@ const buildValidationPayload = () => {
     visitTypeDurationHours: selectedVisitDurationHours.value,
     isRecurring,
     date: formatDate(date),
+    address: locationAddress,
     startTime: formatTime(startTime),
     endTime: formatTime(endTime),
     nurseRequired:
@@ -2184,6 +2196,9 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
           <div class="cc-section-title">Address</div>
           <AppointmentMap v-model="mapLocation" :lat="defaultMapLocation.lat" :lng="defaultMapLocation.lng" :zoom="9"
             height="360px" @selected="mapLocation = $event" />
+          <div v-if="hasAttemptedSubmit && validationErrors.address" class="cc-help-text cc-help-text--error">
+            {{ validationErrors.address }}
+          </div>
         </div>
 
         <div>
