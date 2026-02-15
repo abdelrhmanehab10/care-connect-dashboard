@@ -424,7 +424,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patient_id\": \"8\",\n  \"new_address\": {\n    \"address\": \"123 Main St\",\n    \"lat\":22.2653,\n    \"lng\":22.2653\n  },\n  \"visit_type_id\": \"2\",\n  \"is_recurring\": \"0\",\n  \"date\": \"2026-01-31\",\n  \"start_time\": \"04:02\",\n  \"end_time\": \"06:02\",\n  \"main_nurse\": 1,\n  \"nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"same\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"04:00\",\n      \"end_time\": \"05:00\"\n    },\n    \"doctor\": {\n      \"start_time\": \"05:00\",\n      \"end_time\": \"05:30\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"05:30\",\n      \"end_time\": \"06:00\"\n    },\n    \"driver\": {\n      \"start_time\": \"02:00\",\n      \"end_time\": \"04:00\"\n    }\n  },\n  \"main_doctor\": 1,\n  \"doctor_id\": \"21\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": 1,\n  \"social_worker_id\": \"25\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}",
+              "raw": "{\n  \"patient_id\": \"8\",\n  \"new_address\": {\n    \"area_id\": \"1\",\n    \"city\": \"Cairo\",\n    \"address\": \"PM7G+C4F, Al Olaya, Riyadh 12251, Saudi Arabia\",\n    \"lat\": \"24.7135517\",\n    \"lng\": \"46.6752957\"\n  },\n  \"visit_type_id\": \"2\",\n  \"is_recurring\": \"1\",\n  \"start_date\": \"2026-02-15\",\n  \"end_date\": \"2026-03-15\",\n  \"appointments\": [\n    {\n      \"day\": \"0\",\n      \"start_time\": \"02:50\",\n      \"end_time\": \"04:50\"\n    },\n    {\n      \"day\": \"4\",\n      \"start_time\": \"02:50\",\n      \"end_time\": \"04:50\"\n    }\n  ],\n  \"main_nurse\": \"1\",\n  \"main_nurse_id\": \"4\",\n  \"nurse_schedule_type\": \"custom\",\n  \"employee_slots\": {\n    \"nurse\": {\n      \"start_time\": \"\",\n      \"end_time\": \"\"\n    },\n    \"doctor\": {\n      \"start_time\": \"\",\n      \"end_time\": \"\"\n    },\n    \"social_worker\": {\n      \"start_time\": \"\",\n      \"end_time\": \"\"\n    },\n    \"driver\": {\n      \"start_time\": \"\",\n      \"end_time\": \"\"\n    }\n  },\n  \"employee_recurring_slots\": {\n    \"nurse\": [\n      {\n        \"day\": \"0\",\n        \"start_time\": \"03:50\",\n        \"end_time\": \"04:50\"\n      },\n      {\n        \"day\": \"4\",\n        \"start_time\": \"03:50\",\n        \"end_time\": \"04:50\"\n      }\n    ],\n    \"doctor\": [\n      {\n        \"day\": \"0\",\n        \"start_time\": \"02:50\",\n        \"end_time\": \"04:50\"\n      },\n      {\n        \"day\": \"4\",\n        \"start_time\": \"02:50\",\n        \"end_time\": \"04:50\"\n      }\n    ],\n    \"social_worker\": [\n      {\n        \"day\": \"0\",\n        \"start_time\": \"02:50\",\n        \"end_time\": \"04:50\"\n      },\n      {\n        \"day\": \"4\",\n        \"start_time\": \"02:50\",\n        \"end_time\": \"04:50\"\n      }\n    ],\n    \"driver\": [\n      {\n        \"day\": \"0\",\n        \"start_time\": \"02:50\",\n        \"end_time\": \"04:50\"\n      },\n      {\n        \"day\": \"4\",\n        \"start_time\": \"02:50\",\n        \"end_time\": \"04:50\"\n      }\n    ]\n  },\n  \"main_doctor\": \"1\",\n  \"main_doctor_id\": \"\",\n  \"doctor_id\": \"\",\n  \"doctor_schedule_type\": \"same\",\n  \"main_social_worker\": \"1\",\n  \"main_social_worker_id\": \"\",\n  \"social_worker_id\": \"\",\n  \"social_worker_schedule_type\": \"same\",\n  \"driver_schedule_type\": \"same\",\n  \"driver_id\": \"\",\n  \"main_driver_id\": \"\",\n  \"instructions\": \"\"\n}\n",
               "options": {
                 "raw": {
                   "language": "json"
@@ -507,7 +507,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/vue/appointments/confirm/{{appointment_id}}/{{employee_id}}",
+              "raw": "{{url}}/vue/appointments/confirm/148/4",
               "host": [
                 "{{url}}"
               ],
@@ -515,8 +515,8 @@
                 "vue",
                 "appointments",
                 "confirm",
-                "{{appointment_id}}",
-                "{{employee_id}}"
+                "148",
+                "4"
               ]
             }
           },
@@ -538,7 +538,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{url}}/vue/appointments/confirm-all/{{appointment_id}}",
+              "raw": "{{url}}/vue/appointments/confirm-all/152",
               "host": [
                 "{{url}}"
               ],
@@ -546,7 +546,37 @@
                 "vue",
                 "appointments",
                 "confirm-all",
-                "{{appointment_id}}"
+                "152"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "patient Confirmed API",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url}}/vue/appointments/patient-confirmed/156",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "vue",
+                "appointments",
+                "patient-confirmed",
+                "156"
               ]
             }
           },
@@ -568,7 +598,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{url}}/vue/appointments/quick-no-show/20",
+              "raw": "{{url}}/vue/appointments/quick-no-show/153",
               "host": [
                 "{{url}}"
               ],
@@ -576,7 +606,7 @@
                 "vue",
                 "appointments",
                 "quick-no-show",
-                "20"
+                "153"
               ]
             }
           },
@@ -590,7 +620,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "2|6I3Zx5qFMtOSHUWAIUcdczDTpJ228ENipFaHBRoZ5b07ae50",
+                  "value": "{{token}}",
                   "type": "string"
                 }
               ]
@@ -599,7 +629,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"reason\": \"Patient Request\",\n    \"notes\": \"dsfsdfsdfsdfsdf\"\n}",
+              "raw": "{\n    \"reason\": \"Patient Request\",\n    \"notes\": \"testing\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -607,7 +637,7 @@
               }
             },
             "url": {
-              "raw": "{{url}}/vue/appointments/cancel/20",
+              "raw": "{{url}}/vue/appointments/cancel/298",
               "host": [
                 "{{url}}"
               ],
@@ -615,7 +645,7 @@
                 "vue",
                 "appointments",
                 "cancel",
-                "20"
+                "298"
               ]
             }
           },

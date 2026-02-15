@@ -769,36 +769,19 @@ onMounted(() => {
                   :appointments="appointments"
                   :is-loading="isLoading"
                   :details-loading-id="detailsLoadingId"
+                  :current-page="appointmentsResponse?.currentPage ?? 1"
+                  :total-pages="totalPages"
+                  :total-count="appointmentsResponse?.total ?? 0"
+                  :can-go-prev="canGoPrev"
+                  :can-go-next="canGoNext"
                   :status-options="statusOptions"
                   :status-badge-class="statusBadgeClass"
                   :visit-type-options="visitTypeOptions"
                   @cell-edit-complete="handleCellEditComplete"
                   @view-details="openDetails"
+                  @prev-page="goPrev"
+                  @next-page="goNext"
                 />
-                <div class="cc-table-footer">
-                  <div class="cc-help-text">
-                    Page {{ appointmentsResponse?.currentPage ?? 1 }} of
-                    {{ totalPages }}
-                  </div>
-                  <div class="cc-row cc-stack-sm">
-                    <button
-                      type="button"
-                      class="cc-btn cc-btn-outline cc-btn-sm"
-                      :disabled="!canGoPrev"
-                      @click="goPrev"
-                    >
-                      Prev
-                    </button>
-                    <button
-                      type="button"
-                      class="cc-btn cc-btn-outline cc-btn-sm"
-                      :disabled="!canGoNext"
-                      @click="goNext"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
               </div>
             </TabPanel>
             <TabPanel value="calendar">

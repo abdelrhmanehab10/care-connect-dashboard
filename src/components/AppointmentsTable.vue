@@ -371,11 +371,21 @@ const props = withDefaults(
     appointments: ReadonlyArray<Appointment>;
     isLoading: boolean;
     detailsLoadingId?: number | null;
+    currentPage?: number;
+    totalPages?: number;
+    totalCount?: number;
+    canGoPrev?: boolean;
+    canGoNext?: boolean;
     statusOptions: ReadonlyArray<AppointmentStatus | AppointmentStatusOption>;
     statusBadgeClass: (status: AppointmentStatus) => string;
     visitTypeOptions?: ReadonlyArray<string>;
   }>(),
   {
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    canGoPrev: false,
+    canGoNext: false,
     visitTypeOptions: () => [],
   },
 );
@@ -741,10 +751,38 @@ const emit = defineEmits<{
     payload: DataTableCellEditCompleteEvent<Appointment>,
   ): void;
   (event: "view-details", payload: Appointment): void;
+  (event: "prev-page"): void;
+  (event: "next-page"): void;
 }>();
 </script>
 <template>
   <div class="cc-card">
+    <div class="cc-row cc-row-between cc-row-wrap cc-stack-sm" style="margin-bottom: 0.875rem;">
+      <div class="cc-help-text">
+        Total: {{ props.totalCount }}
+      </div>
+      <div class="cc-row cc-stack-sm">
+        <div class="cc-help-text">
+          Page {{ props.currentPage }} of {{ props.totalPages }}
+        </div>
+        <button
+          type="button"
+          class="cc-btn cc-btn-outline cc-btn-sm"
+          :disabled="!props.canGoPrev"
+          @click="emit('prev-page')"
+        >
+          Prev
+        </button>
+        <button
+          type="button"
+          class="cc-btn cc-btn-outline cc-btn-sm"
+          :disabled="!props.canGoNext"
+          @click="emit('next-page')"
+        >
+          Next
+        </button>
+      </div>
+    </div>
     <DataTable :value="displayAppointments" dataKey="id" :editMode="editMode" @cell-edit-init="handleCellEditInit"
       @cell-edit-cancel="handleCellEditCancel" @cell-edit-complete="handleCellEditComplete" :pt="dataTablePt">
       <template #empty>

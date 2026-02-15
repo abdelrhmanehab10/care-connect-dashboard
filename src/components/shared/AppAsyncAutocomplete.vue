@@ -5,7 +5,7 @@ import type {
   AutoCompleteProps,
   AutoCompleteOptionSelectEvent,
 } from "primevue/autocomplete";
-import { computed } from "vue";
+import { computed, onBeforeUnmount } from "vue";
 import { useAsyncAutocomplete } from "../../composables/useAsyncAutocomplete";
 import { autoCompletePt as defaultAutoCompletePt } from "../../ui/primevuePt";
 
@@ -73,11 +73,63 @@ const { suggestions, isLoading, search } = useAsyncAutocomplete<TOption>({
 
 const resolvedPt = computed(() => props.pt ?? defaultAutoCompletePt);
 
+const getOptionLabel = (option: unknown) => {
+  if (option === null || option === undefined) {
+    return "";
+  }
+  if (typeof props.optionLabel === "function") {
+    return String(props.optionLabel(option as TOption) ?? "").trim();
+  }
+  if (typeof props.optionLabel === "string" && typeof option === "object") {
+    const value = (option as Record<string, unknown>)[props.optionLabel];
+    return String(value ?? "").trim();
+  }
+  return String(option).trim();
+};
+
 const handleComplete = (event: AutoCompleteCompleteEvent) => {
   search(event.query ?? "");
 };
 
+let suppressTypedModelAfterSelect = false;
+let suppressResetTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSelectedOption: TOption | null = null;
+const armTypedModelSuppression = () => {
+  suppressTypedModelAfterSelect = true;
+  if (suppressResetTimer) {
+    clearTimeout(suppressResetTimer);
+  }
+  suppressResetTimer = setTimeout(() => {
+    suppressTypedModelAfterSelect = false;
+    suppressResetTimer = null;
+  }, 0);
+};
+
+onBeforeUnmount(() => {
+  if (suppressResetTimer) {
+    clearTimeout(suppressResetTimer);
+    suppressResetTimer = null;
+  }
+});
+
 const handleModelUpdate = (value: TValue) => {
+  if (props.forceSelection && typeof value === "string") {
+    const next = value.trim();
+    if (next) {
+      const selectedLabel = getOptionLabel(lastSelectedOption);
+      const currentLabel = getOptionLabel(props.modelValue);
+      if (next === selectedLabel || next === currentLabel) {
+        return;
+      }
+    }
+  }
+  if (
+    suppressTypedModelAfterSelect &&
+    props.forceSelection &&
+    typeof value === "string"
+  ) {
+    return;
+  }
   emit("update:modelValue", value);
 };
 
@@ -88,6 +140,9 @@ const handleOptionSelect = (event: AutoCompleteOptionSelectEvent) => {
   queueMicrotask(() => {
     optionSelectEmitLocked = false;
   });
+  lastSelectedOption = event.value as TOption;
+  armTypedModelSuppression();
+  emit("update:modelValue", event.value as TValue);
   emit("option-select", event as TypedOptionSelectEvent<TOption>);
 };
 </script>
