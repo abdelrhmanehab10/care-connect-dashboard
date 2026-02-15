@@ -2404,7 +2404,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
 
                   <!-- DELETE only (right side) -->
                   <div class="cc-row cc-row-end">
-                    <button type="button" class="btn btn-danger btn-sm cc-icon-btn"
+                    <button type="button" class="cc-btn cc-btn-danger cc-btn-square"
                       :disabled="socialWorkerRecurrenceRows.length === 1"
                       @click="removeEmployeeRecurrenceRow(socialWorkerRecurrenceRows, row.id)" aria-label="Remove row">
                       ×
@@ -2413,7 +2413,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                 </div>
 
                 <!-- ADD button full width تحت -->
-                <button type="button" class="btn btn-info w-100 mt-2"
+                <button type="button" class="plus-btn cc-btn-add-row"
                   :disabled="!canAddEmployeeRecurrenceRow(socialWorkerRecurrenceRows)"
                   @click="addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)">
                   +
