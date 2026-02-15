@@ -18,6 +18,7 @@ import { fetchPatientAutocomplete } from "../services/patients";
 import { fetchEmployeeOptionsByTitle } from "../services/employees";
 import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
 import {
+  formatStatusLabel,
   getStatusLevel as getBaseStatusLevel,
   isFinalStatus as isBaseFinalStatus,
   isStatusTransitionAllowed as isBaseStatusTransitionAllowed,
@@ -173,12 +174,6 @@ const blockEditIfMissing = (
     event.stopImmediatePropagation();
   }
 };
-const blockEditIfFinalStatus = (event: Event, status: unknown) => {
-  if (isFinalStatus(status)) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-};
 
 const normalizePatientId = (value: unknown): string | number => {
   if (typeof value === "number") {
@@ -222,11 +217,6 @@ const revertFieldAndClear = (
     applyFieldValue(data, field, value);
   }
   clearEditTracking(key);
-};
-
-const closeCellEditor = () => {
-  if (typeof document === "undefined") return;
-  document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 };
 
 const cloneSnapshotValue = (value: unknown): unknown => {
@@ -510,7 +500,7 @@ const baseStatusOptions = computed<NormalizedStatusOption[]>(() => {
 
     const key = String(option.key ?? option.value ?? "").trim();
     if (!key) continue;
-    const label = String(option.value ?? option.key ?? key);
+    const label = formatStatusLabel(option.value ?? option.key ?? key);
     const meta = fallbackStatusMeta(key);
     const level =
       typeof option.level === "number" && Number.isFinite(option.level)
@@ -545,18 +535,7 @@ const getStatusDisplayLabel = (value: unknown) => {
   if (optionLabel) {
     return optionLabel;
   }
-
-  const raw = String(value ?? "").trim();
-  if (!raw) {
-    return "-";
-  }
-
-  return raw
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return formatStatusLabel(value);
 };
 
 const buildFallbackStatusOption = (
@@ -567,7 +546,7 @@ const buildFallbackStatusOption = (
   const meta = fallbackStatusMeta(key);
   return {
     key,
-    label: key,
+    label: formatStatusLabel(key),
     level: meta.level,
     isFinal: meta.isFinal,
   };
@@ -643,11 +622,11 @@ const blockCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   const originalEvent = event.originalEvent as Event | undefined;
   originalEvent?.preventDefault?.();
   originalEvent?.stopPropagation?.();
-  setTimeout(closeCellEditor, 0);
+  originalEvent?.stopImmediatePropagation?.();
 };
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
-  if (isStatusLocked(event.data)) {
+  if (event.field === "status" && isStatusLocked(event.data)) {
     blockCellEditInit(event);
     return;
   }
@@ -926,8 +905,7 @@ const emit = defineEmits<{
       <Column field="status" header="Status">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
-          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)"
-            @click="blockEditIfFinalStatus($event, data.status)">
+          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)">
             {{ getStatusDisplayLabel(data.status) }}
           </span>
         </template>
