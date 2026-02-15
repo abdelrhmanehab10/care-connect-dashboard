@@ -40,22 +40,26 @@ export const normalizeDateString = (value: string | null | undefined) => {
   }
 
   if (isIsoDateString(trimmed)) {
-    return trimmed;
+    const parsed = parseLocalDateOnly(trimmed);
+    return parsed ? toIsoDate(parsed) : "";
   }
 
   const normalizedSeparators = trimmed.replace(/\//g, "-");
   if (isIsoDateString(normalizedSeparators)) {
-    return normalizedSeparators;
+    const parsed = parseLocalDateOnly(normalizedSeparators);
+    return parsed ? toIsoDate(parsed) : "";
   }
 
   const splitByT = normalizedSeparators.split("T")[0] ?? "";
   if (isIsoDateString(splitByT)) {
-    return splitByT;
+    const parsed = parseLocalDateOnly(splitByT);
+    return parsed ? toIsoDate(parsed) : "";
   }
 
   const splitBySpace = normalizedSeparators.split(" ")[0] ?? "";
   if (isIsoDateString(splitBySpace)) {
-    return splitBySpace;
+    const parsed = parseLocalDateOnly(splitBySpace);
+    return parsed ? toIsoDate(parsed) : "";
   }
 
   const monthDayYearMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
@@ -63,7 +67,12 @@ export const normalizeDateString = (value: string | null | undefined) => {
     const month = monthDayYearMatch[1]?.padStart(2, "0") ?? "";
     const day = monthDayYearMatch[2]?.padStart(2, "0") ?? "";
     const year = monthDayYearMatch[3] ?? "";
-    return year && month && day ? `${year}-${month}-${day}` : "";
+    if (!year || !month || !day) {
+      return "";
+    }
+    const iso = `${year}-${month}-${day}`;
+    const parsed = parseLocalDateOnly(iso);
+    return parsed ? toIsoDate(parsed) : "";
   }
 
   const parsed = new Date(trimmed);
