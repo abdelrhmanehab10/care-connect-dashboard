@@ -242,10 +242,16 @@ const getNextWeekday = (day: Weekday): Weekday => {
     getDefaultWeekday()
   );
 };
-const weekdayToApiDay = (day: Weekday) => {
-  const index = weekdayOptions.value.indexOf(day);
-  return String(index >= 0 ? index : 0);
+const weekdayToApiDayMap: Record<Weekday, string> = {
+  Sunday: "0",
+  Monday: "1",
+  Tuesday: "2",
+  Wednesday: "3",
+  Thursday: "4",
+  Friday: "5",
+  Saturday: "6",
 };
+const weekdayToApiDay = (day: Weekday) => weekdayToApiDayMap[day] ?? "0";
 let recurrenceRowId = 1;
 let employeeRecurrenceRowId = 1;
 
