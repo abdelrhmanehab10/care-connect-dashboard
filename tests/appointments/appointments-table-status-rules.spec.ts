@@ -107,25 +107,52 @@ describe("AppointmentsTable status rules", () => {
     expect((select.element as HTMLSelectElement).disabled).toBe(true);
   });
 
-  it("blocks editing any field when status is final", () => {
+  it("blocks editing status field when status is final", () => {
     const appointment = makeAppointment("canceled");
     const wrapper = mountTable(appointment);
     const table = wrapper.findComponent(DataTableStub);
     const preventDefault = vi.fn();
     const stopPropagation = vi.fn();
+    const stopImmediatePropagation = vi.fn();
 
     table.vm.$emit("cell-edit-init", {
       originalEvent: {
         preventDefault,
         stopPropagation,
+        stopImmediatePropagation,
+      },
+      data: appointment,
+      field: "status",
+      index: 0,
+    });
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(stopImmediatePropagation).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not block non-status fields when status is final", () => {
+    const appointment = makeAppointment("canceled");
+    const wrapper = mountTable(appointment);
+    const table = wrapper.findComponent(DataTableStub);
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    const stopImmediatePropagation = vi.fn();
+
+    table.vm.$emit("cell-edit-init", {
+      originalEvent: {
+        preventDefault,
+        stopPropagation,
+        stopImmediatePropagation,
       },
       data: appointment,
       field: "date",
       index: 0,
     });
 
-    expect(preventDefault).toHaveBeenCalledTimes(1);
-    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(stopPropagation).not.toHaveBeenCalled();
+    expect(stopImmediatePropagation).not.toHaveBeenCalled();
   });
 
   it("limits level-2 statuses to final options", () => {
