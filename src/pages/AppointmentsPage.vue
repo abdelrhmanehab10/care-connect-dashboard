@@ -830,6 +830,7 @@ onMounted(() => {
       :doctor-options="doctorOptions"
       :social-worker-options="socialWorkerOptions"
       :visit-type-options="visitTypeOptions"
+      :visit-types="visitTypes"
       :weekday-options="weekdayOptions"
       @save="handleSaveAppointment"
     />

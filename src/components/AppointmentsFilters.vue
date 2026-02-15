@@ -13,7 +13,6 @@ import {
   fetchEmployeeOptionsByTitle,
   type EmployeeOption,
 } from "../services/employees";
-import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { useAppointmentStatusesQuery } from "../composables/useAppointmentStatusesQuery";
 import type { AppointmentStatusOption } from "../services/appointments";
@@ -59,8 +58,6 @@ const isEmployeesLoading = ref(false);
 const patientInput = ref<PatientOption | string | null>(null);
 const employeeInput = ref<EmployeeOption | null>(null);
 const filteredVisitTypes = ref<string[]>([]);
-const fetchedVisitTypes = ref<VisitType[]>([]);
-const isVisitTypesLoading = ref(false);
 const visitTypeInput = ref<string | null>(null);
 type StatusOptionView = AppointmentStatusOption & { displayLabel: string };
 
@@ -91,9 +88,7 @@ const isCalendarView = computed(() => Boolean(props.isCalendarView));
 const employeePlaceholder = computed(() =>
   isEmployeesLoading.value ? "Loading employees..." : "Search nurse or doctor",
 );
-const visitTypePlaceholder = computed(() =>
-  isVisitTypesLoading.value ? "Loading visit types..." : "Select visit type",
-);
+const visitTypePlaceholder = computed(() => "Select visit type");
 const statePlaceholder = computed(() =>
   isStatesBusy.value ? "Loading states..." : "Select Status",
 );
@@ -159,10 +154,7 @@ const handleStateSelect = (event: AutoCompleteOptionSelectEvent) => {
 };
 
 const searchVisitTypes = (event: AutoCompleteCompleteEvent) => {
-  const source =
-    fetchedVisitTypes.value.length > 0
-      ? fetchedVisitTypes.value.map((type) => type.name)
-      : props.visitTypeOptions;
+  const source = props.visitTypeOptions;
   filteredVisitTypes.value = filterByQuery(source, event.query ?? "");
 };
 
@@ -293,23 +285,6 @@ const loadEmployees = async () => {
   }
 };
 
-const loadVisitTypes = async () => {
-  isVisitTypesLoading.value = true;
-  try {
-    fetchedVisitTypes.value = await fetchVisitTypes();
-    if (filteredVisitTypes.value.length === 0) {
-      filteredVisitTypes.value = fetchedVisitTypes.value.map(
-        (type) => type.name,
-      );
-    }
-  } catch (error) {
-    console.error("Failed to load visit types.", error);
-    fetchedVisitTypes.value = [];
-  } finally {
-    isVisitTypesLoading.value = false;
-  }
-};
-
 const setDefaultTodayRange = () => {
   if (startDate.value || endDate.value) return;
   const now = new Date();
@@ -394,7 +369,6 @@ onMounted(() => {
     setDefaultTodayRange();
   }
   void loadEmployees();
-  void loadVisitTypes();
 });
 
 watch(isCalendarView, (value) => {
@@ -402,6 +376,16 @@ watch(isCalendarView, (value) => {
     setDefaultTodayRange();
   }
 });
+
+watch(
+  () => props.visitTypeOptions,
+  (options) => {
+    if (filteredVisitTypes.value.length === 0) {
+      filteredVisitTypes.value = [...options];
+    }
+  },
+  { immediate: true },
+);
 
 syncNullableFilterMirror(employeeFilter, employeeInput);
 
