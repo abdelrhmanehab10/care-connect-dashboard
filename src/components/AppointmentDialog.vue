@@ -1040,53 +1040,53 @@ const resolveAppointmentPatient = (
       name: name || String(id ?? ""),
       address: patientAddress
         ? {
-            id: patientAddress.id ?? null,
-            address: patientAddress.address ?? null,
-            lat: patientAddress.lat ?? null,
-            lng: patientAddress.lng ?? null,
-          }
+          id: patientAddress.id ?? null,
+          address: patientAddress.address ?? null,
+          lat: patientAddress.lat ?? null,
+          lng: patientAddress.lng ?? null,
+        }
         : patientAddress === null
           ? null
           : undefined,
       primary_doctor: patient?.primary_doctor
         ? {
-            id: patient.primary_doctor.id ?? null,
-            name: String(patient.primary_doctor.name ?? "").trim() || null,
-          }
+          id: patient.primary_doctor.id ?? null,
+          name: String(patient.primary_doctor.name ?? "").trim() || null,
+        }
         : patient?.primary_doctor === null
           ? null
           : undefined,
       primary_nurse: patient?.primary_nurse
         ? {
-            id: patient.primary_nurse.id ?? null,
-            name: String(patient.primary_nurse.name ?? "").trim() || null,
-          }
+          id: patient.primary_nurse.id ?? null,
+          name: String(patient.primary_nurse.name ?? "").trim() || null,
+        }
         : patient?.primary_nurse === null
           ? null
           : undefined,
       primary_leader_nurse: patient?.primary_leader_nurse
         ? {
-            id: patient.primary_leader_nurse.id ?? null,
-            name:
-              String(patient.primary_leader_nurse.name ?? "").trim() || null,
-          }
+          id: patient.primary_leader_nurse.id ?? null,
+          name:
+            String(patient.primary_leader_nurse.name ?? "").trim() || null,
+        }
         : patient?.primary_leader_nurse === null
           ? null
           : undefined,
       primary_social_worker: patient?.primary_social_worker
         ? {
-            id: patient.primary_social_worker.id ?? null,
-            name:
-              String(patient.primary_social_worker.name ?? "").trim() || null,
-          }
+          id: patient.primary_social_worker.id ?? null,
+          name:
+            String(patient.primary_social_worker.name ?? "").trim() || null,
+        }
         : patient?.primary_social_worker === null
           ? null
           : undefined,
       primary_driver: patient?.primary_driver
         ? {
-            id: patient.primary_driver.id ?? null,
-            name: String(patient.primary_driver.name ?? "").trim() || null,
-          }
+          id: patient.primary_driver.id ?? null,
+          name: String(patient.primary_driver.name ?? "").trim() || null,
+        }
         : patient?.primary_driver === null
           ? null
           : undefined,
@@ -1875,9 +1875,9 @@ const addRecurrenceRow = () => {
     durationHours === null
       ? new Date(fallbackStart.getTime())
       : new Date(
-          fallbackStart.getTime() +
-            durationHoursToMs(durationHours),
-        );
+        fallbackStart.getTime() +
+        durationHoursToMs(durationHours),
+      );
 
   recurrenceRows.value.push(createRecurrenceRow({
     day: previousRow ? getNextWeekday(previousRow.day) : getDefaultWeekday(),
@@ -2086,12 +2086,12 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </select>
                 </div>
 
-                <div >
+                <div>
                   <label :for="`start-${row.id}`" class="form-label">Start Time</label>
                   <input type="time" class="form-control" :id="`start-${row.id}`" v-model="row.startTime" />
                 </div>
 
-                <div >
+                <div>
                   <label :for="`end-${row.id}`" class="form-label">End Time</label>
                   <input type="time" class="form-control" :id="`end-${row.id}`" v-model="row.endTime" />
                 </div>
@@ -2156,17 +2156,18 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
               </div>
               <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
                 <div>
-                  <label for="nurseStartTime" class="cc-label">Start time</label>
-                  <DatePicker v-model="nurseSchedule.startTime" inputId="nurseStartTime" timeOnly hourFormat="24"
-                    appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                  <label for="nurseStartTime" class="form-label">Start time</label>
+                  <input type="time" id="nurseStartTime" class="form-control" v-model="nurseSchedule.startTime" />
                 </div>
+
                 <div>
-                  <label for="nurseEndTime" class="cc-label">End time</label>
-                  <DatePicker v-model="nurseSchedule.endTime" inputId="nurseEndTime" timeOnly hourFormat="24"
-                    appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                  <label for="nurseEndTime" class="form-label">End time</label>
+                  <input type="time" id="nurseEndTime" class="form-control" v-model="nurseSchedule.endTime" />
                 </div>
+
               </div>
               <div v-else-if="nurseScheduleType === 'custom'" class="cc-stack cc-stack-sm">
+                <!-- ROWS -->
                 <div v-for="row in nurseRecurrenceRows" :key="row.id" class="cc-grid cc-grid-4 cc-grid-align-end">
                   <div>
                     <label :for="`nurse-day-${row.id}`" class="cc-label">Day</label>
@@ -2176,32 +2177,40 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                       </option>
                     </select>
                   </div>
+
+                  <!-- Start Time -->
                   <div>
-                    <label :for="`nurse-start-${row.id}`" class="cc-label">
+                    <label :for="`nurse-start-${row.id}`" class="form-label">
                       Start time
                     </label>
-                    <DatePicker v-model="row.startTime" :inputId="`nurse-start-${row.id}`" timeOnly hourFormat="24"
-                      appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                    <input type="time" class="form-control" :id="`nurse-start-${row.id}`" v-model="row.startTime" />
                   </div>
+
+                  <!-- End Time -->
                   <div>
-                    <label :for="`nurse-end-${row.id}`" class="cc-label">End time</label>
-                    <DatePicker v-model="row.endTime" :inputId="`nurse-end-${row.id}`" timeOnly hourFormat="24"
-                      appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                    <label :for="`nurse-end-${row.id}`" class="form-label">
+                      End time
+                    </label>
+                    <input type="time" class="form-control" :id="`nurse-end-${row.id}`" v-model="row.endTime" />
                   </div>
-                  <div class="cc-row cc-row-stretch">
-                    <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                      :disabled="!canAddEmployeeRecurrenceRow(nurseRecurrenceRows)"
-                      @click="addEmployeeRecurrenceRow(nurseRecurrenceRows)">
-                      +
-                    </button>
-                    <button type="button" class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                      :disabled="nurseRecurrenceRows.length === 1" @click="
-                        removeEmployeeRecurrenceRow(nurseRecurrenceRows, row.id)
-                        ">
-                      -
+
+                  <!-- DELETE button only -->
+                  <div class="cc-row-end">
+                    <button type="button" class="cc-btn cc-btn-danger cc-btn-square"
+                      :disabled="nurseRecurrenceRows.length === 1"
+                      @click="removeEmployeeRecurrenceRow(nurseRecurrenceRows, row.id)">
+                      ×
                     </button>
                   </div>
                 </div>
+
+                <!-- ADD button تحت -->
+                <button type="button" class="plus-btn cc-btn-add-row"
+                  :disabled="!canAddEmployeeRecurrenceRow(nurseRecurrenceRows)"
+                  @click="addEmployeeRecurrenceRow(nurseRecurrenceRows)">
+                  +
+                </button>
+
               </div>
               <div v-if="hasAttemptedSubmit && validationErrors.nurseTimes" class="cc-help-text cc-help-text--error">
                 {{ validationErrors.nurseTimes }}
@@ -2246,18 +2255,20 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
               </div>
               <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
                 <div>
-                  <label for="doctorStartTime" class="cc-label">Start time</label>
-                  <DatePicker v-model="doctorSchedule.startTime" inputId="doctorStartTime" timeOnly hourFormat="24"
-                    appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                  <label for="doctorStartTime" class="form-label">Start time</label>
+                  <input type="time" id="doctorStartTime" class="form-control" v-model="doctorSchedule.startTime" />
                 </div>
+
                 <div>
-                  <label for="doctorEndTime" class="cc-label">End time</label>
-                  <DatePicker v-model="doctorSchedule.endTime" inputId="doctorEndTime" timeOnly hourFormat="24"
-                    appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                  <label for="doctorEndTime" class="form-label">End time</label>
+                  <input type="time" id="doctorEndTime" class="form-control" v-model="doctorSchedule.endTime" />
                 </div>
+
               </div>
               <div v-else-if="doctorScheduleType === 'custom'" class="cc-stack cc-stack-sm">
+                <!-- ROWS -->
                 <div v-for="row in doctorRecurrenceRows" :key="row.id" class="cc-grid cc-grid-4 cc-grid-align-end">
+                  <!-- Day -->
                   <div>
                     <label :for="`doctor-day-${row.id}`" class="cc-label">Day</label>
                     <select :id="`doctor-day-${row.id}`" v-model="row.day" class="cc-select" disabled>
@@ -2266,35 +2277,40 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                       </option>
                     </select>
                   </div>
+
+                  <!-- Start Time -->
                   <div>
-                    <label :for="`doctor-start-${row.id}`" class="cc-label">
+                    <label :for="`doctor-start-${row.id}`" class="form-label">
                       Start time
                     </label>
-                    <DatePicker v-model="row.startTime" :inputId="`doctor-start-${row.id}`" timeOnly hourFormat="24"
-                      appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                    <input type="time" class="form-control" :id="`doctor-start-${row.id}`" v-model="row.startTime" />
                   </div>
+
+                  <!-- End Time -->
                   <div>
-                    <label :for="`doctor-end-${row.id}`" class="cc-label">End time</label>
-                    <DatePicker v-model="row.endTime" :inputId="`doctor-end-${row.id}`" timeOnly hourFormat="24"
-                      appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                    <label :for="`doctor-end-${row.id}`" class="form-label">
+                      End time
+                    </label>
+                    <input type="time" class="form-control" :id="`doctor-end-${row.id}`" v-model="row.endTime" />
                   </div>
-                  <div class="cc-row cc-row-stretch">
-                    <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                      :disabled="!canAddEmployeeRecurrenceRow(doctorRecurrenceRows)"
-                      @click="addEmployeeRecurrenceRow(doctorRecurrenceRows)">
-                      +
-                    </button>
-                    <button type="button" class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                      :disabled="doctorRecurrenceRows.length === 1" @click="
-                        removeEmployeeRecurrenceRow(
-                          doctorRecurrenceRows,
-                          row.id,
-                        )
-                        ">
-                      -
+
+                  <!-- Delete button -->
+                  <div class="cc-row-end">
+                    <button type="button" class="cc-btn cc-btn-danger cc-btn-square"
+                      :disabled="doctorRecurrenceRows.length === 1"
+                      @click="removeEmployeeRecurrenceRow(doctorRecurrenceRows, row.id)">
+                      ×
                     </button>
                   </div>
                 </div>
+
+                <!-- Add button تحت -->
+                <button type="button" class="plus-btn cc-btn-add-row"
+                  :disabled="!canAddEmployeeRecurrenceRow(doctorRecurrenceRows)"
+                  @click="addEmployeeRecurrenceRow(doctorRecurrenceRows)">
+                  +
+                </button>
+
               </div>
               <div v-if="hasAttemptedSubmit && validationErrors.doctorTimes" class="cc-help-text cc-help-text--error">
                 {{ validationErrors.doctorTimes }}
@@ -2346,19 +2362,25 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
               </div>
               <div v-if="!schedule.isRecurring" class="cc-grid cc-grid-2">
                 <div>
-                  <label for="socialWorkerStartTime" class="cc-label">
+                  <label for="socialWorkerStartTime" class="form-label">
                     Start time
                   </label>
-                  <DatePicker v-model="socialWorkerSchedule.startTime" inputId="socialWorkerStartTime" timeOnly
-                    hourFormat="24" appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                  <input type="time" id="socialWorkerStartTime" class="form-control"
+                    v-model="socialWorkerSchedule.startTime" />
                 </div>
+
                 <div>
-                  <label for="socialWorkerEndTime" class="cc-label">End time</label>
-                  <DatePicker v-model="socialWorkerSchedule.endTime" inputId="socialWorkerEndTime" timeOnly
-                    hourFormat="24" appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                  <label for="socialWorkerEndTime" class="form-label">
+                    End time
+                  </label>
+                  <input type="time" id="socialWorkerEndTime" class="form-control"
+                    v-model="socialWorkerSchedule.endTime" />
                 </div>
+
               </div>
               <div v-else-if="socialWorkerScheduleType === 'custom'" class="cc-stack cc-stack-sm">
+
+                <!-- ROWS -->
                 <div v-for="row in socialWorkerRecurrenceRows" :key="row.id"
                   class="cc-grid cc-grid-4 cc-grid-align-end">
                   <div>
@@ -2369,37 +2391,36 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                       </option>
                     </select>
                   </div>
+
                   <div>
-                    <label :for="`social-start-${row.id}`" class="cc-label">
-                      Start time
-                    </label>
-                    <DatePicker v-model="row.startTime" :inputId="`social-start-${row.id}`" timeOnly hourFormat="24"
-                      appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                    <label :for="`social-start-${row.id}`" class="form-label">Start time</label>
+                    <input type="time" class="form-control" :id="`social-start-${row.id}`" v-model="row.startTime" />
                   </div>
+
                   <div>
-                    <label :for="`social-end-${row.id}`" class="cc-label">End time</label>
-                    <DatePicker v-model="row.endTime" :inputId="`social-end-${row.id}`" timeOnly hourFormat="24"
-                      appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                    <label :for="`social-end-${row.id}`" class="form-label">End time</label>
+                    <input type="time" class="form-control" :id="`social-end-${row.id}`" v-model="row.endTime" />
                   </div>
-                  <div class="cc-row cc-row-stretch">
-                    <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
-                      :disabled="!canAddEmployeeRecurrenceRow(socialWorkerRecurrenceRows)" @click="
-                      addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)
-                      ">
-                      +
-                    </button>
-                    <button type="button" class="cc-btn cc-btn-outline-danger cc-btn-sm cc-btn-fill"
-                      :disabled="socialWorkerRecurrenceRows.length === 1" @click="
-                        removeEmployeeRecurrenceRow(
-                          socialWorkerRecurrenceRows,
-                          row.id,
-                        )
-                        ">
-                      -
+
+                  <!-- DELETE only (right side) -->
+                  <div class="cc-row cc-row-end">
+                    <button type="button" class="btn btn-danger btn-sm cc-icon-btn"
+                      :disabled="socialWorkerRecurrenceRows.length === 1"
+                      @click="removeEmployeeRecurrenceRow(socialWorkerRecurrenceRows, row.id)" aria-label="Remove row">
+                      ×
                     </button>
                   </div>
                 </div>
+
+                <!-- ADD button full width تحت -->
+                <button type="button" class="btn btn-info w-100 mt-2"
+                  :disabled="!canAddEmployeeRecurrenceRow(socialWorkerRecurrenceRows)"
+                  @click="addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)">
+                  +
+                </button>
+
               </div>
+
               <div v-if="hasAttemptedSubmit && validationErrors.socialWorkerTimes"
                 class="cc-help-text cc-help-text--error">
                 {{ validationErrors.socialWorkerTimes }}
@@ -2531,11 +2552,6 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
       </button>
     </template>
   </Dialog>
-  <AppointmentEditReasonDialog
-    v-model:visible="reasonDialogVisible"
-    v-model:reasonText="reasonText"
-    @confirm="confirmReasonAndSave"
-    @cancel="cancelReasonModal"
-    @hide="cancelReasonModal"
-  />
+  <AppointmentEditReasonDialog v-model:visible="reasonDialogVisible" v-model:reasonText="reasonText"
+    @confirm="confirmReasonAndSave" @cancel="cancelReasonModal" @hide="cancelReasonModal" />
 </template>
