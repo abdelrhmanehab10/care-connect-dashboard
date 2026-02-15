@@ -841,9 +841,3 @@ onMounted(() => {
     />
   </div>
 </template>
-
-<style scoped>
-:deep(.cc-tab-link-gap) {
-  margin-inline-start: 0.75rem;
-}
-</style>

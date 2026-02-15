@@ -1209,18 +1209,3 @@ const emit = defineEmits<{
     />
   </div>
 </template>
-
-<style scoped>
-.cc-cell-block {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
-  box-sizing: border-box;
-}
-
-.cc-staff-edit {
-  padding: var(--p-datatable-body-cell-padding, 0.75rem 0.75rem);
-  box-sizing: border-box;
-}
-</style>

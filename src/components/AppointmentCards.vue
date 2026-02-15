@@ -140,10 +140,3 @@ const handleCardClick = (card: Card) => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.stat-card.is-disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-</style>

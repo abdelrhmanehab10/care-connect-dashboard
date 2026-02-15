@@ -1569,17 +1569,16 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </select>
                 </div>
 
-                <div>
-                  <label :for="`start-${row.id}`" class="cc-label">Start Time</label>
-                  <DatePicker v-model="row.startTime" :inputId="`start-${row.id}`" timeOnly hourFormat="24"
-                    appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                <div >
+                  <label :for="`start-${row.id}`" class="form-label">Start Time</label>
+                  <input type="time" class="form-control" :id="`start-${row.id}`" v-model="row.startTime" />
                 </div>
 
-                <div>
-                  <label :for="`end-${row.id}`" class="cc-label">End Time</label>
-                  <DatePicker v-model="row.endTime" :inputId="`end-${row.id}`" timeOnly hourFormat="24" appendTo="body"
-                    panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
+                <div >
+                  <label :for="`end-${row.id}`" class="form-label">End Time</label>
+                  <input type="time" class="form-control" :id="`end-${row.id}`" v-model="row.endTime" />
                 </div>
+
 
                 <!-- Delete button on the right -->
                 <div class="cc-delete-col">
@@ -1633,8 +1632,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                 <label for="nurseName" class="cc-label">Nurse name</label>
                 <AppAsyncAutocomplete v-model="nurseName" inputId="nurseName" appendTo="body"
                   panelClass="cc-autocomplete-panel" :pt="autoCompletePt" placeholder="Search nurse"
-                  :fetcher="fetchNurseSuggestions"
-                  @error="(error) => console.error('Failed to load nurses.', error)" />
+                  :fetcher="fetchNurseSuggestions" @error="(error) => console.error('Failed to load nurses.', error)" />
                 <div v-if="hasAttemptedSubmit && validationErrors.nurse" class="cc-help-text cc-help-text--error">
                   {{ validationErrors.nurse }}
                 </div>

@@ -3,6 +3,7 @@ import { computed } from "vue";
 import Dialog from "primevue/dialog";
 import Textarea from "primevue/textarea";
 import { dialogPt } from "../ui/primevuePt";
+import type Color from "vuetify/directives/color";
 
 const props = defineProps<{
   visible: boolean;
@@ -32,7 +33,7 @@ const reasonTextModel = computed({
   <Dialog
     v-model:visible="visibleModel"
     modal
-    header="Reason required"
+    header="Reason Required"
     :draggable="false"
     :closable="false"
     :closeOnEscape="false"
@@ -40,26 +41,23 @@ const reasonTextModel = computed({
     :style="{ width: '32rem' }"
     :pt="dialogPt"
     @hide="$emit('hide')"
+    class="reason-title"
   >
     <div class="cc-reason-content">
       <label for="appointments-edit-reason" class="cc-label">
-        Please enter the reason for this change
+        Please Enter The Reason 
       </label>
       <Textarea
         id="appointments-edit-reason"
         v-model="reasonTextModel"
-        rows="4"
+        rows="2"
         autoResize
         class="cc-textarea"
-        placeholder="e.g. Patient requested reschedule..."
       />
-      <small v-if="!reasonTextModel.trim()" class="cc-help-text cc-help-text--error">
-        Reason is required.
-      </small>
     </div>
 
     <template #footer>
-      <button type="button" class="cc-btn cc-btn-outline" @click="$emit('cancel')">
+      <button type="button" class="cc-btn cc-btn-outline bg-danger text-light" @click="$emit('cancel')">
         Cancel
       </button>
       <button
@@ -73,11 +71,3 @@ const reasonTextModel = computed({
     </template>
   </Dialog>
 </template>
-
-<style scoped>
-.cc-reason-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-</style>
