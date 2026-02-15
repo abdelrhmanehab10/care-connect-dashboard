@@ -78,7 +78,7 @@ const handleConfirm = () => {
       <button type="button" class="cc-btn cc-btn-danger" :disabled="isSubmitting" @click="handleCancel">
         {{ cancelText }}
       </button>
-      <button type="button" class="cc-btn save text-light" :disabled="isConfirmDisabled" @click="handleConfirm">
+      <button type="button" class="cc-btn save text-light fw-bold" :disabled="isConfirmDisabled" @click="handleConfirm">
         <span>{{ confirmText }}</span>
       </button>
     </template>
