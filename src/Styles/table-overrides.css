@@ -1,0 +1,127 @@
+.cc-datatable {
+  border-radius: var(--cc-radius-sm);
+  overflow: hidden;
+}
+
+.cc-datatable td {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cc-datatable td[data-p-cell-editing="true"] {
+  background: rgba(243, 181, 69, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(229, 147, 13, 0.25);
+}
+
+.cc-datatable td[data-p-cell-editing="true"] .cc-cell-edit {
+  animation: cc-cell-edit-in 140ms ease-out;
+  will-change: opacity, transform;
+}
+
+@keyframes cc-cell-edit-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cc-cell-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.cc-cell-edit-fields {
+  width: 100%;
+}
+
+.cc-cell-edit-fields-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cc-cell-edit-fields-row .cc-input {
+  flex: 1 1 8rem;
+}
+
+.cc-cell-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.cc-cell-edit .cc-input-wrap,
+.cc-cell-edit .cc-input,
+.cc-cell-edit .cc-select,
+.cc-cell-edit .cc-textarea {
+  width: 100%;
+}
+
+.cc-cell-edit-enter-active,
+.cc-cell-edit-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.cc-cell-edit-enter-from,
+.cc-cell-edit-leave-to {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+
+.cc-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.cc-table-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  overflow: hidden;
+}
+
+.cc-table-card .cc-card {
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.cc-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--cc-border);
+  background: var(--cc-surface-muted);
+  flex-wrap: wrap;
+}
+
+.cc-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cc-table th,
+.cc-table td {
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--cc-border);
+}
+
+.cc-table-head th {
+  background: var(--cc-surface-muted);
+  font-weight: 600;
+  color: var(--cc-ink);
+}
+
+.cc-table-body tr:hover {
+  background: var(--cc-surface-muted);
+}

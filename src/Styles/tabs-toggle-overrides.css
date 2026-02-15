@@ -1,0 +1,111 @@
+.cc-tabs-wrap {
+  border-bottom: 1px solid var(--cc-border);
+  padding-bottom: 10px;
+}
+
+.cc-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cc-tab-link {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  color: var(--cc-muted);
+  background: transparent;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease;
+  text-decoration: none;
+}
+
+.cc-tab-link.is-active {
+  background: var(--cc-active);
+  color: var(--cc-surface);
+  border-color: var(--cc-border);
+  text-decoration: none;
+}
+
+.cc-tab-link:hover {
+  background: var(--cc-green-light);
+  color: var(--cc-active);
+}
+
+.cc-tab-link:focus-visible {
+  outline: none;
+  box-shadow: var(--cc-focus);
+}
+
+.cc-tab-inkbar {
+  display: none;
+}
+
+.cc-tab-content {
+  padding-top: 1rem;
+}
+
+.cc-toggle {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+}
+
+.cc-toggle-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.cc-toggle-slider {
+  width: 2.75rem;
+  height: 1.5rem;
+  background: #e6ebf2;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  position: relative;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  z-index: 1;
+}
+
+.cc-toggle-handle {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.cc-toggle[data-p-checked="true"] .cc-toggle-slider {
+  background: var(--cc-accent);
+  border-color: var(--cc-accent-strong);
+}
+
+.cc-toggle[data-p-checked="true"] .cc-toggle-handle {
+  transform: translateX(1.2rem);
+}
+
+.cc-toggle[data-p-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -7,18 +7,19 @@ type AsyncAutocompleteFetcher<T> = (
 
 type UseAsyncAutocompleteOptions<T> = {
   fetcher: AsyncAutocompleteFetcher<T>;
-  debounceMs?: number;
-  minChars?: number;
-  showCachedOnFocus?: boolean;
+  debounceMs?: number | (() => number | undefined);
+  minChars?: number | (() => number | undefined);
+  showCachedOnFocus?: boolean | (() => boolean | undefined);
   onError?: (error: unknown) => void;
 };
 
 export const useAsyncAutocomplete = <T>(
   options: UseAsyncAutocompleteOptions<T>,
 ) => {
-  const debounceMs = options.debounceMs ?? 300;
-  const minChars = options.minChars ?? 2;
-  const showCachedOnFocus = options.showCachedOnFocus ?? true;
+  const resolveOption = <V>(value: V | (() => V | undefined) | undefined) =>
+    typeof value === "function"
+      ? (value as () => V | undefined)()
+      : value;
 
   const suggestions = ref<T[]>([]);
   const isLoading = ref(false);
@@ -56,6 +57,9 @@ export const useAsyncAutocomplete = <T>(
 
   const search = (queryInput: string) => {
     const query = queryInput.trim();
+    const debounceMs = resolveOption(options.debounceMs) ?? 300;
+    const minChars = resolveOption(options.minChars) ?? 2;
+    const showCachedOnFocus = resolveOption(options.showCachedOnFocus) ?? true;
 
     stopTimer();
     error.value = null;

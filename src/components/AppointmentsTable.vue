@@ -16,9 +16,15 @@ import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { fetchEmployeeOptionsByTitle } from "../services/employees";
-
-const reasonDialogVisible = ref(false);
-const reasonText = ref("");
+import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
+import {
+  formatStatusLabel,
+  getStatusLevel as getBaseStatusLevel,
+  isFinalStatus as isBaseFinalStatus,
+  isStatusTransitionAllowed as isBaseStatusTransitionAllowed,
+  normalizeStatusKey,
+} from "../lib/statusTransitions";
+import { normalizeDateString, toIsoDate } from "../lib/dateUtils";
 
 type PendingSave = {
   data: Appointment;
@@ -31,8 +37,90 @@ type PendingSave = {
   wasCanceled?: boolean;
 };
 
-const pendingSave = ref<PendingSave | null>(null);
-const editReasons = new Map<string, string>();
+type EditTrackingState = {
+  drafts: Map<string, unknown>;
+  snapshots: Map<string, unknown>;
+  explicitSaveKeys: Set<string>;
+  reasons: Map<string, string>;
+};
+
+const createEditTrackingState = (): EditTrackingState => ({
+  drafts: new Map<string, unknown>(),
+  snapshots: new Map<string, unknown>(),
+  explicitSaveKeys: new Set<string>(),
+  reasons: new Map<string, string>(),
+});
+
+const editTracking = createEditTrackingState();
+const getSnapshot = (key: string) => editTracking.snapshots.get(key);
+const setSnapshot = (key: string, value: unknown) =>
+  editTracking.snapshots.set(key, value);
+const hasSnapshot = (key: string) => editTracking.snapshots.has(key);
+const clearSnapshot = (key: string) => editTracking.snapshots.delete(key);
+const getDraft = (key: string) => editTracking.drafts.get(key);
+const setDraft = (key: string, value: unknown) => editTracking.drafts.set(key, value);
+const clearDraft = (key: string) => editTracking.drafts.delete(key);
+const markExplicitSave = (key: string) => editTracking.explicitSaveKeys.add(key);
+const hasExplicitSave = (key: string) => editTracking.explicitSaveKeys.has(key);
+const clearExplicitSave = (key: string) => editTracking.explicitSaveKeys.delete(key);
+const setReason = (key: string, reason: string) => editTracking.reasons.set(key, reason);
+const consumeReason = (key: string) => {
+  const reason = editTracking.reasons.get(key) ?? "";
+  editTracking.reasons.delete(key);
+  return reason;
+};
+const clearEditTracking = (key: string) => {
+  editTracking.snapshots.delete(key);
+  editTracking.drafts.delete(key);
+  editTracking.explicitSaveKeys.delete(key);
+  editTracking.reasons.delete(key);
+};
+
+const reasonAction = useReasonRequiredAction<PendingSave>({
+  onConfirm: ({ action: pending, reason }) => {
+    const { key, saveCb, originalEvent } = pending;
+    setReason(key, reason);
+    markExplicitSave(key);
+
+    if (pending.completedEvent) {
+      handleCellEditComplete(pending.completedEvent);
+      return;
+    }
+
+    if (pending.wasCanceled) {
+      const previousValue = getSnapshot(key);
+      const draftValue = getDraft(key);
+      const currentValue =
+        draftValue !== undefined
+          ? draftValue
+          : getFieldValue(pending.data, pending.field);
+      const syntheticEvent = {
+        originalEvent,
+        data: pending.data,
+        newData: pending.data,
+        value: previousValue,
+        newValue: currentValue,
+        field: pending.field,
+        index: -1,
+      } as DataTableCellEditCompleteEvent<Appointment>;
+      handleCellEditComplete(syntheticEvent);
+      return;
+    }
+
+    saveCb(originalEvent);
+  },
+  onCancel: (pending) => {
+    if (!pending) return;
+    const previousValue = getSnapshot(pending.key);
+    if (previousValue !== undefined) {
+      applyFieldValue(pending.data, pending.field, previousValue);
+    }
+    clearEditTracking(pending.key);
+    pending.cancelCb(pending.originalEvent);
+  },
+});
+const { visible: reasonDialogVisible, reasonText } = reasonAction;
+const pendingSave = reasonAction.pendingAction;
 
 const openReasonBeforeSave = (
   data: Appointment,
@@ -42,70 +130,7 @@ const openReasonBeforeSave = (
   cancelCb: (e: Event) => void,
 ) => {
   const key = snapshotKey(data, field);
-  pendingSave.value = { data, field, key, saveCb, cancelCb, originalEvent: e };
-  reasonText.value = "";
-  reasonDialogVisible.value = true;
-};
-
-const confirmReasonAndSave = () => {
-  if (!pendingSave.value) return;
-
-  const reason = reasonText.value.trim();
-  if (!reason) return;
-
-  const pending = pendingSave.value;
-  const { key, saveCb, originalEvent } = pending;
-  editReasons.set(key, reason);
-  explicitSaveKeys.add(key);
-
-  reasonDialogVisible.value = false;
-  reasonText.value = "";
-  pendingSave.value = null;
-
-  if (pending.completedEvent) {
-    handleCellEditComplete(pending.completedEvent);
-    return;
-  }
-
-  if (pending.wasCanceled) {
-    const previousValue = editSnapshots.get(key);
-    const draftValue = editDrafts.get(key);
-    const currentValue =
-      draftValue !== undefined
-        ? draftValue
-        : getFieldValue(pending.data, pending.field);
-    const syntheticEvent = {
-      originalEvent,
-      data: pending.data,
-      newData: pending.data,
-      value: previousValue,
-      newValue: currentValue,
-      field: pending.field,
-      index: -1,
-    } as DataTableCellEditCompleteEvent<Appointment>;
-    handleCellEditComplete(syntheticEvent);
-    return;
-  }
-
-  saveCb(originalEvent);
-};
-
-const cancelReasonModal = () => {
-  const pending = pendingSave.value;
-  if (pending) {
-    const previousValue = editSnapshots.get(pending.key);
-    if (previousValue !== undefined) {
-      applyFieldValue(pending.data, pending.field, previousValue);
-    }
-    editSnapshots.delete(pending.key);
-    editDrafts.delete(pending.key);
-    explicitSaveKeys.delete(pending.key);
-    editReasons.delete(pending.key);
-    pending.cancelCb(pending.originalEvent);
-  }
-  reasonDialogVisible.value = false;
-  pendingSave.value = null;
-  reasonText.value = "";
+  reasonAction.open({ data, field, key, saveCb, cancelCb, originalEvent: e });
 };
 
 type StaffMember = Appointment["doctor"];
@@ -177,12 +202,6 @@ const blockEditIfMissing = (
     event.stopImmediatePropagation();
   }
 };
-const blockEditIfFinalStatus = (event: Event, status: unknown) => {
-  if (isFinalStatus(status)) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-};
 
 const normalizePatientId = (value: unknown): string | number => {
   if (typeof value === "number") {
@@ -207,13 +226,16 @@ const normalizeStaffId = (value: unknown): number => {
 };
 
 const snapshotKey = (data: Appointment, field: string) => `${data.id}:${field}`;
-const editDrafts = new Map<string, unknown>();
-const editSnapshots = new Map<string, unknown>();
-const explicitSaveKeys = new Set<string>();
-
-const closeCellEditor = () => {
-  if (typeof document === "undefined") return;
-  document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+const revertFieldAndClear = (
+  data: Appointment,
+  field: string,
+  value: unknown,
+  key: string,
+) => {
+  if (value !== undefined) {
+    applyFieldValue(data, field, value);
+  }
+  clearEditTracking(key);
 };
 
 const cloneSnapshotValue = (value: unknown): unknown => {
@@ -332,7 +354,7 @@ const shouldIgnoreStringDraft = (
   ) {
     return false;
   }
-  const draft = editDrafts.get(snapshotKey(data, field));
+  const draft = getDraft(snapshotKey(data, field));
   return isOptionValue(draft);
 };
 
@@ -340,7 +362,7 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
   if (shouldIgnoreStringDraft(field, value, data)) {
     return;
   }
-  editDrafts.set(snapshotKey(data, field), value);
+  setDraft(snapshotKey(data, field), value);
   applyFieldValue(data, field, value);
 };
 
@@ -374,11 +396,13 @@ const cloneAppointment = (appointment: Appointment): Appointment => ({
 
 const editableAppointments = ref<Appointment[]>([]);
 
+const syncEditableAppointments = (items: ReadonlyArray<Appointment>) => {
+  editableAppointments.value = items.map(cloneAppointment);
+};
+
 watch(
   () => props.appointments,
-  (items) => {
-    editableAppointments.value = items.map(cloneAppointment);
-  },
+  syncEditableAppointments,
   { immediate: true, deep: true },
 );
 
@@ -467,58 +491,15 @@ const formatTime = (value: string | null | undefined) => {
 };
 
 const getTodayIsoDate = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return toIsoDate(new Date());
 };
 
 const normalizeDateInput = (value: string | null | undefined) => {
-  if (!value) return getTodayIsoDate();
-  const trimmed = value.trim();
-  if (!trimmed) return getTodayIsoDate();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  const match = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-  if (match) {
-    const month = match[1]?.padStart(2, "0") ?? "";
-    const day = match[2]?.padStart(2, "0") ?? "";
-    const year = match[3] ?? "";
-    return year && month && day ? `${year}-${month}-${day}` : "";
-  }
-  const parsed = new Date(trimmed);
-  if (!Number.isNaN(parsed.getTime())) {
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, "0");
-    const day = String(parsed.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-  return getTodayIsoDate();
-};
-
-const normalizeStatusKey = (value: unknown) =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-
-const statusLevelLookup: Record<string, number> = {
-  new: 1,
-  waiting: 1,
-  confirmed: 2,
-  patient_confirmed: 2,
-  rescheduled: 2,
-  canceled: 3,
-  cancelled: 3,
-  completed: 3,
-  no_show: 3,
+  return normalizeDateString(value) || getTodayIsoDate();
 };
 
 const fallbackStatusMeta = (value: unknown) => {
-  const normalized = normalizeStatusKey(value);
-  const level = statusLevelLookup[normalized] ?? 1;
+  const level = getBaseStatusLevel(value);
   return { level, isFinal: level >= 3 };
 };
 
@@ -531,7 +512,7 @@ const baseStatusOptions = computed<NormalizedStatusOption[]>(() => {
       const meta = fallbackStatusMeta(key);
       options.push({
         key,
-        label: option,
+        label: formatStatusLabel(option),
         level: meta.level,
         isFinal: meta.isFinal,
       });
@@ -540,7 +521,7 @@ const baseStatusOptions = computed<NormalizedStatusOption[]>(() => {
 
     const key = String(option.key ?? option.value ?? "").trim();
     if (!key) continue;
-    const label = String(option.value ?? option.key ?? key);
+    const label = formatStatusLabel(option.value ?? option.key ?? key);
     const meta = fallbackStatusMeta(key);
     const level =
       typeof option.level === "number" && Number.isFinite(option.level)
@@ -570,6 +551,14 @@ const statusOptionsMap = computed(() => {
 const getStatusOption = (value: unknown) =>
   statusOptionsMap.value.get(normalizeStatusKey(value)) ?? null;
 
+const getStatusDisplayLabel = (value: unknown) => {
+  const optionLabel = getStatusOption(value)?.label?.trim();
+  if (optionLabel) {
+    return optionLabel;
+  }
+  return formatStatusLabel(value);
+};
+
 const buildFallbackStatusOption = (
   value: unknown,
 ): NormalizedStatusOption | null => {
@@ -578,7 +567,7 @@ const buildFallbackStatusOption = (
   const meta = fallbackStatusMeta(key);
   return {
     key,
-    label: key,
+    label: formatStatusLabel(key),
     level: meta.level,
     isFinal: meta.isFinal,
   };
@@ -592,7 +581,7 @@ const isFinalStatus = (value: unknown) => {
   if (option) {
     return option.isFinal || option.level >= 3;
   }
-  return fallbackStatusMeta(value).isFinal;
+  return isBaseFinalStatus(value);
 };
 
 const getStatusOptionsForRow = (
@@ -630,6 +619,9 @@ const getStatusOptionsForRow = (
 };
 
 const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
+  if (!getStatusOption(from) && !getStatusOption(to)) {
+    return isBaseStatusTransitionAllowed(from, to);
+  }
   const fromKey = normalizeStatusKey(from);
   const toKey = normalizeStatusKey(to);
   if (!fromKey || fromKey === toKey) return true;
@@ -642,36 +634,36 @@ const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
 };
 
 const getSnapshotValue = (data: Appointment, field: string) =>
-  editSnapshots.get(snapshotKey(data, field));
+  getSnapshot(snapshotKey(data, field));
 const isStatusLocked = (data: Appointment) => {
   const snapshot = getSnapshotValue(data, "status");
   return isFinalStatus(snapshot ?? data.status);
 };
+const blockCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
+  const originalEvent = event.originalEvent as Event | undefined;
+  originalEvent?.preventDefault?.();
+  originalEvent?.stopPropagation?.();
+  originalEvent?.stopImmediatePropagation?.();
+};
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   if (event.field === "status" && isStatusLocked(event.data)) {
-    const originalEvent = event.originalEvent as Event | undefined;
-    originalEvent?.preventDefault?.();
-    originalEvent?.stopPropagation?.();
-    setTimeout(closeCellEditor, 0);
+    blockCellEditInit(event);
     return;
   }
 
   if (isStaffEditBlocked(event.data, event.field)) {
-    const originalEvent = event.originalEvent as Event | undefined;
-    originalEvent?.preventDefault?.();
-    originalEvent?.stopPropagation?.();
-    setTimeout(closeCellEditor, 0);
+    blockCellEditInit(event);
     return;
   }
 
   const key = snapshotKey(event.data, event.field);
-  explicitSaveKeys.delete(key);
-  if (editSnapshots.has(key)) {
+  clearExplicitSave(key);
+  if (hasSnapshot(key)) {
     return;
   }
 
-  editSnapshots.set(key, cloneSnapshotValue(getFieldValue(event.data, event.field)));
+  setSnapshot(key, cloneSnapshotValue(getFieldValue(event.data, event.field)));
 };
 
 const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
@@ -685,15 +677,12 @@ const handleCellEditCancel = (event: DataTableCellEditCancelEvent) => {
     pendingSave.value.wasCanceled = true;
     return;
   }
-  if (!editSnapshots.has(key)) {
+  if (!hasSnapshot(key)) {
     return;
   }
 
-  applyFieldValue(data, event.field, editSnapshots.get(key));
-  editSnapshots.delete(key);
-  editDrafts.delete(key);
-  explicitSaveKeys.delete(key);
-  editReasons.delete(key);
+  applyFieldValue(data, event.field, getSnapshot(key));
+  clearEditTracking(key);
 };
 
 const handleCellEditComplete = (
@@ -708,56 +697,39 @@ const handleCellEditComplete = (
     pendingSave.value.completedEvent = event;
     return;
   }
-  const previousValue = editSnapshots.get(key);
+  const previousValue = getSnapshot(key);
   if (isStaffEditBlocked(event.data, event.field)) {
-    if (previousValue !== undefined) {
-      applyFieldValue(event.data, event.field, previousValue);
-    }
-    editSnapshots.delete(key);
-    editDrafts.delete(key);
-    explicitSaveKeys.delete(key);
-    editReasons.delete(key);
+    revertFieldAndClear(event.data, event.field, previousValue, key);
     return;
   }
 
-  const isExplicitSave = explicitSaveKeys.has(key);
+  const isExplicitSave = hasExplicitSave(key);
   if (!isExplicitSave) {
-    if (previousValue !== undefined) {
-      applyFieldValue(event.data, event.field, previousValue);
-    }
-    editSnapshots.delete(key);
-    editDrafts.delete(key);
-    explicitSaveKeys.delete(key);
-    editReasons.delete(key);
+    revertFieldAndClear(event.data, event.field, previousValue, key);
     return;
   }
 
   if (event.field === "status" && previousValue !== undefined) {
     if (!isStatusTransitionAllowed(previousValue, event.data.status)) {
-      applyFieldValue(event.data, event.field, previousValue);
-      editSnapshots.delete(key);
-      editDrafts.delete(key);
-      explicitSaveKeys.delete(key);
-      editReasons.delete(key);
+      revertFieldAndClear(event.data, event.field, previousValue, key);
       return;
     }
   }
 
-  const draftValue = editDrafts.get(key);
+  const draftValue = getDraft(key);
   if (draftValue !== undefined) {
     applyFieldValue(event.data, event.field, draftValue);
     event.newValue = draftValue;
-    editDrafts.delete(key);
+    clearDraft(key);
   }
 
   // Ensure consumers see the same mutated row for nested edits.
   (event as DataTableCellEditCompleteEvent<Appointment>).newData = event.data;
 
-  editSnapshots.delete(key);
-  explicitSaveKeys.delete(key);
+  clearSnapshot(key);
+  clearExplicitSave(key);
   const reasonKey = snapshotKey(event.data, event.field);
-  const reason = editReasons.get(reasonKey) ?? "";
-  editReasons.delete(reasonKey);
+  const reason = consumeReason(reasonKey);
   // Pass reason to parent alongside the cell edit payload.
   (event as any).reason = reason;
 
@@ -953,9 +925,8 @@ const emit = defineEmits<{
       <Column field="status" header="Status">
         <template #body="{ data }">
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
-          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)"
-            @click="blockEditIfFinalStatus($event, data.status)">
-            {{ data.status ?? "-" }}
+          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)">
+            {{ getStatusDisplayLabel(data.status) }}
           </span>
         </template>
 
@@ -1203,9 +1174,9 @@ const emit = defineEmits<{
     <AppointmentEditReasonDialog
       v-model:visible="reasonDialogVisible"
       v-model:reasonText="reasonText"
-      @confirm="confirmReasonAndSave"
-      @cancel="cancelReasonModal"
-      @hide="cancelReasonModal"
+      @confirm="reasonAction.confirm"
+      @cancel="reasonAction.cancel"
+      @hide="reasonAction.cancel"
     />
   </div>
 </template>

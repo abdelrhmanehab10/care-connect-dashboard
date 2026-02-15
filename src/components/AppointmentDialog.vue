@@ -17,6 +17,7 @@ import DatePicker from "primevue/datepicker";
 import Dialog from "primevue/dialog";
 import ToggleSwitch from "primevue/toggleswitch";
 import { Loader2 } from "lucide-vue-next";
+import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
 import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import { type PatientOption, type Weekday } from "../data/options";
 import {
@@ -30,6 +31,20 @@ import type { CreateAppointmentPayload } from "../services/appointments";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { fetchEmployeesByTitle } from "../services/employees";
 import { fetchPatientAutocomplete } from "../services/patients";
+import {
+  cloneDateValue,
+  durationHoursToMs,
+  formatDate,
+  formatDurationHoursLabel,
+  formatMinutesToClock,
+  formatNativeDateValue,
+  formatTime,
+  normalizeTimeInput,
+  parseClockToMinutes,
+  parseDateOnly,
+  parseDateTime,
+  parseNativeDateValue,
+} from "../composables/useAppointmentDialogDateTime";
 
 const visible = defineModel<boolean>({ required: true });
 type ToastMessage = {
@@ -70,7 +85,11 @@ const dialogTitle = computed(() =>
 );
 const isBusy = computed(() => props.isLoading || props.isSaving);
 const emit = defineEmits<{
-  save: [payload: CreateAppointmentPayload];
+  (
+    event: "save",
+    payload: CreateAppointmentPayload,
+    reason?: string,
+  ): void;
 }>();
 
 type LocationValue = {
@@ -91,6 +110,9 @@ const mapLocation = ref<LocationValue | null>(null);
 const instructions = ref("");
 const hasAttemptedSubmit = ref(false);
 const pendingSaveAction = ref<"create" | "update" | null>(null);
+const reasonDialogVisible = ref(false);
+const reasonText = ref("");
+const pendingSavePayload = ref<CreateAppointmentPayload | null>(null);
 const nurseName = ref<string | null>(null);
 const doctorName = ref<string | null>(null);
 const socialWorkerName = ref<string | null>(null);
@@ -153,32 +175,6 @@ const schedule = reactive({
   recurringEndDate: null as Date | null,
 });
 
-const formatNativeDateValue = (value: Date | null) => {
-  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-    return "";
-  }
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const parseNativeDateValue = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const [yearRaw, monthRaw, dayRaw] = trimmed.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!year || !month || !day) {
-    return null;
-  }
-  const parsed = new Date(year, month - 1, day);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
 const appointmentDateInput = computed({
   get: () => formatNativeDateValue(schedule.appointmentDate),
   set: (value: string) => {
@@ -208,47 +204,65 @@ type RecurrenceRow = {
 };
 
 const getDefaultWeekday = () => weekdayOptions.value[0] ?? "Monday";
+const resolveWeekdayFromDate = (value: Date): Weekday => {
+  const weekday = value.toLocaleDateString("en-US", {
+    weekday: "long",
+  }) as Weekday;
+  return weekdayOptions.value.includes(weekday) ? weekday : getDefaultWeekday();
+};
+const getNextWeekday = (day: Weekday): Weekday => {
+  if (!weekdayOptions.value.length) {
+    return getDefaultWeekday();
+  }
+  const currentIndex = weekdayOptions.value.indexOf(day);
+  if (currentIndex < 0) {
+    return getDefaultWeekday();
+  }
+  return (
+    weekdayOptions.value[(currentIndex + 1) % weekdayOptions.value.length] ??
+    getDefaultWeekday()
+  );
+};
+const weekdayToApiDay = (day: Weekday) => {
+  const index = weekdayOptions.value.indexOf(day);
+  return String(index >= 0 ? index : 0);
+};
 let recurrenceRowId = 1;
-const recurrenceRows = ref<RecurrenceRow[]>([
-  {
-    id: `row-${recurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
-]);
 let employeeRecurrenceRowId = 1;
+
+const createRecurrenceRow = (overrides: Partial<RecurrenceRow> = {}): RecurrenceRow => ({
+  id: `row-${recurrenceRowId++}`,
+  day: getDefaultWeekday(),
+  startTime: null,
+  endTime: null,
+  ...overrides,
+});
+
+const createEmployeeRecurrenceRow = (
+  prefix: string,
+  overrides: Partial<EmployeeRecurrenceRow> = {},
+): EmployeeRecurrenceRow => ({
+  id: `${prefix}-row-${employeeRecurrenceRowId++}`,
+  day: getDefaultWeekday(),
+  startTime: null,
+  endTime: null,
+  ...overrides,
+});
+
+const recurrenceRows = ref<RecurrenceRow[]>([
+  createRecurrenceRow(),
+]);
 const nurseRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `nurse-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("nurse"),
 ]);
 const doctorRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `doctor-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("doctor"),
 ]);
 const socialWorkerRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `social-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("social"),
 ]);
 const driverRecurrenceRows = ref<EmployeeRecurrenceRow[]>([
-  {
-    id: `driver-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  },
+  createEmployeeRecurrenceRow("driver"),
 ]);
 
 const isPatientOption = (value: unknown): value is PatientOption => {
@@ -256,7 +270,69 @@ const isPatientOption = (value: unknown): value is PatientOption => {
     typeof value === "object" &&
     value !== null &&
     "id" in value &&
-    typeof (value as PatientOption).id === "string"
+    (typeof (value as PatientOption).id === "string" ||
+      typeof (value as PatientOption).id === "number")
+  );
+};
+
+const normalizeOptionalId = (value: unknown) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? String(value) : "";
+  }
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return "";
+  }
+  const asNumber = Number(normalized);
+  if (Number.isFinite(asNumber) && asNumber > 0) {
+    return String(asNumber);
+  }
+  return normalized;
+};
+
+const resolveSelectedPatientPrimaryId = (
+  role: "nurse" | "doctor" | "social_worker" | "driver",
+) => {
+  if (!isPatientOption(selectedPatient.value)) {
+    return "";
+  }
+  const patient = selectedPatient.value as PatientOption & {
+    main_nurse_id?: unknown;
+    main_doctor_id?: unknown;
+    main_social_worker_id?: unknown;
+    main_driver_id?: unknown;
+    primary_nurse?: { id?: unknown } | null;
+    primary_leader_nurse?: { id?: unknown } | null;
+    primary_doctor?: { id?: unknown } | null;
+    primary_social_worker?: { id?: unknown } | null;
+    primary_driver?: { id?: unknown } | null;
+  };
+  if (role === "nurse") {
+    return (
+      normalizeOptionalId(patient.primary_nurse_id) ||
+      normalizeOptionalId(patient.main_nurse_id) ||
+      normalizeOptionalId(patient.primary_nurse?.id) ||
+      normalizeOptionalId(patient.primary_leader_nurse?.id)
+    );
+  }
+  if (role === "doctor") {
+    return (
+      normalizeOptionalId(patient.primary_doctor_id) ||
+      normalizeOptionalId(patient.main_doctor_id) ||
+      normalizeOptionalId(patient.primary_doctor?.id)
+    );
+  }
+  if (role === "social_worker") {
+    return (
+      normalizeOptionalId(patient.primary_social_worker_id) ||
+      normalizeOptionalId(patient.main_social_worker_id) ||
+      normalizeOptionalId(patient.primary_social_worker?.id)
+    );
+  }
+  return (
+    normalizeOptionalId(patient.primary_driver_id) ||
+    normalizeOptionalId(patient.main_driver_id) ||
+    normalizeOptionalId(patient.primary_driver?.id)
   );
 };
 
@@ -330,6 +406,26 @@ const primarySocialWorkerLabel = computed(() =>
 const primaryDriverLabel = computed(() =>
   formatPrimaryLabel("Primary driver", primaryDriverName.value),
 );
+const hasPrimaryNurse = computed(
+  () =>
+    Boolean(primaryNurseName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("nurse")),
+);
+const hasPrimaryDoctor = computed(
+  () =>
+    Boolean(primaryDoctorName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("doctor")),
+);
+const hasPrimarySocialWorker = computed(
+  () =>
+    Boolean(primarySocialWorkerName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("social_worker")),
+);
+const hasPrimaryDriver = computed(
+  () =>
+    Boolean(primaryDriverName.value) ||
+    Boolean(resolveSelectedPatientPrimaryId("driver")),
+);
 
 const normalizeRole = (role: string) =>
   role.trim().toLowerCase().replace(/\s+/g, "_");
@@ -381,33 +477,6 @@ const resolveScheduleTimes = () => {
   return { date, startTime, endTime };
 };
 
-const parseClockToMinutes = (value: string) => {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-  const [, rawHours = "", rawMinutes = ""] = match ?? [];
-  if (!rawHours || !rawMinutes) {
-    return null;
-  }
-  const hours = Number(rawHours);
-  const minutes = Number(rawMinutes);
-  if (
-    !Number.isInteger(hours) ||
-    !Number.isInteger(minutes) ||
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59
-  ) {
-    return null;
-  }
-  return hours * 60 + minutes;
-};
-
-const formatDurationHoursLabel = (hours: number) =>
-  Number.isInteger(hours)
-    ? `${hours} hour${hours === 1 ? "" : "s"}`
-    : `${hours} hours`;
-
 const validationSchema = z
   .object({
     patientSelected: z.boolean(),
@@ -421,18 +490,22 @@ const validationSchema = z
     nurseName: z.string().optional(),
     nurseTimesRequired: z.boolean().optional(),
     nurseTimesValid: z.boolean().optional(),
+    nurseTimesWithinRange: z.boolean().optional(),
     doctorRequired: z.boolean(),
     doctorName: z.string().optional(),
     doctorTimesRequired: z.boolean().optional(),
     doctorTimesValid: z.boolean().optional(),
+    doctorTimesWithinRange: z.boolean().optional(),
     socialWorkerRequired: z.boolean(),
     socialWorkerName: z.string().optional(),
     socialWorkerTimesRequired: z.boolean().optional(),
     socialWorkerTimesValid: z.boolean().optional(),
+    socialWorkerTimesWithinRange: z.boolean().optional(),
     driverRequired: z.boolean(),
     driverName: z.string().optional(),
     driverTimesRequired: z.boolean().optional(),
     driverTimesValid: z.boolean().optional(),
+    driverTimesWithinRange: z.boolean().optional(),
   })
   .superRefine((values, ctx) => {
     if (!values.patientSelected) {
@@ -514,6 +587,34 @@ const validationSchema = z
       }
     }
 
+    if (values.isRecurring) {
+      recurrenceRows.value.forEach((row, index) => {
+        const start = formatTime(row.startTime);
+        const end = formatTime(row.endTime);
+        if (!start) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["startTime"],
+            message: `Start time is required for recurring row ${index + 1}.`,
+          });
+        }
+        if (!end) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["endTime"],
+            message: `End time is required for recurring row ${index + 1}.`,
+          });
+        }
+        if (start && end && start >= end) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["endTime"],
+            message: `End time must be after start time for recurring row ${index + 1}.`,
+          });
+        }
+      });
+    }
+
     if (values.nurseRequired && !(values.nurseName?.trim() ?? "")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -525,8 +626,15 @@ const validationSchema = z
     if (values.nurseTimesRequired && values.nurseTimesValid === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["startTime"],
+        path: ["nurseTimes"],
         message: "Nurse start and end time are required.",
+      });
+    }
+    if (values.nurseTimesRequired && values.nurseTimesWithinRange === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nurseTimes"],
+        message: "Nurse time must be within Date & Time range.",
       });
     }
 
@@ -541,8 +649,15 @@ const validationSchema = z
     if (values.doctorTimesRequired && values.doctorTimesValid === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["startTime"],
+        path: ["doctorTimes"],
         message: "Doctor start and end time are required.",
+      });
+    }
+    if (values.doctorTimesRequired && values.doctorTimesWithinRange === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["doctorTimes"],
+        message: "Doctor time must be within Date & Time range.",
       });
     }
 
@@ -563,8 +678,18 @@ const validationSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["startTime"],
+        path: ["socialWorkerTimes"],
         message: "Social worker start and end time are required.",
+      });
+    }
+    if (
+      values.socialWorkerTimesRequired &&
+      values.socialWorkerTimesWithinRange === false
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["socialWorkerTimes"],
+        message: "Social worker time must be within Date & Time range.",
       });
     }
 
@@ -579,8 +704,15 @@ const validationSchema = z
     if (values.driverTimesRequired && values.driverTimesValid === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["startTime"],
+        path: ["driverTimes"],
         message: "Driver start and end time are required.",
+      });
+    }
+    if (values.driverTimesRequired && values.driverTimesWithinRange === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["driverTimes"],
+        message: "Driver time must be within Date & Time range.",
       });
     }
   });
@@ -594,6 +726,34 @@ const hasValidRecurringTimes = (rows: EmployeeRecurrenceRow[]) =>
   rows.every(
     (row) =>
       Boolean(formatTime(row.startTime)) && Boolean(formatTime(row.endTime)),
+  );
+
+const isRowWithinRecurringRange = (
+  row: EmployeeRecurrenceRow,
+  baseRow: RecurrenceRow | undefined,
+) => {
+  if (!baseRow) {
+    return false;
+  }
+  const rowStart = parseClockToMinutes(formatTime(row.startTime));
+  const rowEnd = parseClockToMinutes(formatTime(row.endTime));
+  const baseStart = parseClockToMinutes(formatTime(baseRow.startTime));
+  const baseEnd = parseClockToMinutes(formatTime(baseRow.endTime));
+  if (rowStart === null || rowEnd === null || baseStart === null || baseEnd === null) {
+    return true;
+  }
+  if (rowEnd <= rowStart) {
+    return false;
+  }
+  if (baseEnd <= baseStart) {
+    return true;
+  }
+  return rowStart >= baseStart && rowEnd <= baseEnd;
+};
+
+const hasRecurringRowsWithinRange = (rows: EmployeeRecurrenceRow[]) =>
+  rows.every((row, index) =>
+    isRowWithinRecurringRange(row, recurrenceRows.value[index]),
   );
 
 const buildValidationPayload = () => {
@@ -618,11 +778,21 @@ const buildValidationPayload = () => {
       ? hasValidRecurringTimes(nurseRecurrenceRows.value)
       : true
     : hasCompleteTimeRange(nurseSchedule.startTime, nurseSchedule.endTime);
+  const nurseTimesWithinRange = isRecurring
+    ? nurseScheduleType.value === "custom"
+      ? hasRecurringRowsWithinRange(nurseRecurrenceRows.value)
+      : true
+    : true;
   const doctorTimesValid = isRecurring
     ? doctorScheduleType.value === "custom"
       ? hasValidRecurringTimes(doctorRecurrenceRows.value)
       : true
     : hasCompleteTimeRange(doctorSchedule.startTime, doctorSchedule.endTime);
+  const doctorTimesWithinRange = isRecurring
+    ? doctorScheduleType.value === "custom"
+      ? hasRecurringRowsWithinRange(doctorRecurrenceRows.value)
+      : true
+    : true;
   const socialWorkerTimesValid = isRecurring
     ? socialWorkerScheduleType.value === "custom"
       ? hasValidRecurringTimes(socialWorkerRecurrenceRows.value)
@@ -631,11 +801,21 @@ const buildValidationPayload = () => {
       socialWorkerSchedule.startTime,
       socialWorkerSchedule.endTime,
     );
+  const socialWorkerTimesWithinRange = isRecurring
+    ? socialWorkerScheduleType.value === "custom"
+      ? hasRecurringRowsWithinRange(socialWorkerRecurrenceRows.value)
+      : true
+    : true;
   const driverTimesValid = isRecurring
     ? driverScheduleType.value === "custom"
       ? hasValidRecurringTimes(driverRecurrenceRows.value)
       : true
     : hasCompleteTimeRange(driverSchedule.startTime, driverSchedule.endTime);
+  const driverTimesWithinRange = isRecurring
+    ? driverScheduleType.value === "custom"
+      ? hasRecurringRowsWithinRange(driverRecurrenceRows.value)
+      : true
+    : true;
   return {
     patientSelected: isPatientOption(selectedPatient.value),
     visitType: visit.type ?? "",
@@ -649,22 +829,26 @@ const buildValidationPayload = () => {
     nurseName: nurseName.value ?? "",
     nurseTimesRequired,
     nurseTimesValid,
+    nurseTimesWithinRange,
     doctorRequired:
       showDoctorSection.value && doctorAssignmentMode.value === "custom",
     doctorName: doctorName.value ?? "",
     doctorTimesRequired,
     doctorTimesValid,
+    doctorTimesWithinRange,
     socialWorkerRequired:
       showSocialWorkerSection.value &&
       socialWorkerAssignmentMode.value === "custom",
     socialWorkerName: socialWorkerName.value ?? "",
     socialWorkerTimesRequired,
     socialWorkerTimesValid,
+    socialWorkerTimesWithinRange,
     driverRequired:
       showDriverSection.value && driverAssignmentMode.value === "custom",
     driverName: driverName.value ?? "",
     driverTimesRequired,
     driverTimesValid,
+    driverTimesWithinRange,
   };
 };
 
@@ -684,109 +868,20 @@ const validationErrors = computed(() => {
   return errors;
 });
 
-const formatDate = (value: Date | null) => {
-  if (!value) {
-    return "";
-  }
-
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+type RecurringRowLike = {
+  day: Weekday;
+  startTime: Date | null;
+  endTime: Date | null;
 };
 
-const formatTime = (value: Date | string | null) => {
-  if (!value) {
-    return "";
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-    const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
-    const [, rawHours = "", rawMinutes = ""] = match ?? [];
-    if (!rawHours || !rawMinutes) return "";
-    const hours = rawHours.padStart(2, "0");
-    const minutes = rawMinutes;
-    return `${hours}:${minutes}`;
-  }
-  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-    return "";
-  }
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
-};
-
-const normalizeTimeInput = (value: string | null | undefined) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
-  const [, rawHours = "", rawMinutes = ""] = match ?? [];
-  if (!rawHours || !rawMinutes) return null;
-  const hours = rawHours.padStart(2, "0");
-  const minutes = rawMinutes;
-  return `${hours}:${minutes}`;
-};
-
-const buildRecurringSlots = (rows: EmployeeRecurrenceRow[]) =>
+const buildRecurringSlots = (rows: RecurringRowLike[]) =>
   rows
     .map((row) => ({
-      day: row.day,
+      day: weekdayToApiDay(row.day),
       start_time: formatTime(row.startTime),
       end_time: formatTime(row.endTime),
     }))
     .filter((row) => row.start_time && row.end_time);
-
-const normalizeDateValue = (value: string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const normalizedSeparators = trimmed.replace(/\//g, "-");
-  const splitByT = normalizedSeparators.split("T")[0] ?? "";
-  const splitBySpace = splitByT.split(" ")[0] ?? "";
-  return splitBySpace;
-};
-
-const isValidTime = (value: string) => /^\d{1,2}:\d{2}(:\d{2})?$/.test(value);
-
-const parseDateOnly = (value: string | null | undefined) => {
-  const normalized = normalizeDateValue(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed;
-};
-
-const parseDateTime = (
-  dateValue: string | null | undefined,
-  timeValue: string | null | undefined,
-) => {
-  const normalizedDate = normalizeDateValue(dateValue);
-  if (!normalizedDate) {
-    return null;
-  }
-
-  if (timeValue && isValidTime(timeValue)) {
-    const parsed = new Date(`${normalizedDate}T${timeValue}`);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed;
-    }
-  }
-
-  return parseDateOnly(normalizedDate);
-};
 
 const resolveAppointmentLocation = (
   appointment: Appointment | null,
@@ -808,6 +903,98 @@ const resolveAppointmentLocation = (
   return { ...defaultMapLocation };
 };
 
+const parseCoordinate = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const resolveSelectedPatientLocation = (patient: PatientOption): LocationValue => {
+  const patientAddress = patient.address;
+  if (!patientAddress || typeof patientAddress !== "object") {
+    return { ...defaultMapLocation };
+  }
+
+  const address = String(patientAddress.address ?? "").trim();
+  const lat = parseCoordinate(patientAddress.lat);
+  const lng = parseCoordinate(patientAddress.lng);
+
+  if (lat !== null && lng !== null) {
+    return {
+      lat,
+      lng,
+      address: address || undefined,
+    };
+  }
+
+  if (address) {
+    return {
+      ...defaultMapLocation,
+      address,
+    };
+  }
+
+  return { ...defaultMapLocation };
+};
+
+const resolveSelectedPrimaryDoctorName = (
+  patient: PatientOption,
+): string | null => {
+  const name = String(patient.primary_doctor?.name ?? "").trim();
+  return name || null;
+};
+
+const resolveSelectedPrimaryNurseName = (patient: PatientOption): string | null => {
+  const name =
+    String(patient.primary_nurse?.name ?? "").trim() ||
+    String(patient.primary_leader_nurse?.name ?? "").trim();
+  return name || null;
+};
+
+const resolveSelectedPrimarySocialWorkerName = (
+  patient: PatientOption,
+): string | null => {
+  const name = String(patient.primary_social_worker?.name ?? "").trim();
+  return name || null;
+};
+
+const resolveSelectedPrimaryDriverName = (
+  patient: PatientOption,
+): string | null => {
+  const name = String(patient.primary_driver?.name ?? "").trim();
+  return name || null;
+};
+
+const clearTimeRange = (range: { startTime: Date | null; endTime: Date | null }) => {
+  range.startTime = null;
+  range.endTime = null;
+};
+
+const resetEmployeeRecurrenceRows = () => {
+  nurseRecurrenceRows.value = [createEmployeeRecurrenceRow("nurse")];
+  doctorRecurrenceRows.value = [createEmployeeRecurrenceRow("doctor")];
+  socialWorkerRecurrenceRows.value = [createEmployeeRecurrenceRow("social")];
+  driverRecurrenceRows.value = [createEmployeeRecurrenceRow("driver")];
+};
+
+const resetMainSchedule = () => {
+  schedule.isRecurring = false;
+  schedule.appointmentDate = null;
+  schedule.appointmentStartTime = null;
+  schedule.appointmentEndTime = null;
+  schedule.recurringStartDate = null;
+  schedule.recurringEndDate = null;
+};
+
 const resetForm = () => {
   hasAttemptedSubmit.value = false;
   selectedPatient.value = null;
@@ -827,72 +1014,17 @@ const resetForm = () => {
   doctorScheduleType.value = "same";
   socialWorkerScheduleType.value = "same";
   driverScheduleType.value = "same";
-  nurseName.value = null;
-  doctorName.value = null;
-  socialWorkerName.value = null;
-  driverName.value = null;
-  primaryNurseName.value = null;
-  primaryDoctorName.value = null;
-  primarySocialWorkerName.value = null;
-  primaryDriverName.value = null;
   visit.type = "";
-  nurseSchedule.startTime = null;
-  nurseSchedule.endTime = null;
-  doctorSchedule.startTime = null;
-  doctorSchedule.endTime = null;
-  socialWorkerSchedule.startTime = null;
-  socialWorkerSchedule.endTime = null;
-  driverSchedule.startTime = null;
-  driverSchedule.endTime = null;
-  nurseRecurrenceRows.value = [
-    {
-      id: `nurse-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  doctorRecurrenceRows.value = [
-    {
-      id: `doctor-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  socialWorkerRecurrenceRows.value = [
-    {
-      id: `social-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  driverRecurrenceRows.value = [
-    {
-      id: `driver-row-${employeeRecurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
-  schedule.isRecurring = false;
-  schedule.appointmentDate = null;
-  schedule.appointmentStartTime = null;
-  schedule.appointmentEndTime = null;
-  schedule.recurringStartDate = null;
-  schedule.recurringEndDate = null;
+  clearTimeRange(nurseSchedule);
+  clearTimeRange(doctorSchedule);
+  clearTimeRange(socialWorkerSchedule);
+  clearTimeRange(driverSchedule);
+  resetEmployeeRecurrenceRows();
+  resetMainSchedule();
   instructions.value = "";
   mapLocation.value = { ...defaultMapLocation };
   recurrenceRowId = 1;
-  recurrenceRows.value = [
-    {
-      id: `row-${recurrenceRowId++}`,
-      day: getDefaultWeekday(),
-      startTime: null,
-      endTime: null,
-    },
-  ];
+  recurrenceRows.value = [createRecurrenceRow()];
 };
 
 const resolveAppointmentPatient = (
@@ -900,10 +1032,85 @@ const resolveAppointmentPatient = (
 ): PatientOption | null => {
   const name = appointment.patient?.name ?? "";
   const id = appointment.patient?.id;
+  const patient = (appointment as Appointment & { patient?: any }).patient;
+  const patientAddress = appointment.patient_address;
   if (name || id) {
     return {
       id: String(id ?? name),
       name: name || String(id ?? ""),
+      address: patientAddress
+        ? {
+            id: patientAddress.id ?? null,
+            address: patientAddress.address ?? null,
+            lat: patientAddress.lat ?? null,
+            lng: patientAddress.lng ?? null,
+          }
+        : patientAddress === null
+          ? null
+          : undefined,
+      primary_doctor: patient?.primary_doctor
+        ? {
+            id: patient.primary_doctor.id ?? null,
+            name: String(patient.primary_doctor.name ?? "").trim() || null,
+          }
+        : patient?.primary_doctor === null
+          ? null
+          : undefined,
+      primary_nurse: patient?.primary_nurse
+        ? {
+            id: patient.primary_nurse.id ?? null,
+            name: String(patient.primary_nurse.name ?? "").trim() || null,
+          }
+        : patient?.primary_nurse === null
+          ? null
+          : undefined,
+      primary_leader_nurse: patient?.primary_leader_nurse
+        ? {
+            id: patient.primary_leader_nurse.id ?? null,
+            name:
+              String(patient.primary_leader_nurse.name ?? "").trim() || null,
+          }
+        : patient?.primary_leader_nurse === null
+          ? null
+          : undefined,
+      primary_social_worker: patient?.primary_social_worker
+        ? {
+            id: patient.primary_social_worker.id ?? null,
+            name:
+              String(patient.primary_social_worker.name ?? "").trim() || null,
+          }
+        : patient?.primary_social_worker === null
+          ? null
+          : undefined,
+      primary_driver: patient?.primary_driver
+        ? {
+            id: patient.primary_driver.id ?? null,
+            name: String(patient.primary_driver.name ?? "").trim() || null,
+          }
+        : patient?.primary_driver === null
+          ? null
+          : undefined,
+      primary_nurse_id:
+        normalizeOptionalId(patient?.primary_nurse_id) ||
+        normalizeOptionalId(patient?.main_nurse_id) ||
+        normalizeOptionalId(patient?.primary_nurse?.id) ||
+        normalizeOptionalId(patient?.primary_leader_nurse?.id) ||
+        undefined,
+      primary_doctor_id:
+        normalizeOptionalId(patient?.primary_doctor_id) ||
+        normalizeOptionalId(patient?.main_doctor_id) ||
+        normalizeOptionalId(patient?.primary_doctor?.id) ||
+        undefined,
+      primary_social_worker_id:
+        normalizeOptionalId(patient?.primary_social_worker_id) ||
+        normalizeOptionalId(patient?.main_social_worker_id) ||
+        normalizeOptionalId(patient?.primary_social_worker?.id) ||
+        undefined,
+      primary_driver_id:
+        normalizeOptionalId(patient?.primary_driver_id) ||
+        normalizeOptionalId(patient?.main_driver_id) ||
+        normalizeOptionalId(patient?.primary_driver?.id) ||
+        undefined,
     };
   }
 
@@ -917,9 +1124,8 @@ const resolveAppointmentPatient = (
 
 const applyDurationTimeDefaults = (durationHours: number) => {
   const now = new Date();
-  const durationMs = Math.round(durationHours * 60 * 60 * 1000);
+  const durationMs = durationHoursToMs(durationHours);
   const end = new Date(now.getTime() + durationMs);
-  schedule.isRecurring = false;
   schedule.appointmentDate = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -927,6 +1133,32 @@ const applyDurationTimeDefaults = (durationHours: number) => {
   );
   schedule.appointmentStartTime = formatTime(now);
   schedule.appointmentEndTime = formatTime(end);
+};
+
+const applyRecurringDurationDefaults = (durationHours: number) => {
+  const now = new Date();
+  const durationMs = durationHoursToMs(durationHours);
+  const end = new Date(now.getTime() + durationMs);
+  const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  schedule.recurringStartDate = dateOnly;
+  schedule.recurringEndDate = dateOnly;
+  if (!recurrenceRows.value.length) {
+    recurrenceRows.value = [
+      {
+        id: `row-${recurrenceRowId++}`,
+        day: resolveWeekdayFromDate(dateOnly),
+        startTime: now,
+        endTime: end,
+      },
+    ];
+    return;
+  }
+
+  recurrenceRows.value = recurrenceRows.value.map((row) => ({
+    ...row,
+    startTime: new Date(now.getTime()),
+    endTime: new Date(end.getTime()),
+  }));
 };
 
 const loadVisitTypes = async () => {
@@ -1064,6 +1296,66 @@ const applyAppointment = (appointment: Appointment) => {
     driverAssignmentMode.value = "custom";
     driverName.value = driverMember.employee.name;
   }
+
+  enforceAssignmentModesForPrimaryAvailability();
+};
+
+const syncEmployeeRowsWithRecurringRows = (
+  targetRows: Ref<EmployeeRecurrenceRow[]>,
+) => {
+  const syncedRows = recurrenceRows.value.map((baseRow, index) => {
+    const existingRow = targetRows.value[index];
+    return {
+      id: existingRow?.id ?? `emp-row-${employeeRecurrenceRowId++}`,
+      day: baseRow.day,
+      startTime: existingRow?.startTime
+        ? cloneDateValue(existingRow.startTime)
+        : cloneDateValue(baseRow.startTime),
+      endTime: existingRow?.endTime
+        ? cloneDateValue(existingRow.endTime)
+        : cloneDateValue(baseRow.endTime),
+    };
+  });
+  targetRows.value = syncedRows;
+};
+
+const syncCustomEmployeeRecurringRows = () => {
+  if (!schedule.isRecurring) {
+    return;
+  }
+  if (showNurseSection.value && nurseScheduleType.value === "custom") {
+    syncEmployeeRowsWithRecurringRows(nurseRecurrenceRows);
+  }
+  if (showDoctorSection.value && doctorScheduleType.value === "custom") {
+    syncEmployeeRowsWithRecurringRows(doctorRecurrenceRows);
+  }
+  if (
+    showSocialWorkerSection.value &&
+    socialWorkerScheduleType.value === "custom"
+  ) {
+    syncEmployeeRowsWithRecurringRows(socialWorkerRecurrenceRows);
+  }
+  if (showDriverSection.value && driverScheduleType.value === "custom") {
+    syncEmployeeRowsWithRecurringRows(driverRecurrenceRows);
+  }
+};
+
+const enforceAssignmentModesForPrimaryAvailability = () => {
+  if (!hasPrimaryNurse.value && nurseAssignmentMode.value === "primary") {
+    nurseAssignmentMode.value = "custom";
+  }
+  if (!hasPrimaryDoctor.value && doctorAssignmentMode.value === "primary") {
+    doctorAssignmentMode.value = "custom";
+  }
+  if (
+    !hasPrimarySocialWorker.value &&
+    socialWorkerAssignmentMode.value === "primary"
+  ) {
+    socialWorkerAssignmentMode.value = "custom";
+  }
+  if (!hasPrimaryDriver.value && driverAssignmentMode.value === "primary") {
+    driverAssignmentMode.value = "custom";
+  }
 };
 
 watch(nurseAssignmentMode, (value) => {
@@ -1130,6 +1422,73 @@ watch(driverAssignmentMode, (value) => {
   }
 });
 
+watch(selectedPatient, (value) => {
+  if (value === null) {
+    mapLocation.value = { ...defaultMapLocation };
+    primaryNurseName.value = null;
+    primaryDoctorName.value = null;
+    primarySocialWorkerName.value = null;
+    primaryDriverName.value = null;
+    enforceAssignmentModesForPrimaryAvailability();
+    return;
+  }
+
+  if (!isPatientOption(value)) {
+    return;
+  }
+
+  mapLocation.value = resolveSelectedPatientLocation(value);
+  primaryNurseName.value = resolveSelectedPrimaryNurseName(value);
+  primaryDoctorName.value = resolveSelectedPrimaryDoctorName(value);
+  primarySocialWorkerName.value = resolveSelectedPrimarySocialWorkerName(value);
+  primaryDriverName.value = resolveSelectedPrimaryDriverName(value);
+  enforceAssignmentModesForPrimaryAvailability();
+});
+
+watch(
+  () => schedule.isRecurring,
+  (isRecurring, wasRecurring) => {
+    if (!isRecurring || wasRecurring) {
+      return;
+    }
+    const durationHours = selectedVisitDurationHours.value;
+    if (durationHours !== null) {
+      applyRecurringDurationDefaults(durationHours);
+    }
+    syncCustomEmployeeRecurringRows();
+  },
+);
+
+watch(
+  recurrenceRows,
+  () => {
+    syncCustomEmployeeRecurringRows();
+  },
+  { deep: true },
+);
+
+watch(
+  () =>
+    [
+      schedule.isRecurring,
+      showNurseSection.value,
+      showDoctorSection.value,
+      showSocialWorkerSection.value,
+      showDriverSection.value,
+      nurseScheduleType.value,
+      doctorScheduleType.value,
+      socialWorkerScheduleType.value,
+      driverScheduleType.value,
+      nurseAssignmentMode.value,
+      doctorAssignmentMode.value,
+      socialWorkerAssignmentMode.value,
+      driverAssignmentMode.value,
+    ] as const,
+  () => {
+    syncCustomEmployeeRecurringRows();
+  },
+);
+
 watch(
   () => [visible.value, props.appointment] as const,
   ([isVisible, appointment]) => {
@@ -1145,17 +1504,82 @@ watch(
   },
 );
 
+watch(
+  () => schedule.appointmentStartTime,
+  (startTime) => {
+    if (!visible.value || schedule.isRecurring) {
+      return;
+    }
+
+    const durationHours = selectedVisitDurationHours.value;
+    if (durationHours === null || !startTime) {
+      return;
+    }
+
+    const startMinutes = parseClockToMinutes(startTime);
+    if (startMinutes === null) {
+      return;
+    }
+
+    const endTime = formatMinutesToClock(
+      startMinutes + Math.round(durationHours * 60),
+    );
+    if (schedule.appointmentEndTime !== endTime) {
+      schedule.appointmentEndTime = endTime;
+    }
+  },
+);
+
+watch(
+  () =>
+    recurrenceRows.value.map((row) =>
+      row.startTime instanceof Date && !Number.isNaN(row.startTime.getTime())
+        ? row.startTime.getTime()
+        : null,
+    ),
+  () => {
+    if (!visible.value || !schedule.isRecurring) {
+      return;
+    }
+
+    const durationHours = selectedVisitDurationHours.value;
+    if (durationHours === null) {
+      return;
+    }
+
+    const durationMs = durationHoursToMs(durationHours);
+    recurrenceRows.value.forEach((row) => {
+      if (!(row.startTime instanceof Date) || Number.isNaN(row.startTime.getTime())) {
+        return;
+      }
+      const nextEnd = new Date(row.startTime.getTime() + durationMs);
+      const currentEndMs =
+        row.endTime instanceof Date && !Number.isNaN(row.endTime.getTime())
+          ? row.endTime.getTime()
+          : null;
+      if (currentEndMs !== nextEnd.getTime()) {
+        row.endTime = nextEnd;
+      }
+    });
+  },
+);
+
 watch(selectedVisitDurationHours, (durationHours) => {
   if (!visible.value || props.appointment || durationHours === null) {
     return;
   }
-
+  if (schedule.isRecurring) {
+    applyRecurringDurationDefaults(durationHours);
+    syncCustomEmployeeRecurringRows();
+    return;
+  }
   applyDurationTimeDefaults(durationHours);
 });
 
 watch(visible, (value) => {
   if (!value) {
     pendingSaveAction.value = null;
+    resetReasonDialogState();
     resetForm();
   }
 });
@@ -1198,6 +1622,28 @@ onMounted(() => {
   void loadVisitTypes();
 });
 
+const resetReasonDialogState = () => {
+  reasonDialogVisible.value = false;
+  reasonText.value = "";
+  pendingSavePayload.value = null;
+};
+
+const confirmReasonAndSave = () => {
+  const payload = pendingSavePayload.value;
+  const reason = reasonText.value.trim();
+  if (!payload || !reason) {
+    return;
+  }
+
+  pendingSaveAction.value = "update";
+  emit("save", payload, reason);
+  resetReasonDialogState();
+};
+
+const cancelReasonModal = () => {
+  resetReasonDialogState();
+};
+
 const handleSave = () => {
   if (props.isSaving) {
     return;
@@ -1228,18 +1674,30 @@ const handleSave = () => {
   const trimmedInstructions = instructions.value.trim();
 
   const employeeSlots: CreateAppointmentPayload["employee_slots"] = {};
+  const employeeRecurringSlots: CreateAppointmentPayload["employee_recurring_slots"] =
+    {};
   const shouldIncludeNurse = showNurseSection.value;
   const shouldIncludeDoctor = showDoctorSection.value;
   const shouldIncludeSocialWorker = showSocialWorkerSection.value;
   const shouldIncludeDriver = showDriverSection.value;
+  const recurringAppointments = schedule.isRecurring
+    ? buildRecurringSlots(recurrenceRows.value)
+    : [];
+  const recurringStartDate = schedule.isRecurring
+    ? formatDate(schedule.recurringStartDate)
+    : "";
+  const recurringEndDate = schedule.isRecurring
+    ? formatDate(schedule.recurringEndDate ?? schedule.recurringStartDate)
+    : "";
 
   if (shouldIncludeNurse) {
     if (schedule.isRecurring) {
-      if (nurseScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(nurseRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.nurse = slots;
-        }
+      const slots =
+        nurseScheduleType.value === "custom"
+          ? buildRecurringSlots(nurseRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.nurse = slots;
       }
     } else {
       const nurseSlotStart = formatTime(nurseSchedule.startTime);
@@ -1255,11 +1713,12 @@ const handleSave = () => {
 
   if (shouldIncludeDoctor) {
     if (schedule.isRecurring) {
-      if (doctorScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(doctorRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.doctor = slots;
-        }
+      const slots =
+        doctorScheduleType.value === "custom"
+          ? buildRecurringSlots(doctorRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.doctor = slots;
       }
     } else {
       const doctorSlotStart = formatTime(doctorSchedule.startTime);
@@ -1275,11 +1734,12 @@ const handleSave = () => {
 
   if (shouldIncludeSocialWorker) {
     if (schedule.isRecurring) {
-      if (socialWorkerScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(socialWorkerRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.social_worker = slots;
-        }
+      const slots =
+        socialWorkerScheduleType.value === "custom"
+          ? buildRecurringSlots(socialWorkerRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.social_worker = slots;
       }
     } else {
       const socialSlotStart = formatTime(socialWorkerSchedule.startTime);
@@ -1295,11 +1755,12 @@ const handleSave = () => {
 
   if (shouldIncludeDriver) {
     if (schedule.isRecurring) {
-      if (driverScheduleType.value === "custom") {
-        const slots = buildRecurringSlots(driverRecurrenceRows.value);
-        if (slots.length) {
-          employeeSlots.driver = slots;
-        }
+      const slots =
+        driverScheduleType.value === "custom"
+          ? buildRecurringSlots(driverRecurrenceRows.value)
+          : recurringAppointments;
+      if (slots.length) {
+        employeeRecurringSlots.driver = slots;
       }
     } else {
       const driverSlotStart = formatTime(driverSchedule.startTime);
@@ -1323,7 +1784,7 @@ const handleSave = () => {
     : "";
 
   const payload: CreateAppointmentPayload = {
-    patient_id: selectedPatient.value.id,
+    patient_id: String(selectedPatient.value.id ?? "").trim(),
     new_address: {
       address: locationAddress,
       lat: locationLat,
@@ -1334,20 +1795,38 @@ const handleSave = () => {
     date: formattedDate,
     start_time: formattedStartTime,
     end_time: formattedEndTime,
+    start_date: schedule.isRecurring ? recurringStartDate : undefined,
+    end_date: schedule.isRecurring ? recurringEndDate : undefined,
+    appointments:
+      schedule.isRecurring && recurringAppointments.length
+        ? recurringAppointments
+        : undefined,
     main_nurse:
       showNurseSection.value && nurseAssignmentMode.value === "primary"
         ? "1"
         : "0",
+    main_nurse_id:
+      showNurseSection.value && nurseAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("nurse")
+        : "",
     nurse_schedule_type: schedule.isRecurring
       ? nurseScheduleType.value
       : "same",
-    employee_slots: Object.keys(employeeSlots).length
+    employee_slots: !schedule.isRecurring && Object.keys(employeeSlots).length
       ? employeeSlots
       : undefined,
+    employee_recurring_slots:
+      schedule.isRecurring && Object.keys(employeeRecurringSlots).length
+        ? employeeRecurringSlots
+        : undefined,
     main_doctor:
       showDoctorSection.value && doctorAssignmentMode.value === "primary"
         ? "1"
         : "0",
+    main_doctor_id:
+      showDoctorSection.value && doctorAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("doctor")
+        : "",
     doctor_id: "",
     doctor_schedule_type: schedule.isRecurring
       ? doctorScheduleType.value
@@ -1357,6 +1836,11 @@ const handleSave = () => {
         socialWorkerAssignmentMode.value === "primary"
         ? "1"
         : "0",
+    main_social_worker_id:
+      showSocialWorkerSection.value &&
+        socialWorkerAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("social_worker")
+        : "",
     social_worker_id: "",
     social_worker_schedule_type: schedule.isRecurring
       ? socialWorkerScheduleType.value
@@ -1365,20 +1849,41 @@ const handleSave = () => {
       ? driverScheduleType.value
       : "same",
     driver_id: "",
+    main_driver_id:
+      showDriverSection.value && driverAssignmentMode.value === "primary"
+        ? resolveSelectedPatientPrimaryId("driver")
+        : "",
     instructions: trimmedInstructions,
   };
 
-  pendingSaveAction.value = props.appointment ? "update" : "create";
+  if (props.appointment) {
+    pendingSavePayload.value = payload;
+    reasonText.value = "";
+    reasonDialogVisible.value = true;
+    return;
+  }
+
+  pendingSaveAction.value = "create";
   emit("save", payload);
 };
 
 const addRecurrenceRow = () => {
-  recurrenceRows.value.push({
-    id: `row-${recurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
-  });
+  const previousRow = recurrenceRows.value[recurrenceRows.value.length - 1];
+  const durationHours = selectedVisitDurationHours.value;
+  const fallbackStart = new Date();
+  const fallbackEnd =
+    durationHours === null
+      ? new Date(fallbackStart.getTime())
+      : new Date(
+          fallbackStart.getTime() +
+            durationHoursToMs(durationHours),
+        );
+
+  recurrenceRows.value.push(createRecurrenceRow({
+    day: previousRow ? getNextWeekday(previousRow.day) : getDefaultWeekday(),
+    startTime: cloneDateValue(previousRow?.startTime ?? fallbackStart),
+    endTime: cloneDateValue(previousRow?.endTime ?? fallbackEnd),
+  }));
 };
 
 const submitForm = handleSubmit(() => {
@@ -1397,13 +1902,25 @@ const resolveEmployeeRows = (rows: EmployeeRowsLike) => {
   return isRef(rows) ? rows.value : rows;
 };
 
+const canAddEmployeeRecurrenceRow = (rows: EmployeeRowsLike) => {
+  const target = resolveEmployeeRows(rows);
+  return target.length < recurrenceRows.value.length;
+};
+
 const addEmployeeRecurrenceRow = (rows: EmployeeRowsLike) => {
   const target = resolveEmployeeRows(rows);
+  if (target.length >= recurrenceRows.value.length) {
+    return;
+  }
+  const matchingRecurringRow = recurrenceRows.value[target.length];
+  if (!matchingRecurringRow) {
+    return;
+  }
   target.push({
     id: `emp-row-${employeeRecurrenceRowId++}`,
-    day: getDefaultWeekday(),
-    startTime: null,
-    endTime: null,
+    day: matchingRecurringRow.day,
+    startTime: cloneDateValue(matchingRecurringRow.startTime),
+    endTime: cloneDateValue(matchingRecurringRow.endTime),
   });
 };
 
@@ -1607,7 +2124,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showNurseSection" class="cc-panel">
           <div class="cc-section-title">Nurse</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimaryNurse" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="nurseAssignmentMode" type="radio" name="nurseAssignmentMode" value="primary" />
                 <span class="cc-label-inline">{{ primaryNurseLabel }}</span>
@@ -1653,7 +2170,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                 <div v-for="row in nurseRecurrenceRows" :key="row.id" class="cc-grid cc-grid-4 cc-grid-align-end">
                   <div>
                     <label :for="`nurse-day-${row.id}`" class="cc-label">Day</label>
-                    <select :id="`nurse-day-${row.id}`" v-model="row.day" class="cc-select">
+                    <select :id="`nurse-day-${row.id}`" v-model="row.day" class="cc-select" disabled>
                       <option v-for="day in weekdayOptions" :key="day" :value="day">
                         {{ day }}
                       </option>
@@ -1673,6 +2190,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                   <div class="cc-row cc-row-stretch">
                     <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      :disabled="!canAddEmployeeRecurrenceRow(nurseRecurrenceRows)"
                       @click="addEmployeeRecurrenceRow(nurseRecurrenceRows)">
                       +
                     </button>
@@ -1685,6 +2203,9 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                 </div>
               </div>
+              <div v-if="hasAttemptedSubmit && validationErrors.nurseTimes" class="cc-help-text cc-help-text--error">
+                {{ validationErrors.nurseTimes }}
+              </div>
             </div>
           </div>
         </div>
@@ -1692,7 +2213,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showDoctorSection" class="cc-panel">
           <div class="cc-section-title">Doctor</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimaryDoctor" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="doctorAssignmentMode" type="radio" name="doctorAssignmentMode" value="primary" />
                 <span class="cc-label-inline">{{ primaryDoctorLabel }}</span>
@@ -1739,7 +2260,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                 <div v-for="row in doctorRecurrenceRows" :key="row.id" class="cc-grid cc-grid-4 cc-grid-align-end">
                   <div>
                     <label :for="`doctor-day-${row.id}`" class="cc-label">Day</label>
-                    <select :id="`doctor-day-${row.id}`" v-model="row.day" class="cc-select">
+                    <select :id="`doctor-day-${row.id}`" v-model="row.day" class="cc-select" disabled>
                       <option v-for="day in weekdayOptions" :key="day" :value="day">
                         {{ day }}
                       </option>
@@ -1759,6 +2280,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                   <div class="cc-row cc-row-stretch">
                     <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      :disabled="!canAddEmployeeRecurrenceRow(doctorRecurrenceRows)"
                       @click="addEmployeeRecurrenceRow(doctorRecurrenceRows)">
                       +
                     </button>
@@ -1774,6 +2296,9 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                 </div>
               </div>
+              <div v-if="hasAttemptedSubmit && validationErrors.doctorTimes" class="cc-help-text cc-help-text--error">
+                {{ validationErrors.doctorTimes }}
+              </div>
             </div>
           </div>
         </div>
@@ -1781,7 +2306,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showSocialWorkerSection" class="cc-panel">
           <div class="cc-section-title">Social worker</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimarySocialWorker" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="socialWorkerAssignmentMode" type="radio" name="socialWorkerAssignmentMode"
                   value="primary" />
@@ -1838,7 +2363,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   class="cc-grid cc-grid-4 cc-grid-align-end">
                   <div>
                     <label :for="`social-day-${row.id}`" class="cc-label">Day</label>
-                    <select :id="`social-day-${row.id}`" v-model="row.day" class="cc-select">
+                    <select :id="`social-day-${row.id}`" v-model="row.day" class="cc-select" disabled>
                       <option v-for="day in weekdayOptions" :key="day" :value="day">
                         {{ day }}
                       </option>
@@ -1857,7 +2382,8 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                       appendTo="body" panelClass="cc-datepicker-panel cc-time-panel" :pt="datePickerPt" />
                   </div>
                   <div class="cc-row cc-row-stretch">
-                    <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill" @click="
+                    <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      :disabled="!canAddEmployeeRecurrenceRow(socialWorkerRecurrenceRows)" @click="
                       addEmployeeRecurrenceRow(socialWorkerRecurrenceRows)
                       ">
                       +
@@ -1874,6 +2400,10 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                 </div>
               </div>
+              <div v-if="hasAttemptedSubmit && validationErrors.socialWorkerTimes"
+                class="cc-help-text cc-help-text--error">
+                {{ validationErrors.socialWorkerTimes }}
+              </div>
             </div>
           </div>
         </div>
@@ -1881,7 +2411,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
         <div v-if="showDriverSection" class="cc-panel">
           <div class="cc-section-title">Driver</div>
           <div class="cc-stack">
-            <div class="cc-row cc-row-wrap">
+            <div v-if="hasPrimaryDriver" class="cc-row cc-row-wrap">
               <label class="cc-row cc-stack-sm">
                 <input v-model="driverAssignmentMode" type="radio" name="driverAssignmentMode" value="primary" />
                 <span class="cc-label-inline">{{ primaryDriverLabel }}</span>
@@ -1932,7 +2462,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                     <label :for="`driver-day-${row.id}`" class="cc-label">
                       Day
                     </label>
-                    <select :id="`driver-day-${row.id}`" v-model="row.day" class="cc-select">
+                    <select :id="`driver-day-${row.id}`" v-model="row.day" class="cc-select" disabled>
                       <option v-for="day in weekdayOptions" :key="day" :value="day">
                         {{ day }}
                       </option>
@@ -1954,6 +2484,7 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                   </div>
                   <div class="cc-row cc-row-stretch">
                     <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm cc-btn-fill"
+                      :disabled="!canAddEmployeeRecurrenceRow(driverRecurrenceRows)"
                       @click="addEmployeeRecurrenceRow(driverRecurrenceRows)">
                       +
                     </button>
@@ -1968,6 +2499,9 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
                     </button>
                   </div>
                 </div>
+              </div>
+              <div v-if="hasAttemptedSubmit && validationErrors.driverTimes" class="cc-help-text cc-help-text--error">
+                {{ validationErrors.driverTimes }}
               </div>
             </div>
           </div>
@@ -1997,4 +2531,11 @@ const fetchDriverSuggestions = (query: string, signal: AbortSignal) =>
       </button>
     </template>
   </Dialog>
+  <AppointmentEditReasonDialog
+    v-model:visible="reasonDialogVisible"
+    v-model:reasonText="reasonText"
+    @confirm="confirmReasonAndSave"
+    @cancel="cancelReasonModal"
+    @hide="cancelReasonModal"
+  />
 </template>

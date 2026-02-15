@@ -1,4 +1,4 @@
-type Confirmation = {
+export type Confirmation = {
   id: number;
   appointment_id: number;
   employee_id: number;
@@ -23,7 +23,8 @@ export type Appointment = {
     id: number | string;
     name: string;
     date_of_birth: string;
-    phone: string;
+    phone?: string;
+    mobile?: string;
   };
   patient_address?: {
     id?: number;
@@ -63,6 +64,7 @@ export type AppointmentDetails = Appointment & {
     lat: number;
     lng: number;
   };
-  confirmation: Confirmation[];
+  confirmations?: Confirmation[];
+  confirmation?: Confirmation[];
   care_team: CareMember[];
 };

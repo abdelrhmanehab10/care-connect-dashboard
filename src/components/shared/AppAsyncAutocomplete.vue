@@ -1,23 +1,28 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="TOption, TValue = TOption | null">
 import AutoComplete from "primevue/autocomplete";
 import type {
   AutoCompleteCompleteEvent,
+  AutoCompleteProps,
   AutoCompleteOptionSelectEvent,
 } from "primevue/autocomplete";
 import { computed } from "vue";
 import { useAsyncAutocomplete } from "../../composables/useAsyncAutocomplete";
 import { autoCompletePt as defaultAutoCompletePt } from "../../ui/primevuePt";
 
-type AsyncAutocompleteFetcher = (
+type AsyncAutocompleteFetcher<TOption> = (
   query: string,
   signal: AbortSignal,
-) => Promise<unknown[]>;
+) => Promise<TOption[]>;
+
+type TypedOptionSelectEvent<TOption> = Omit<AutoCompleteOptionSelectEvent, "value"> & {
+  value: TOption;
+};
 
 const props = withDefaults(
   defineProps<{
-    modelValue: unknown;
-    fetcher: AsyncAutocompleteFetcher;
-    optionLabel?: string;
+    modelValue: TValue;
+    fetcher: AsyncAutocompleteFetcher<TOption>;
+    optionLabel?: string | ((data: TOption) => string);
     inputId?: string;
     placeholder?: string;
     minChars?: number;
@@ -26,23 +31,19 @@ const props = withDefaults(
     appendTo?: "body" | "self";
     panelClass?: string;
     inputClass?: string;
-    pt?: unknown;
+    pt?: AutoCompleteProps["pt"];
     forceSelection?: boolean;
     completeOnFocus?: boolean;
     autoOptionFocus?: boolean;
     showEmptyMessage?: boolean;
   }>(),
   {
-    optionLabel: undefined,
-    inputId: undefined,
     placeholder: "",
     minChars: 2,
     debounceMs: 300,
     showCachedOnFocus: true,
     appendTo: "body",
     panelClass: "cc-autocomplete-panel",
-    inputClass: undefined,
-    pt: undefined,
     forceSelection: true,
     completeOnFocus: true,
     autoOptionFocus: true,
@@ -51,16 +52,20 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  "update:modelValue": [value: unknown];
-  "option-select": [event: AutoCompleteOptionSelectEvent];
+  "update:modelValue": [value: TValue];
+  "option-select": [event: TypedOptionSelectEvent<TOption>];
   error: [error: unknown];
 }>();
 
-const { suggestions, isLoading, search } = useAsyncAutocomplete<unknown>({
+defineSlots<{
+  option: (props: { option: TOption; index: number }) => unknown;
+}>();
+
+const { suggestions, isLoading, search } = useAsyncAutocomplete<TOption>({
   fetcher: props.fetcher,
-  debounceMs: props.debounceMs,
-  minChars: props.minChars,
-  showCachedOnFocus: props.showCachedOnFocus,
+  debounceMs: () => props.debounceMs,
+  minChars: () => props.minChars,
+  showCachedOnFocus: () => props.showCachedOnFocus,
   onError: (error) => {
     emit("error", error);
   },
@@ -72,12 +77,18 @@ const handleComplete = (event: AutoCompleteCompleteEvent) => {
   search(event.query ?? "");
 };
 
-const handleModelUpdate = (value: unknown) => {
+const handleModelUpdate = (value: TValue) => {
   emit("update:modelValue", value);
 };
 
+let optionSelectEmitLocked = false;
 const handleOptionSelect = (event: AutoCompleteOptionSelectEvent) => {
-  emit("option-select", event);
+  if (optionSelectEmitLocked) return;
+  optionSelectEmitLocked = true;
+  queueMicrotask(() => {
+    optionSelectEmitLocked = false;
+  });
+  emit("option-select", event as TypedOptionSelectEvent<TOption>);
 };
 </script>
 

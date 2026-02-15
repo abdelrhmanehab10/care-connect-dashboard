@@ -20,7 +20,6 @@ import './style.css'
 
 import App from './App.vue'
 import AppointmentMap from './components/AppointmentMap.vue'
-import router from './router'
 
 const app = createApp(App)
 
@@ -34,7 +33,6 @@ app.use(PrimeVue, { unstyled: true })
 app.use(ToastService)
 app.use(VueQueryPlugin, { queryClient })
 app.use(vuetify)
-app.use(router)
 app.component('Toast', Toast)
 app.component('AppointmentMap', AppointmentMap)
 

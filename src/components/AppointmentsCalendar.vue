@@ -2,13 +2,27 @@
 import { computed, ref, watch } from "vue";
 import { VCalendar } from "vuetify/components";
 import { useToast } from "primevue/usetoast";
+import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
 import CalendarAppointmentCard from "./CalendarAppointmentCard.vue";
 import {
-  confirmAppointmentAll,
+  confirmAppointmentPatient,
   quickNoShowAppointment,
   cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
-import type { AppointmentStatus } from "../data/options";
+import {
+  isStatusTransitionAllowed,
+  normalizeStatusKey,
+} from "../lib/statusTransitions";
+import {
+  endOfMonth,
+  endOfWeekMonday,
+  normalizeDateString,
+  parseLocalDateOnly,
+  startOfMonth,
+  startOfWeekMonday,
+  toIsoDate,
+} from "../lib/dateUtils";
+import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
 import type { Appointment } from "../types";
 
 type AppointmentCalendarEvent = {
@@ -43,35 +57,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const toIsoDate = (value: Date) => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const startOfWeek = (value: Date) => {
-  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const day = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - day);
-  return date;
-};
-
-const endOfWeek = (value: Date) => {
-  const date = startOfWeek(value);
-  date.setDate(date.getDate() + 6);
-  return date;
-};
-
-const startOfMonth = (value: Date) =>
-  new Date(value.getFullYear(), value.getMonth(), 1);
-
-const endOfMonth = (value: Date) =>
-  new Date(value.getFullYear(), value.getMonth() + 1, 0);
-
 const sourceAppointments = computed(() => props.appointments);
-
-const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 const normalizeTime = (value: string | null | undefined): string => {
   if (!value) {
@@ -82,41 +68,11 @@ const normalizeTime = (value: string | null | undefined): string => {
   return match?.[1] ?? "";
 };
 
-
-const normalizeDate = (value: string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-
-  const trimmed = value.trim();
-  const normalizedSeparators = trimmed.replace(/\//g, "-");
-  if (isValidDate(normalizedSeparators)) {
-    return normalizedSeparators;
-  }
-
-  const splitByT = normalizedSeparators.split("T")[0] ?? "";
-  if (isValidDate(splitByT)) {
-    return splitByT;
-  }
-
-  const splitBySpace = normalizedSeparators.split(" ")[0] ?? "";
-  if (isValidDate(splitBySpace)) {
-    return splitBySpace;
-  }
-
-  const parsed = new Date(normalizedSeparators);
-  if (!Number.isNaN(parsed.getTime())) {
-    return toIsoDate(parsed);
-  }
-
-  return "";
-};
-
 const getEarliestAppointmentFocus = (
   appointments: ReadonlyArray<Appointment>,
 ): string => {
   const dates = appointments
-    .map((appointment) => normalizeDate(appointment.date))
+    .map((appointment) => normalizeDateString(appointment.date))
     .filter((date) => date.length > 0);
 
   const [first, ...rest] = dates;
@@ -134,9 +90,9 @@ const getEarliestAppointmentFocus = (
 };
 
 const normalizeStatus = (status: string | null | undefined) =>
-  status?.trim().toLowerCase().replace(/[\s-]+/g, "_") ?? "";
+  normalizeStatusKey(status);
 
-const statusToColor = (status: AppointmentStatus | string) => {
+const statusToColor = (status: string | null | undefined) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
     case "patient_confirmed":
@@ -156,7 +112,7 @@ const statusToColor = (status: AppointmentStatus | string) => {
   }
 };
 
-const statusBadgeClass = (status: AppointmentStatus | string) => {
+const statusBadgeClass = (status: string | null | undefined) => {
   switch (normalizeStatus(status)) {
     case "confirmed":
     case "patient_confirmed":
@@ -207,8 +163,8 @@ const resolveRangeFocus = (rangeStart: string, rangeEnd: string) => {
 watch(
   [() => props.rangeStart, () => props.rangeEnd, sourceAppointments],
   ([rangeStart, rangeEnd, appointments]) => {
-    const normalizedStart = normalizeDate(rangeStart);
-    const normalizedEnd = normalizeDate(rangeEnd);
+    const normalizedStart = normalizeDateString(rangeStart);
+    const normalizedEnd = normalizeDateString(rangeEnd);
     if (!normalizedStart || !normalizedEnd) {
       return;
     }
@@ -223,116 +179,145 @@ const calendarHeight = computed(() =>
 );
 const eventHeight = computed(() => (viewType.value === "month" ? 96 : 52));
 const showEventMore = computed(() => viewType.value !== "month");
-const confirmingIds = ref<number[]>([]);
-const noShowIds = ref<number[]>([]);
-const cancelIds = ref<number[]>([]);
+const createLoadingIdsState = () => {
+  const ids = ref<number[]>([]);
+  const isLoading = (appointmentId: number) => ids.value.includes(appointmentId);
+  const setLoading = (appointmentId: number, value: boolean) => {
+    if (value) {
+      if (!ids.value.includes(appointmentId)) {
+        ids.value = [...ids.value, appointmentId];
+      }
+      return;
+    }
+    ids.value = ids.value.filter((id) => id !== appointmentId);
+  };
+  return { ids, isLoading, setLoading };
+};
+const confirmState = createLoadingIdsState();
+const noShowState = createLoadingIdsState();
+const cancelState = createLoadingIdsState();
+
+type PendingCalendarAction = {
+  type: "cancel";
+  appointment: Appointment;
+};
+
+const reasonAction = useReasonRequiredAction<PendingCalendarAction>({
+  onConfirm: async ({ action, reason }) => {
+    switch (action.type) {
+      case "cancel": {
+        const { appointment } = action;
+        if (!appointment?.id || isCancelLoading(appointment.id)) {
+          return;
+        }
+
+        cancelState.setLoading(appointment.id, true);
+        try {
+          await cancelAppointmentApi(appointment.id, { reason });
+          toast.add({
+            severity: "success",
+            summary: "Appointment canceled",
+            detail: "Appointment canceled successfully.",
+            life: 3000,
+          });
+          emit("cancel", appointment);
+        } catch (error) {
+          console.error("Failed to cancel appointment.", error);
+        } finally {
+          cancelState.setLoading(appointment.id, false);
+        }
+        return;
+      }
+    }
+  },
+});
+const { visible: reasonDialogVisible, reasonText } = reasonAction;
 const neutralEventColor = () => "";
 const asAppointmentEvent = (event: unknown) =>
   event as AppointmentCalendarEvent;
 
 const isConfirming = (appointmentId: number) =>
-  confirmingIds.value.includes(appointmentId);
-
-const setConfirming = (appointmentId: number, value: boolean) => {
-  if (value) {
-    if (!confirmingIds.value.includes(appointmentId)) {
-      confirmingIds.value = [...confirmingIds.value, appointmentId];
-    }
-    return;
-  }
-  confirmingIds.value = confirmingIds.value.filter((id) => id !== appointmentId);
-};
+  confirmState.isLoading(appointmentId);
 
 const isNoShowLoading = (appointmentId: number) =>
-  noShowIds.value.includes(appointmentId);
-
-const setNoShowLoading = (appointmentId: number, value: boolean) => {
-  if (value) {
-    if (!noShowIds.value.includes(appointmentId)) {
-      noShowIds.value = [...noShowIds.value, appointmentId];
-    }
-    return;
-  }
-  noShowIds.value = noShowIds.value.filter((id) => id !== appointmentId);
-};
+  noShowState.isLoading(appointmentId);
 
 const isCancelLoading = (appointmentId: number) =>
-  cancelIds.value.includes(appointmentId);
+  cancelState.isLoading(appointmentId);
 
-const setCancelLoading = (appointmentId: number, value: boolean) => {
-  if (value) {
-    if (!cancelIds.value.includes(appointmentId)) {
-      cancelIds.value = [...cancelIds.value, appointmentId];
-    }
-    return;
-  }
-  cancelIds.value = cancelIds.value.filter((id) => id !== appointmentId);
+const openReasonForAction = (action: PendingCalendarAction) => {
+  reasonAction.open(action);
 };
 
-const confirmAll = async (appointment: Appointment) => {
-  if (!appointment?.id || isConfirming(appointment.id)) {
+const requestConfirmAll = (appointment: Appointment) => {
+  if (
+    !appointment?.id ||
+    isConfirming(appointment.id) ||
+    !isStatusTransitionAllowed(appointment.status, "patient_confirmed")
+  ) {
     return;
   }
 
-  setConfirming(appointment.id, true);
-  try {
-    await confirmAppointmentAll(appointment.id);
-    toast.add({
-      severity: "success",
-      summary: "Appointment confirmed",
-      detail: "Appointment confirmed successfully.",
-      life: 3000,
+  confirmState.setLoading(appointment.id, true);
+  void confirmAppointmentPatient(appointment.id)
+    .then(() => {
+      toast.add({
+        severity: "success",
+        summary: "Patient confirmed",
+        detail: "Appointment marked as patient confirmed.",
+        life: 3000,
+      });
+      emit("confirm-all", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to confirm appointment.", error);
+    })
+    .finally(() => {
+      confirmState.setLoading(appointment.id, false);
     });
-    emit("confirm-all", appointment);
-  } catch (error) {
-    console.error("Failed to confirm appointment.", error);
-  } finally {
-    setConfirming(appointment.id, false);
-  }
 };
 
-const markNoShow = async (appointment: Appointment) => {
-  if (!appointment?.id || isNoShowLoading(appointment.id)) {
+const requestNoShow = (appointment: Appointment) => {
+  if (
+    !appointment?.id ||
+    isNoShowLoading(appointment.id) ||
+    !isStatusTransitionAllowed(appointment.status, "no_show")
+  ) {
     return;
   }
 
-  setNoShowLoading(appointment.id, true);
-  try {
-    await quickNoShowAppointment(appointment.id);
-    toast.add({
-      severity: "success",
-      summary: "No show updated",
-      detail: "Appointment marked as no show.",
-      life: 3000,
+  noShowState.setLoading(appointment.id, true);
+  void quickNoShowAppointment(appointment.id)
+    .then(() => {
+      toast.add({
+        severity: "success",
+        summary: "No show updated",
+        detail: "Appointment marked as no show.",
+        life: 3000,
+      });
+      emit("no-show", appointment);
+    })
+    .catch((error) => {
+      console.error("Failed to mark appointment as no show.", error);
+    })
+    .finally(() => {
+      noShowState.setLoading(appointment.id, false);
     });
-    emit("no-show", appointment);
-  } catch (error) {
-    console.error("Failed to mark appointment as no show.", error);
-  } finally {
-    setNoShowLoading(appointment.id, false);
-  }
 };
 
-const handleCancelAppointment = async (appointment: Appointment) => {
-  if (!appointment?.id || isCancelLoading(appointment.id)) {
+const requestCancelAppointment = (appointment: Appointment) => {
+  if (
+    !appointment?.id ||
+    isCancelLoading(appointment.id) ||
+    !isStatusTransitionAllowed(appointment.status, "canceled")
+  ) {
     return;
   }
 
-  setCancelLoading(appointment.id, true);
-  try {
-    await cancelAppointmentApi(appointment.id);
-    toast.add({
-      severity: "success",
-      summary: "Appointment canceled",
-      detail: "Appointment canceled successfully.",
-      life: 3000,
-    });
-    emit("cancel", appointment);
-  } catch (error) {
-    console.error("Failed to cancel appointment.", error);
-  } finally {
-    setCancelLoading(appointment.id, false);
-  }
+  openReasonForAction({
+    type: "cancel",
+    appointment,
+  });
 };
 
 const syncRange = () => {
@@ -340,8 +325,8 @@ const syncRange = () => {
   let rangeStart = focusedDate;
   let rangeEnd = focusedDate;
   if (viewType.value === "week") {
-    rangeStart = startOfWeek(focusedDate);
-    rangeEnd = endOfWeek(focusedDate);
+    rangeStart = startOfWeekMonday(focusedDate);
+    rangeEnd = endOfWeekMonday(focusedDate);
   } else if (viewType.value === "month") {
     rangeStart = startOfMonth(focusedDate);
     rangeEnd = endOfMonth(focusedDate);
@@ -359,7 +344,7 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
     return [];
   }
   return sourceAppointments.value.flatMap((appointment) => {
-    const normalizedDate = normalizeDate(appointment.date);
+    const normalizedDate = normalizeDateString(appointment.date);
     if (!normalizedDate) {
       return [];
     }
@@ -378,7 +363,7 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
           })`,
         start,
         end,
-        color: statusToColor(appointment.status as AppointmentStatus),
+        color: statusToColor(appointment.status),
         timed: hasTimes,
         appointment,
       },
@@ -388,17 +373,21 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
 
 const setToday = () => {
   focus.value = toIsoDate(new Date());
+  viewType.value = "day";
 };
 
-const viewDay = (_event: Event, timestamp: { date: string }) => {
+type CalendarTimestamp = { date: string };
+
+const focusDay = (timestamp: CalendarTimestamp) => {
   focus.value = timestamp.date;
   viewType.value = "day";
 };
 
-const viewMore = (_event: Event, timestamp: { date: string }) => {
-  focus.value = timestamp.date;
-  viewType.value = "day";
-};
+const viewDay = (_event: Event, timestamp: CalendarTimestamp) =>
+  focusDay(timestamp);
+
+const viewMore = (_event: Event, timestamp: CalendarTimestamp) =>
+  focusDay(timestamp);
 
 const viewWeek = () => {
   viewType.value = "week";
@@ -409,13 +398,9 @@ const viewMonth = () => {
 };
 
 const parseFocusDate = (value: string) => {
-  const [yearRaw = Number.NaN, monthRaw = Number.NaN, dayRaw = Number.NaN] =
-    value.split("-").map(Number);
-  const fallback = new Date();
-  const year = Number.isFinite(yearRaw) ? yearRaw : fallback.getFullYear();
-  const month = Number.isFinite(monthRaw) ? monthRaw : fallback.getMonth() + 1;
-  const day = Number.isFinite(dayRaw) ? dayRaw : fallback.getDate();
-  return new Date(year, month - 1, day);
+  const normalized = normalizeDateString(value);
+  const parsed = parseLocalDateOnly(normalized);
+  return parsed ?? new Date();
 };
 
 const shiftFocus = (days: number) => {
@@ -463,13 +448,7 @@ const goNext = () => {
   shiftFocus(viewType.value === "week" ? 7 : 1);
 };
 
-watch(
-  [focus, viewType],
-  () => {
-    syncRange();
-  },
-  { immediate: true },
-);
+watch([focus, viewType], syncRange, { immediate: true });
 </script>
 
 <template>
@@ -517,15 +496,26 @@ watch(
 
       <VCalendar v-model="focus" :type="viewType" :events="events" :height="calendarHeight" :showWeek="false"
         :eventHeight="eventHeight" :eventMore="showEventMore" :event-color="neutralEventColor"
+        :event-overlap-threshold="0"
         :class="['cc-calendar', `cc-calendar--${viewType}`]" @click:date="viewDay" @click:more="viewMore">
         <template #event="{ event }">
           <CalendarAppointmentCard :event="asAppointmentEvent(event)" :format-time-range="formatTimeRange"
             :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
-            :is-cancel-loading="isCancelLoading(event.appointment.id)" @edit="emit('edit', $event)"
-            @confirm="confirmAll" @no-show="markNoShow" @cancel="handleCancelAppointment" />
+            :is-cancel-loading="isCancelLoading(event.appointment.id)"
+            :can-confirm-action="isStatusTransitionAllowed(event.appointment.status, 'patient_confirmed')"
+            :can-no-show-action="isStatusTransitionAllowed(event.appointment.status, 'no_show')"
+            :can-cancel-action="isStatusTransitionAllowed(event.appointment.status, 'canceled')" @edit="emit('edit', $event)"
+            @confirm="requestConfirmAll" @no-show="requestNoShow" @cancel="requestCancelAppointment" />
         </template>
       </VCalendar>
     </div>
+    <AppointmentEditReasonDialog
+      v-model:visible="reasonDialogVisible"
+      v-model:reasonText="reasonText"
+      @confirm="reasonAction.confirm"
+      @cancel="reasonAction.cancel"
+      @hide="reasonAction.cancel"
+    />
   </div>
 </template>
