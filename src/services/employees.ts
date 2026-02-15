@@ -40,7 +40,7 @@ export const fetchEmployeesByTitle = async (
   const response = await http.get("/employees/search", {
     params: {
       title,
-      q: query?.trim() || undefined,
+      name: query?.trim() || undefined,
     },
     signal,
   });
@@ -63,7 +63,7 @@ export const fetchEmployeeOptionsByTitle = async (
   const response = await http.get("/employees/search", {
     params: {
       title,
-      q: query?.trim() || undefined,
+      name: query?.trim() || undefined,
     },
     signal,
   });
