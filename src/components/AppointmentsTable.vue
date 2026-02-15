@@ -82,8 +82,7 @@ const reasonAction = useReasonRequiredAction<PendingSave>({
     pending.cancelCb(pending.originalEvent);
   },
 });
-const reasonDialogVisible = reasonAction.visible;
-const reasonText = reasonAction.reasonText;
+const { visible: reasonDialogVisible, reasonText } = reasonAction;
 const pendingSave = reasonAction.pendingAction;
 
 const openReasonBeforeSave = (
@@ -95,14 +94,6 @@ const openReasonBeforeSave = (
 ) => {
   const key = snapshotKey(data, field);
   reasonAction.open({ data, field, key, saveCb, cancelCb, originalEvent: e });
-};
-
-const confirmReasonAndSave = () => {
-  void reasonAction.confirm();
-};
-
-const cancelReasonModal = () => {
-  reasonAction.cancel();
 };
 
 type StaffMember = Appointment["doctor"];
@@ -1156,9 +1147,9 @@ const emit = defineEmits<{
     <AppointmentEditReasonDialog
       v-model:visible="reasonDialogVisible"
       v-model:reasonText="reasonText"
-      @confirm="confirmReasonAndSave"
-      @cancel="cancelReasonModal"
-      @hide="cancelReasonModal"
+      @confirm="reasonAction.confirm"
+      @cancel="reasonAction.cancel"
+      @hide="reasonAction.cancel"
     />
   </div>
 </template>

@@ -73,8 +73,7 @@ const reasonAction = useReasonRequiredAction<PendingReasonAction>({
     }
   },
 });
-const reasonDialogVisible = reasonAction.visible;
-const reasonText = reasonAction.reasonText;
+const { visible: reasonDialogVisible, reasonText } = reasonAction;
 
 type OptionalAddress = {
   address?: string | null;
@@ -573,14 +572,6 @@ const requestCancel = () => {
   });
 };
 
-const confirmReasonAndRun = async () => {
-  await reasonAction.confirm();
-};
-
-const cancelReasonModal = () => {
-  reasonAction.cancel();
-};
-
 const loadLogs = async (id: number | null) => {
   if (!id) {
     logs.value = [];
@@ -901,9 +892,9 @@ const handleEditAppointment = () => {
   <AppointmentEditReasonDialog
     v-model:visible="reasonDialogVisible"
     v-model:reasonText="reasonText"
-    @confirm="confirmReasonAndRun"
-    @cancel="cancelReasonModal"
-    @hide="cancelReasonModal"
+    @confirm="reasonAction.confirm"
+    @cancel="reasonAction.cancel"
+    @hide="reasonAction.cancel"
   />
 </template>
 

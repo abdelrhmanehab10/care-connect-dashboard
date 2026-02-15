@@ -231,8 +231,7 @@ const reasonAction = useReasonRequiredAction<PendingCalendarAction>({
     }
   },
 });
-const reasonDialogVisible = reasonAction.visible;
-const reasonText = reasonAction.reasonText;
+const { visible: reasonDialogVisible, reasonText } = reasonAction;
 const neutralEventColor = () => "";
 const asAppointmentEvent = (event: unknown) =>
   event as AppointmentCalendarEvent;
@@ -319,14 +318,6 @@ const requestCancelAppointment = (appointment: Appointment) => {
     type: "cancel",
     appointment,
   });
-};
-
-const confirmReasonAndRun = async () => {
-  await reasonAction.confirm();
-};
-
-const cancelReasonModal = () => {
-  reasonAction.cancel();
 };
 
 const syncRange = () => {
@@ -522,9 +513,9 @@ watch([focus, viewType], syncRange, { immediate: true });
     <AppointmentEditReasonDialog
       v-model:visible="reasonDialogVisible"
       v-model:reasonText="reasonText"
-      @confirm="confirmReasonAndRun"
-      @cancel="cancelReasonModal"
-      @hide="cancelReasonModal"
+      @confirm="reasonAction.confirm"
+      @cancel="reasonAction.cancel"
+      @hide="reasonAction.cancel"
     />
   </div>
 </template>

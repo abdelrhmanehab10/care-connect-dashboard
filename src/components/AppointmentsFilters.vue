@@ -70,7 +70,7 @@ const toStatusOptionView = (
 });
 
 const filteredStates = ref<StatusOptionView[]>([]);
-const stateInput = ref<StatusOptionView | null>(null);
+const stateInput = ref<StatusOptionView | string | null>(null);
 
 const {
   statuses: appointmentStatuses,
@@ -333,6 +333,19 @@ const syncNullableFilterMirror = <T>(
   );
 };
 
+const syncDerivedInput = <TFilter, TInput>(
+  filterModel: Ref<TFilter>,
+  inputModel: Ref<TInput>,
+  deriveInput: (value: TFilter) => TInput,
+) => {
+  watch(filterModel, (value) => {
+    const nextInput = deriveInput(value);
+    if (inputModel.value !== nextInput) {
+      inputModel.value = nextInput;
+    }
+  });
+};
+
 const formatDateInputValue = (value: Date | null) => {
   if (!value) return "";
   const year = value.getFullYear();
@@ -385,38 +398,23 @@ watch(isCalendarView, (value) => {
 
 syncNullableFilterMirror(employeeFilter, employeeInput);
 
-watch(
-  () => patientFilter.value,
-  (value) => {
-    if (!value && patientInput.value !== null) {
-      patientInput.value = null;
-    } else if (value && patientInput.value !== value) {
-      patientInput.value = value;
-    }
-  },
-);
+syncDerivedInput(patientFilter, patientInput, (value) => value ?? null);
 
 syncNullableFilterMirror(visitTypeFilter, visitTypeInput);
 
-watch(
-  () => stateFilter.value,
-  (value) => {
-    const current = stateInput.value;
-    if (!value) {
-      if (current !== null) stateInput.value = null;
-      return;
-    }
-    const normalizedValue = String(value.value ?? value.key ?? "").trim().toLowerCase();
-    const matched =
-      stateOptions.value.find((option) =>
-        String(option.value ?? option.key ?? "").trim().toLowerCase() === normalizedValue,
-      ) ??
-      toStatusOptionView(value);
-    if (current !== matched) {
-      stateInput.value = matched;
-    }
-  },
-);
+syncDerivedInput(stateFilter, stateInput, (value) => {
+  if (!value) return null;
+  const normalizedValue = String(value.value ?? value.key ?? "")
+    .trim()
+    .toLowerCase();
+  return (
+    stateOptions.value.find(
+      (option) =>
+        String(option.value ?? option.key ?? "").trim().toLowerCase() ===
+        normalizedValue,
+    ) ?? toStatusOptionView(value)
+  );
+});
 
 watch(
   () => stateInput.value,
