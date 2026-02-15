@@ -13,6 +13,8 @@ import {
   quickNoShowAppointment,
 } from "../services/appointments";
 import { dialogPt } from "../ui/primevuePt";
+import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
+import { isSameCalendarDay, parseLocalDateOnly } from "../lib/dateUtils";
 
 const visible = defineModel<boolean>({ required: true });
 const props = defineProps<{
@@ -37,8 +39,6 @@ const statusOverride = ref<string | null>(null);
 const activeView = ref<"details" | "log">("details");
 const confirmingEmployeeIds = ref<number[]>([]);
 const optimisticConfirmedEmployeeIds = ref<number[]>([]);
-const reasonDialogVisible = ref(false);
-const reasonText = ref("");
 const logs = ref<AppointmentLogEntry[]>([]);
 const isLogLoading = ref(false);
 const logErrorMessage = ref<string | null>(null);
@@ -48,7 +48,32 @@ type PendingReasonAction = {
   appointment: Appointment;
 };
 
-const pendingReasonAction = ref<PendingReasonAction | null>(null);
+const reasonAction = useReasonRequiredAction<PendingReasonAction>({
+  onConfirm: async ({ action, reason }) => {
+    switch (action.type) {
+      case "cancel": {
+        const { appointment } = action;
+        if (!appointment?.id || isCancelLoading.value) {
+          return;
+        }
+
+        isCancelLoading.value = true;
+        try {
+          await cancelAppointmentApi(appointment.id, { reason });
+          statusOverride.value = "canceled";
+          emit("cancel", appointment);
+        } catch (error) {
+          console.error("Failed to cancel appointment.", error);
+        } finally {
+          isCancelLoading.value = false;
+        }
+        return;
+      }
+    }
+  },
+});
+const reasonDialogVisible = reasonAction.visible;
+const reasonText = reasonAction.reasonText;
 
 type OptionalAddress = {
   address?: string | null;
@@ -107,9 +132,12 @@ const normalizedStatus = computed(() =>
     .toLowerCase(),
 );
 const isConfirmableStatus = computed(
-  () => normalizedStatus.value === "new" || normalizedStatus.value === "waiting",
+  () =>
+    normalizedStatus.value === "new" || normalizedStatus.value === "waiting",
 );
-const isCompletedStatus = computed(() => normalizedStatus.value === "completed");
+const isCompletedStatus = computed(
+  () => normalizedStatus.value === "completed",
+);
 const isStatusConfirmed = computed(() =>
   normalizedStatus.value.includes("confirm"),
 );
@@ -117,25 +145,6 @@ const checkInButtonLabel = computed(() =>
   isCompletedStatus.value ? "View Visit" : "Check In",
 );
 const hasValidDateValue = (value: Date) => !Number.isNaN(value.getTime());
-const isSameCalendarDate = (left: Date, right: Date) =>
-  left.getFullYear() === right.getFullYear() &&
-  left.getMonth() === right.getMonth() &&
-  left.getDate() === right.getDate();
-const parseLocalDateOnly = (value: string): Date | null => {
-  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) {
-    return null;
-  }
-  const [, yearRaw, monthRaw, dayRaw] = match;
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  if (!year || !month || !day) {
-    return null;
-  }
-  const parsed = new Date(year, month - 1, day);
-  return hasValidDateValue(parsed) ? parsed : null;
-};
 const isAppointmentToday = computed(() => {
   const rawDate = String(appointmentRecord.value?.date ?? "").trim();
   if (!rawDate) {
@@ -145,7 +154,7 @@ const isAppointmentToday = computed(() => {
   if (!hasValidDateValue(parsed)) {
     return false;
   }
-  return isSameCalendarDate(parsed, new Date());
+  return isSameCalendarDay(parsed, new Date());
 });
 
 watch(
@@ -162,9 +171,7 @@ const resetRowConfirmState = () => {
 };
 
 const resetReasonDialogState = () => {
-  reasonDialogVisible.value = false;
-  reasonText.value = "";
-  pendingReasonAction.value = null;
+  reasonAction.reset();
 };
 
 const resetLogViewState = () => {
@@ -313,7 +320,8 @@ const normalizeId = (value: unknown): number | null => {
 };
 
 const confirmationList = computed<Confirmation[]>(() => {
-  const appointment = appointmentData.value as AppointmentWithConfirmations | null;
+  const appointment =
+    appointmentData.value as AppointmentWithConfirmations | null;
   if (!appointment) {
     return [];
   }
@@ -356,9 +364,9 @@ const isEmployeeConfirmed = (employeeId: number | null) => {
 const canConfirmEmployee = (employeeId: number | null, confirmed: boolean) =>
   Boolean(
     appointmentId.value &&
-      employeeId !== null &&
-      isConfirmableStatus.value &&
-      !confirmed,
+    employeeId !== null &&
+    isConfirmableStatus.value &&
+    !confirmed,
   );
 
 const buildTeamItem = (base: {
@@ -381,14 +389,19 @@ const careTeam = computed<TeamItem[]>(() => {
   const appointment = appointmentRecord.value;
   const list: TeamItem[] = [];
 
-  if (Array.isArray(appointment?.care_team) && appointment.care_team.length > 0) {
+  if (
+    Array.isArray(appointment?.care_team) &&
+    appointment.care_team.length > 0
+  ) {
     for (const member of appointment.care_team) {
       const role = String(member?.role ?? "")
         .replace(/_/g, " ")
         .trim();
       list.push(
         buildTeamItem({
-          role: role ? role.charAt(0).toUpperCase() + role.slice(1) : "Care Team",
+          role: role
+            ? role.charAt(0).toUpperCase() + role.slice(1)
+            : "Care Team",
           name: v(member?.employee?.name ?? member?.name ?? ""),
           employeeId: normalizeId(member?.employee?.id ?? member?.employee_id),
           start_time: member?.start_time,
@@ -469,13 +482,7 @@ const canCheckIn = computed(
 );
 
 const openReasonForAction = (action: PendingReasonAction) => {
-  if (reasonDialogVisible.value) {
-    return;
-  }
-
-  pendingReasonAction.value = action;
-  reasonText.value = "";
-  reasonDialogVisible.value = true;
+  reasonAction.open(action);
 };
 
 const requestConfirmEmployee = (employeeId: number | null) => {
@@ -567,38 +574,11 @@ const requestCancel = () => {
 };
 
 const confirmReasonAndRun = async () => {
-  const action = pendingReasonAction.value;
-  const reason = reasonText.value.trim();
-  if (!action || !reason) {
-    return;
-  }
-
-  resetReasonDialogState();
-
-  switch (action.type) {
-    case "cancel": {
-      const { appointment } = action;
-      if (!appointment?.id || isCancelLoading.value) {
-        return;
-      }
-
-      isCancelLoading.value = true;
-      try {
-        await cancelAppointmentApi(appointment.id, { reason });
-        statusOverride.value = "canceled";
-        emit("cancel", appointment);
-      } catch (error) {
-        console.error("Failed to cancel appointment.", error);
-      } finally {
-        isCancelLoading.value = false;
-      }
-      return;
-    }
-  }
+  await reasonAction.confirm();
 };
 
 const cancelReasonModal = () => {
-  resetReasonDialogState();
+  reasonAction.cancel();
 };
 
 const loadLogs = async (id: number | null) => {
@@ -683,7 +663,9 @@ const handleEditAppointment = () => {
                 class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--confirm"
                 aria-label="Confirm appointment"
                 title="Confirm"
-                :disabled="!appointmentId || isConfirming || !isConfirmableStatus"
+                :disabled="
+                  !appointmentId || isConfirming || !isConfirmableStatus
+                "
                 @click="requestConfirmAll"
               >
                 <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
@@ -799,7 +781,10 @@ const handleEditAppointment = () => {
                 :disabled="m.isConfirming"
                 @click="requestConfirmEmployee(m.employeeId)"
               >
-                <Loader2 v-if="m.isConfirming" class="cc-icon cc-icon-spinner" />
+                <Loader2
+                  v-if="m.isConfirming"
+                  class="cc-icon cc-icon-spinner"
+                />
                 <span v-else>Confirm</span>
               </button>
             </div>
@@ -852,7 +837,11 @@ const handleEditAppointment = () => {
     <div v-else class="cc-log-view">
       <div class="cc-log-toolbar">
         <h3 class="cc-log-title">Appointment Log</h3>
-        <button type="button" class="cc-btn cc-btn-outline" @click="showDetailsView">
+        <button
+          type="button"
+          class="cc-btn cc-btn-outline"
+          @click="showDetailsView"
+        >
           <i class="fa-solid fa-arrow-left"></i>
           <span>Back to Details</span>
         </button>
@@ -888,9 +877,7 @@ const handleEditAppointment = () => {
                 </td>
               </tr>
               <tr v-else-if="logRows.length === 0">
-                <td colspan="6" class="cc-help-text">
-                  No log entries yet.
-                </td>
+                <td colspan="6" class="cc-help-text">No log entries yet.</td>
               </tr>
               <tr v-for="row in logRows" :key="row.key">
                 <td>{{ row.index }}</td>

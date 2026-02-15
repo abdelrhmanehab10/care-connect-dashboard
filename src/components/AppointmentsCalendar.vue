@@ -13,6 +13,16 @@ import {
   isStatusTransitionAllowed,
   normalizeStatusKey,
 } from "../lib/statusTransitions";
+import {
+  endOfMonth,
+  endOfWeekMonday,
+  normalizeDateString,
+  parseLocalDateOnly,
+  startOfMonth,
+  startOfWeekMonday,
+  toIsoDate,
+} from "../lib/dateUtils";
+import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
 import type { Appointment } from "../types";
 
 type AppointmentCalendarEvent = {
@@ -47,35 +57,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const toIsoDate = (value: Date) => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const startOfWeek = (value: Date) => {
-  const date = new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const day = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - day);
-  return date;
-};
-
-const endOfWeek = (value: Date) => {
-  const date = startOfWeek(value);
-  date.setDate(date.getDate() + 6);
-  return date;
-};
-
-const startOfMonth = (value: Date) =>
-  new Date(value.getFullYear(), value.getMonth(), 1);
-
-const endOfMonth = (value: Date) =>
-  new Date(value.getFullYear(), value.getMonth() + 1, 0);
-
 const sourceAppointments = computed(() => props.appointments);
-
-const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 const normalizeTime = (value: string | null | undefined): string => {
   if (!value) {
@@ -86,41 +68,11 @@ const normalizeTime = (value: string | null | undefined): string => {
   return match?.[1] ?? "";
 };
 
-
-const normalizeDate = (value: string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-
-  const trimmed = value.trim();
-  const normalizedSeparators = trimmed.replace(/\//g, "-");
-  if (isValidDate(normalizedSeparators)) {
-    return normalizedSeparators;
-  }
-
-  const splitByT = normalizedSeparators.split("T")[0] ?? "";
-  if (isValidDate(splitByT)) {
-    return splitByT;
-  }
-
-  const splitBySpace = normalizedSeparators.split(" ")[0] ?? "";
-  if (isValidDate(splitBySpace)) {
-    return splitBySpace;
-  }
-
-  const parsed = new Date(normalizedSeparators);
-  if (!Number.isNaN(parsed.getTime())) {
-    return toIsoDate(parsed);
-  }
-
-  return "";
-};
-
 const getEarliestAppointmentFocus = (
   appointments: ReadonlyArray<Appointment>,
 ): string => {
   const dates = appointments
-    .map((appointment) => normalizeDate(appointment.date))
+    .map((appointment) => normalizeDateString(appointment.date))
     .filter((date) => date.length > 0);
 
   const [first, ...rest] = dates;
@@ -211,8 +163,8 @@ const resolveRangeFocus = (rangeStart: string, rangeEnd: string) => {
 watch(
   [() => props.rangeStart, () => props.rangeEnd, sourceAppointments],
   ([rangeStart, rangeEnd, appointments]) => {
-    const normalizedStart = normalizeDate(rangeStart);
-    const normalizedEnd = normalizeDate(rangeEnd);
+    const normalizedStart = normalizeDateString(rangeStart);
+    const normalizedEnd = normalizeDateString(rangeEnd);
     if (!normalizedStart || !normalizedEnd) {
       return;
     }
@@ -244,15 +196,43 @@ const createLoadingIdsState = () => {
 const confirmState = createLoadingIdsState();
 const noShowState = createLoadingIdsState();
 const cancelState = createLoadingIdsState();
-const reasonDialogVisible = ref(false);
-const reasonText = ref("");
 
 type PendingCalendarAction = {
   type: "cancel";
   appointment: Appointment;
 };
 
-const pendingReasonAction = ref<PendingCalendarAction | null>(null);
+const reasonAction = useReasonRequiredAction<PendingCalendarAction>({
+  onConfirm: async ({ action, reason }) => {
+    switch (action.type) {
+      case "cancel": {
+        const { appointment } = action;
+        if (!appointment?.id || isCancelLoading(appointment.id)) {
+          return;
+        }
+
+        cancelState.setLoading(appointment.id, true);
+        try {
+          await cancelAppointmentApi(appointment.id, { reason });
+          toast.add({
+            severity: "success",
+            summary: "Appointment canceled",
+            detail: "Appointment canceled successfully.",
+            life: 3000,
+          });
+          emit("cancel", appointment);
+        } catch (error) {
+          console.error("Failed to cancel appointment.", error);
+        } finally {
+          cancelState.setLoading(appointment.id, false);
+        }
+        return;
+      }
+    }
+  },
+});
+const reasonDialogVisible = reasonAction.visible;
+const reasonText = reasonAction.reasonText;
 const neutralEventColor = () => "";
 const asAppointmentEvent = (event: unknown) =>
   event as AppointmentCalendarEvent;
@@ -267,19 +247,7 @@ const isCancelLoading = (appointmentId: number) =>
   cancelState.isLoading(appointmentId);
 
 const openReasonForAction = (action: PendingCalendarAction) => {
-  if (reasonDialogVisible.value) {
-    return;
-  }
-
-  pendingReasonAction.value = action;
-  reasonText.value = "";
-  reasonDialogVisible.value = true;
-};
-
-const resetReasonDialogState = () => {
-  reasonDialogVisible.value = false;
-  reasonText.value = "";
-  pendingReasonAction.value = null;
+  reasonAction.open(action);
 };
 
 const requestConfirmAll = (appointment: Appointment) => {
@@ -354,43 +322,11 @@ const requestCancelAppointment = (appointment: Appointment) => {
 };
 
 const confirmReasonAndRun = async () => {
-  const action = pendingReasonAction.value;
-  const reason = reasonText.value.trim();
-  if (!action || !reason) {
-    return;
-  }
-
-  resetReasonDialogState();
-
-  switch (action.type) {
-    case "cancel": {
-      const { appointment } = action;
-      if (!appointment?.id || isCancelLoading(appointment.id)) {
-        return;
-      }
-
-      cancelState.setLoading(appointment.id, true);
-      try {
-        await cancelAppointmentApi(appointment.id, { reason });
-        toast.add({
-          severity: "success",
-          summary: "Appointment canceled",
-          detail: "Appointment canceled successfully.",
-          life: 3000,
-        });
-        emit("cancel", appointment);
-      } catch (error) {
-        console.error("Failed to cancel appointment.", error);
-      } finally {
-        cancelState.setLoading(appointment.id, false);
-      }
-      return;
-    }
-  }
+  await reasonAction.confirm();
 };
 
 const cancelReasonModal = () => {
-  resetReasonDialogState();
+  reasonAction.cancel();
 };
 
 const syncRange = () => {
@@ -398,8 +334,8 @@ const syncRange = () => {
   let rangeStart = focusedDate;
   let rangeEnd = focusedDate;
   if (viewType.value === "week") {
-    rangeStart = startOfWeek(focusedDate);
-    rangeEnd = endOfWeek(focusedDate);
+    rangeStart = startOfWeekMonday(focusedDate);
+    rangeEnd = endOfWeekMonday(focusedDate);
   } else if (viewType.value === "month") {
     rangeStart = startOfMonth(focusedDate);
     rangeEnd = endOfMonth(focusedDate);
@@ -417,7 +353,7 @@ const events = computed<AppointmentCalendarEvent[]>(() => {
     return [];
   }
   return sourceAppointments.value.flatMap((appointment) => {
-    const normalizedDate = normalizeDate(appointment.date);
+    const normalizedDate = normalizeDateString(appointment.date);
     if (!normalizedDate) {
       return [];
     }
@@ -471,14 +407,9 @@ const viewMonth = () => {
 };
 
 const parseFocusDate = (value: string) => {
-  const normalized = normalizeDate(value);
-  const [yearRaw = Number.NaN, monthRaw = Number.NaN, dayRaw = Number.NaN] =
-    normalized.split("-").map(Number);
-  const fallback = new Date();
-  const year = Number.isInteger(yearRaw) ? yearRaw : fallback.getFullYear();
-  const month = Number.isInteger(monthRaw) ? monthRaw : fallback.getMonth() + 1;
-  const day = Number.isInteger(dayRaw) ? dayRaw : fallback.getDate();
-  return new Date(year, month - 1, day);
+  const normalized = normalizeDateString(value);
+  const parsed = parseLocalDateOnly(normalized);
+  return parsed ?? new Date();
 };
 
 const shiftFocus = (days: number) => {

@@ -16,15 +16,14 @@ import type { AppointmentStatusOption } from "../services/appointments";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { fetchEmployeeOptionsByTitle } from "../services/employees";
+import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
 import {
   getStatusLevel as getBaseStatusLevel,
   isFinalStatus as isBaseFinalStatus,
   isStatusTransitionAllowed as isBaseStatusTransitionAllowed,
   normalizeStatusKey,
 } from "../lib/statusTransitions";
-
-const reasonDialogVisible = ref(false);
-const reasonText = ref("");
+import { normalizeDateString, toIsoDate } from "../lib/dateUtils";
 
 type PendingSave = {
   data: Appointment;
@@ -37,8 +36,54 @@ type PendingSave = {
   wasCanceled?: boolean;
 };
 
-const pendingSave = ref<PendingSave | null>(null);
 const editReasons = new Map<string, string>();
+
+const reasonAction = useReasonRequiredAction<PendingSave>({
+  onConfirm: ({ action: pending, reason }) => {
+    const { key, saveCb, originalEvent } = pending;
+    editReasons.set(key, reason);
+    explicitSaveKeys.add(key);
+
+    if (pending.completedEvent) {
+      handleCellEditComplete(pending.completedEvent);
+      return;
+    }
+
+    if (pending.wasCanceled) {
+      const previousValue = editSnapshots.get(key);
+      const draftValue = editDrafts.get(key);
+      const currentValue =
+        draftValue !== undefined
+          ? draftValue
+          : getFieldValue(pending.data, pending.field);
+      const syntheticEvent = {
+        originalEvent,
+        data: pending.data,
+        newData: pending.data,
+        value: previousValue,
+        newValue: currentValue,
+        field: pending.field,
+        index: -1,
+      } as DataTableCellEditCompleteEvent<Appointment>;
+      handleCellEditComplete(syntheticEvent);
+      return;
+    }
+
+    saveCb(originalEvent);
+  },
+  onCancel: (pending) => {
+    if (!pending) return;
+    const previousValue = editSnapshots.get(pending.key);
+    if (previousValue !== undefined) {
+      applyFieldValue(pending.data, pending.field, previousValue);
+    }
+    clearEditTracking(pending.key);
+    pending.cancelCb(pending.originalEvent);
+  },
+});
+const reasonDialogVisible = reasonAction.visible;
+const reasonText = reasonAction.reasonText;
+const pendingSave = reasonAction.pendingAction;
 
 const openReasonBeforeSave = (
   data: Appointment,
@@ -48,67 +93,15 @@ const openReasonBeforeSave = (
   cancelCb: (e: Event) => void,
 ) => {
   const key = snapshotKey(data, field);
-  pendingSave.value = { data, field, key, saveCb, cancelCb, originalEvent: e };
-  reasonText.value = "";
-  reasonDialogVisible.value = true;
+  reasonAction.open({ data, field, key, saveCb, cancelCb, originalEvent: e });
 };
 
 const confirmReasonAndSave = () => {
-  if (!pendingSave.value) return;
-
-  const reason = reasonText.value.trim();
-  if (!reason) return;
-
-  const pending = pendingSave.value;
-  const { key, saveCb, originalEvent } = pending;
-  editReasons.set(key, reason);
-  explicitSaveKeys.add(key);
-
-  reasonDialogVisible.value = false;
-  reasonText.value = "";
-  pendingSave.value = null;
-
-  if (pending.completedEvent) {
-    handleCellEditComplete(pending.completedEvent);
-    return;
-  }
-
-  if (pending.wasCanceled) {
-    const previousValue = editSnapshots.get(key);
-    const draftValue = editDrafts.get(key);
-    const currentValue =
-      draftValue !== undefined
-        ? draftValue
-        : getFieldValue(pending.data, pending.field);
-    const syntheticEvent = {
-      originalEvent,
-      data: pending.data,
-      newData: pending.data,
-      value: previousValue,
-      newValue: currentValue,
-      field: pending.field,
-      index: -1,
-    } as DataTableCellEditCompleteEvent<Appointment>;
-    handleCellEditComplete(syntheticEvent);
-    return;
-  }
-
-  saveCb(originalEvent);
+  void reasonAction.confirm();
 };
 
 const cancelReasonModal = () => {
-  const pending = pendingSave.value;
-  if (pending) {
-    const previousValue = editSnapshots.get(pending.key);
-    if (previousValue !== undefined) {
-      applyFieldValue(pending.data, pending.field, previousValue);
-    }
-    clearEditTracking(pending.key);
-    pending.cancelCb(pending.originalEvent);
-  }
-  reasonDialogVisible.value = false;
-  pendingSave.value = null;
-  reasonText.value = "";
+  reasonAction.cancel();
 };
 
 type StaffMember = Appointment["doctor"];
@@ -487,35 +480,11 @@ const formatTime = (value: string | null | undefined) => {
 };
 
 const getTodayIsoDate = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return toIsoDate(new Date());
 };
 
 const normalizeDateInput = (value: string | null | undefined) => {
-  if (!value) return getTodayIsoDate();
-  const trimmed = value.trim();
-  if (!trimmed) return getTodayIsoDate();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  const match = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-  if (match) {
-    const month = match[1]?.padStart(2, "0") ?? "";
-    const day = match[2]?.padStart(2, "0") ?? "";
-    const year = match[3] ?? "";
-    return year && month && day ? `${year}-${month}-${day}` : "";
-  }
-  const parsed = new Date(trimmed);
-  if (!Number.isNaN(parsed.getTime())) {
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, "0");
-    const day = String(parsed.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-  return getTodayIsoDate();
+  return normalizeDateString(value) || getTodayIsoDate();
 };
 
 const fallbackStatusMeta = (value: unknown) => {
