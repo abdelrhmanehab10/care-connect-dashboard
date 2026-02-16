@@ -23,6 +23,7 @@ import {
 const visible = defineModel<boolean>({ required: true });
 const props = defineProps<{
   appointment: Appointment | null;
+  isLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +36,8 @@ const emit = defineEmits<{
 }>();
 
 const appointmentData = computed(() => props.appointment);
+const isDetailsLoading = computed(() => props.isLoading ?? false);
+const isBusy = computed(() => isDetailsLoading.value);
 const appointmentId = computed(() => appointmentData.value?.id ?? null);
 const isConfirming = ref(false);
 const isNoShowLoading = ref(false);
@@ -496,6 +499,7 @@ const openReasonForAction = (action: PendingReasonAction) => {
 const requestConfirmEmployee = (employeeId: number | null) => {
   const appointment = appointmentData.value;
   if (
+    isBusy.value ||
     !appointment?.id ||
     employeeId === null ||
     !isConfirmableStatus.value ||
@@ -531,7 +535,12 @@ const requestConfirmEmployee = (employeeId: number | null) => {
 
 const requestConfirmAll = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || isConfirming.value || !isConfirmableStatus.value) {
+  if (
+    isBusy.value ||
+    !appointment?.id ||
+    isConfirming.value ||
+    !isConfirmableStatus.value
+  ) {
     return;
   }
 
@@ -551,7 +560,7 @@ const requestConfirmAll = () => {
 
 const requestNoShow = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || isNoShowLoading.value) {
+  if (isBusy.value || !appointment?.id || isNoShowLoading.value) {
     return;
   }
 
@@ -571,7 +580,7 @@ const requestNoShow = () => {
 
 const requestCancel = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || isCancelLoading.value) {
+  if (isBusy.value || !appointment?.id || isCancelLoading.value) {
     return;
   }
 
@@ -613,7 +622,7 @@ watch(
 );
 
 const showLogView = () => {
-  if (!appointmentId.value) {
+  if (!appointmentId.value || isBusy.value) {
     return;
   }
   activeView.value = "log";
@@ -624,13 +633,13 @@ const showDetailsView = () => {
 };
 
 const handleCheckIn = () => {
-  if (!canCheckIn.value || !appointmentId.value) return;
+  if (isBusy.value || !canCheckIn.value || !appointmentId.value) return;
   emit("check-in");
 };
 
 const handleEditAppointment = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id || !canEditAppointment.value) return;
+  if (isBusy.value || !appointment?.id || !canEditAppointment.value) return;
   emit("edit", appointment);
 };
 </script>
@@ -653,6 +662,13 @@ const handleEditAppointment = () => {
           </span>
 
           <div class="cc-head-actions">
+            <div
+              v-if="isDetailsLoading"
+              class="cc-help-text d-flex align-items-center gap-2"
+            >
+              <Loader2 class="cc-icon cc-icon-spinner" aria-hidden="true" />
+              <span>Loading latest details...</span>
+            </div>
             <span :class="statusClass(displayStatus)">
               {{ statusText(displayStatus) }}
             </span>
@@ -664,7 +680,10 @@ const handleEditAppointment = () => {
                 aria-label="Confirm appointment"
                 title="Confirm"
                 :disabled="
-                  !appointmentId || isConfirming || !isConfirmableStatus
+                  isBusy ||
+                  !appointmentId ||
+                  isConfirming ||
+                  !isConfirmableStatus
                 "
                 @click="requestConfirmAll"
               >
@@ -676,7 +695,7 @@ const handleEditAppointment = () => {
                 class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--no-show"
                 aria-label="Mark as no show"
                 title="No show"
-                :disabled="!appointmentId || isNoShowLoading"
+                :disabled="isBusy || !appointmentId || isNoShowLoading"
                 @click="requestNoShow"
               >
                 <Loader2
@@ -690,7 +709,7 @@ const handleEditAppointment = () => {
                 class="cc-icon-btn cc-icon-btn-outline cc-icon-btn--cancel"
                 aria-label="Cancel appointment"
                 title="Cancel"
-                :disabled="!appointmentId || isCancelLoading"
+                :disabled="isBusy || !appointmentId || isCancelLoading"
                 @click="requestCancel"
               >
                 <Loader2
@@ -778,7 +797,7 @@ const handleEditAppointment = () => {
                 v-else-if="m.canConfirm"
                 type="button"
                 class="cc-btn cc-team-confirm-btn"
-                :disabled="m.isConfirming"
+                :disabled="isBusy || m.isConfirming"
                 @click="requestConfirmEmployee(m.employeeId)"
               >
                 <Loader2
@@ -797,7 +816,7 @@ const handleEditAppointment = () => {
           <button
             type="button"
             class="cc-btn cc-btn-sm cc-btn-input excel-btn text-light"
-            :disabled="!canCheckIn"
+            :disabled="isBusy || !canCheckIn"
             @click="handleCheckIn"
           >
             {{ checkInButtonLabel }}
@@ -805,7 +824,12 @@ const handleEditAppointment = () => {
           <button
             type="button"
             class="cc-btn cc-btn-primary"
-            :disabled="!appointmentId || isConfirming || !isConfirmableStatus"
+            :disabled="
+              isBusy ||
+              !appointmentId ||
+              isConfirming ||
+              !isConfirmableStatus
+            "
             @click="requestConfirmAll"
           >
             <Loader2 v-if="isConfirming" class="cc-icon cc-icon-spinner" />
@@ -817,7 +841,7 @@ const handleEditAppointment = () => {
           <button
             type="button"
             class="cc-btn save text-light"
-            :disabled="!canEditAppointment"
+            :disabled="isBusy || !canEditAppointment"
             @click="handleEditAppointment"
           >
             Edit Appointment
@@ -825,7 +849,7 @@ const handleEditAppointment = () => {
           <button
             type="button"
             class="cc-btn cc-btn-warn"
-            :disabled="!appointmentId"
+            :disabled="isBusy || !appointmentId"
             @click="showLogView"
           >
             Log

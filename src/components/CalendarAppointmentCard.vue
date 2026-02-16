@@ -13,7 +13,7 @@ const props = defineProps<{
   event: CalendarAppointmentEvent;
   formatTimeRange: (appointment: Appointment) => string;
   statusBadgeClass: (status: string | null | undefined) => string;
-  canEditAction: boolean;
+  isDetailsLoading: boolean;
   isConfirming: boolean;
   isNoShowLoading: boolean;
   isCancelLoading: boolean;
@@ -23,7 +23,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (event: "edit", appointment: Appointment): void;
+  (event: "view-details", appointment: Appointment): void;
   (event: "confirm", appointment: Appointment): void;
   (event: "no-show", appointment: Appointment): void;
   (event: "cancel", appointment: Appointment): void;
@@ -87,11 +87,11 @@ const teamInfoTitle = computed(() => {
     .join(", ");
 });
 
-const onEdit = () => {
-  if (!props.canEditAction) {
+const onViewDetails = () => {
+  if (props.isDetailsLoading) {
     return;
   }
-  emit("edit", appointment.value);
+  emit("view-details", appointment.value);
 };
 const onConfirm = () => emit("confirm", appointment.value);
 const onNoShow = () => emit("no-show", appointment.value);
@@ -113,12 +113,17 @@ const onCancel = () => {
     class="cc-calendar-event"
     :style="{ borderLeftColor: event.color }"
     role="button"
-    :tabindex="canEditAction ? 0 : -1"
-    :aria-disabled="!canEditAction"
-    @click="onEdit"
+    :tabindex="isDetailsLoading ? -1 : 0"
+    :aria-busy="isDetailsLoading"
+    @click="onViewDetails"
   >
-    <div class="cc-calendar-event-title">
-      {{ displayValue(appointment.patient?.name) }}
+    <div class="cc-calendar-event-title d-flex align-items-center gap-2">
+      <span>{{ displayValue(appointment.patient?.name) }}</span>
+      <Loader2
+        v-if="isDetailsLoading"
+        class="cc-icon cc-icon-spinner"
+        aria-label="Loading details"
+      />
     </div>
     <div class="cc-calendar-event-meta">
       <span class="cc-calendar-event-time">

@@ -46,6 +46,7 @@ const activeTab = ref("table");
 const page = ref(1);
 const selectedAppointment = ref<Appointment | null>(null);
 const detailsLoadingId = ref<number | null>(null);
+const detailsRequestSeq = ref(0);
 const editingAppointment = ref<Appointment | null>(null);
 const isEditLoading = ref(false);
 const isSaving = ref(false);
@@ -566,21 +567,36 @@ const handleCellEditComplete = (
 
 const openDetails = async (appointment: Appointment) => {
   const fallback = appointment;
-  isDetailsOpen.value = false;
-  selectedAppointment.value = null;
+  const requestSeq = detailsRequestSeq.value + 1;
+  detailsRequestSeq.value = requestSeq;
+  isDetailsOpen.value = true;
+  selectedAppointment.value = fallback;
   detailsLoadingId.value = fallback.id;
 
   try {
     const details = await fetchAppointmentDetails(fallback.id);
+    if (requestSeq !== detailsRequestSeq.value) {
+      return;
+    }
     selectedAppointment.value = mergeAppointmentDetails(
       details as Partial<Appointment>,
       fallback,
     );
-    isDetailsOpen.value = true;
   } catch (error) {
+    if (requestSeq !== detailsRequestSeq.value) {
+      return;
+    }
     console.error("Failed to load appointment details.", error);
+    toast.add({
+      severity: "warn",
+      summary: "Loaded partial details",
+      detail: "Showing basic appointment data while full details load failed.",
+      life: 3500,
+    });
   } finally {
-    detailsLoadingId.value = null;
+    if (requestSeq === detailsRequestSeq.value) {
+      detailsLoadingId.value = null;
+    }
   }
 };
 
@@ -821,10 +837,11 @@ onMounted(() => {
               <AppointmentsCalendar
                 :appointments="appointments"
                 :is-loading="isLoading"
+                :details-loading-id="detailsLoadingId"
                 :range-start="apiStart"
                 :range-end="apiEnd"
                 @range-change="syncCalendarRange"
-                @edit="openEditDialog"
+                @view-details="openDetails"
                 @confirm-all="refreshAppointments"
                 @no-show="refreshAppointments"
                 @cancel="refreshAppointments"
@@ -853,6 +870,7 @@ onMounted(() => {
     <AppointmentDetailsDialog
       v-model="isDetailsOpen"
       :appointment="selectedAppointment"
+      :is-loading="isDetailsOpen && detailsLoadingId !== null"
       @edit="openEditDialog"
       @confirm-all="refreshAppointments"
       @confirm-employee="refreshAppointments"

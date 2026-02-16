@@ -33,6 +33,19 @@ const mountDialog = (appointment: Appointment) =>
     },
   });
 
+const getCheckInButton = (wrapper: ReturnType<typeof mountDialog>) => {
+  const button = wrapper
+    .findAll("button")
+    .find((candidate) => {
+      const text = candidate.text().trim();
+      return text === "Check In" || text === "View Visit";
+    });
+  if (!button) {
+    throw new Error("Check In button was not found");
+  }
+  return button;
+};
+
 const formatDateSlash = (value: Date) => {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, "0");
@@ -142,12 +155,12 @@ describe("AppointmentDetailsDialog", () => {
     } as Partial<Appointment>);
 
     const firstWrapper = mountDialog(notAllConfirmed);
-    expect(firstWrapper.get(".cc-btn-primary").attributes("disabled")).toBeDefined();
+    expect(getCheckInButton(firstWrapper).attributes("disabled")).toBeDefined();
 
     const secondWrapper = mountDialog(notToday);
-    expect(secondWrapper.get(".cc-btn-primary").attributes("disabled")).toBeDefined();
+    expect(getCheckInButton(secondWrapper).attributes("disabled")).toBeDefined();
 
     const thirdWrapper = mountDialog(readyForCheckIn);
-    expect(thirdWrapper.get(".cc-btn-primary").attributes("disabled")).toBeUndefined();
+    expect(getCheckInButton(thirdWrapper).attributes("disabled")).toBeUndefined();
   });
 });

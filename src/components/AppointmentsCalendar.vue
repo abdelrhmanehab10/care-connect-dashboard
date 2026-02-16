@@ -10,7 +10,6 @@ import {
   cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
 import {
-  isFinalStatus,
   isStatusTransitionAllowed,
   normalizeStatusKey,
 } from "../lib/statusTransitions";
@@ -38,12 +37,13 @@ type AppointmentCalendarEvent = {
 const props = defineProps<{
   appointments: ReadonlyArray<Appointment>;
   isLoading: boolean;
+  detailsLoadingId?: number | null;
   rangeStart?: string;
   rangeEnd?: string;
 }>();
 const toast = useToast();
 const emit = defineEmits<{
-  (event: "edit", appointment: Appointment): void;
+  (event: "view-details", appointment: Appointment): void;
   (event: "confirm-all", appointment: Appointment): void;
   (event: "no-show", appointment: Appointment): void;
   (event: "cancel", appointment: Appointment): void;
@@ -339,14 +339,11 @@ const requestCancelAppointment = (appointment: Appointment) => {
   });
 };
 
-const canEditAppointment = (appointment: Appointment) =>
-  !isFinalStatus(appointment.status);
-
-const handleEditAppointment = (appointment: Appointment) => {
-  if (!appointment?.id || !canEditAppointment(appointment)) {
+const handleViewDetails = (appointment: Appointment) => {
+  if (!appointment?.id) {
     return;
   }
-  emit("edit", appointment);
+  emit("view-details", appointment);
 };
 
 const syncRange = () => {
@@ -552,13 +549,13 @@ watch([focus, viewType], syncRange, { immediate: true });
         <template #event="{ event }">
           <CalendarAppointmentCard :event="asAppointmentEvent(event)" :format-time-range="formatTimeRange"
             :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
+            :is-details-loading="props.detailsLoadingId === event.appointment.id"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
             :is-cancel-loading="isCancelLoading(event.appointment.id)"
-            :can-edit-action="canEditAppointment(event.appointment)"
             :can-confirm-action="isStatusTransitionAllowed(event.appointment.status, 'patient_confirmed')"
             :can-no-show-action="isStatusTransitionAllowed(event.appointment.status, 'no_show')"
             :can-cancel-action="isStatusTransitionAllowed(event.appointment.status, 'canceled')"
-            @edit="handleEditAppointment"
+            @view-details="handleViewDetails"
             @confirm="requestConfirmAll" @no-show="requestNoShow" @cancel="requestCancelAppointment" />
         </template>
       </VCalendar>
