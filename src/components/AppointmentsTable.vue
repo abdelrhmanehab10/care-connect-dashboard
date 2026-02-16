@@ -587,11 +587,15 @@ const getStatusLevel = (value: unknown) =>
   getStatusOption(value)?.level ?? fallbackStatusMeta(value).level;
 
 const isFinalStatus = (value: unknown) => {
+  // Always honor built-in final-like statuses, even if API metadata is wrong.
+  if (isBaseFinalStatus(value)) {
+    return true;
+  }
   const option = getStatusOption(value);
   if (option) {
     return option.isFinal || option.level >= 3;
   }
-  return isBaseFinalStatus(value);
+  return false;
 };
 
 const getStatusOptionsForRow = (
@@ -645,9 +649,28 @@ const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
 
 const getSnapshotValue = (data: Appointment, field: string) =>
   getSnapshot(snapshotKey(data, field));
-const isStatusLocked = (data: Appointment) => {
+const isRowEditLocked = (data: Appointment) => {
   const snapshot = getSnapshotValue(data, "status");
   return isFinalStatus(snapshot ?? data.status);
+};
+const blockRowEditIfLocked = (event: Event, data: Appointment) => {
+  if (!isRowEditLocked(data)) {
+    return false;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  return true;
+};
+const handleStaffCellPointer = (
+  event: Event,
+  data: Appointment,
+  staff: StaffMember | null | undefined,
+) => {
+  if (blockRowEditIfLocked(event, data)) {
+    return;
+  }
+  blockEditIfMissing(event, staff);
 };
 const blockCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
   const originalEvent = event.originalEvent as Event | undefined;
@@ -657,7 +680,7 @@ const blockCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
 };
 
 const handleCellEditInit = (event: DataTableCellEditInitEvent<Appointment>) => {
-  if (event.field === "status" && isStatusLocked(event.data)) {
+  if (isRowEditLocked(event.data)) {
     blockCellEditInit(event);
     return;
   }
@@ -792,8 +815,14 @@ const emit = defineEmits<{
       <!-- Date -->
       <Column field="date" header="Date">
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
-          <span v-else>{{ data.date ?? "-" }}</span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockRowEditIfLocked($event, data)"
+            @click="blockRowEditIfLocked($event, data)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
+            <span v-else>{{ data.date ?? "-" }}</span>
+          </div>
         </template>
 
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
@@ -842,8 +871,14 @@ const emit = defineEmits<{
       <!-- Patient -->
       <Column field="patient.name" header="Patient">
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-lg"></span>
-          <span v-else>{{ data.patient?.name ?? "-" }}</span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockRowEditIfLocked($event, data)"
+            @click="blockRowEditIfLocked($event, data)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-lg"></span>
+            <span v-else>{{ data.patient?.name ?? "-" }}</span>
+          </div>
         </template>
 
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
@@ -895,12 +930,18 @@ const emit = defineEmits<{
       </Column>
 
       <!-- Time -->
-      <Column header="Time">
+      <Column field="time" header="Time">
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
-          <span v-else class="cc-text-nowrap">
-            {{ formatTime(data.start_time) }} - {{ formatTime(data.end_time) }}
-          </span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockRowEditIfLocked($event, data)"
+            @click="blockRowEditIfLocked($event, data)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
+            <span v-else class="cc-text-nowrap">
+              {{ formatTime(data.start_time) }} - {{ formatTime(data.end_time) }}
+            </span>
+          </div>
         </template>
 
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
@@ -962,17 +1003,23 @@ const emit = defineEmits<{
       <!-- Status -->
       <Column field="status" header="Status">
         <template #body="{ data }">
-          <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
-          <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)">
-            {{ getStatusDisplayLabel(data.status) }}
-          </span>
+          <div
+            class="cc-cell-block"
+            @mousedown="blockRowEditIfLocked($event, data)"
+            @click="blockRowEditIfLocked($event, data)"
+          >
+            <span v-if="isLoading" class="cc-skeleton cc-skeleton-pill"></span>
+            <span v-else class="cc-badge" :class="statusBadgeClass(data.status as AppointmentStatus)">
+              {{ getStatusDisplayLabel(data.status) }}
+            </span>
+          </div>
         </template>
 
         <template #editor="{ data, editorSaveCallback, editorCancelCallback }">
           <Transition name="cc-cell-edit" appear>
             <div class="cc-cell-edit">
               <div class="cc-cell-edit-fields">
-                <select v-model="data.status" class="cc-select cc-select-sm" :disabled="isStatusLocked(data)" @keydown="
+                <select v-model="data.status" class="cc-select cc-select-sm" :disabled="isRowEditLocked(data)" @keydown="
                   handleEditorKeydown(
                     $event,
                     (e) =>
@@ -994,7 +1041,7 @@ const emit = defineEmits<{
               </div>
 
               <div class="cc-cell-edit-actions">
-                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" :disabled="isStatusLocked(data)"
+                <button type="button" class="cc-btn cc-btn-outline-success cc-btn-sm" :disabled="isRowEditLocked(data)"
                   @click.stop="
                     openReasonBeforeSave(
                       data,
@@ -1019,8 +1066,8 @@ const emit = defineEmits<{
       <!-- Nurse -->
       <Column field="nurse.name" header="Nurse" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <div class="cc-cell-block" @mousedown="blockEditIfMissing($event, data.nurse)"
-            @click="blockEditIfMissing($event, data.nurse)">
+          <div class="cc-cell-block" @mousedown="handleStaffCellPointer($event, data, data.nurse)"
+            @click="handleStaffCellPointer($event, data, data.nurse)">
             <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
             <span v-else>{{ displayStaffName(data.nurse) }}</span>
           </div>
@@ -1076,8 +1123,8 @@ const emit = defineEmits<{
       <!-- Doctor -->
       <Column field="doctor.name" header="Doctor" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <div class="cc-cell-block" @mousedown="blockEditIfMissing($event, data.doctor)"
-            @click="blockEditIfMissing($event, data.doctor)">
+          <div class="cc-cell-block" @mousedown="handleStaffCellPointer($event, data, data.doctor)"
+            @click="handleStaffCellPointer($event, data, data.doctor)">
             <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
             <span v-else>{{ displayStaffName(data.doctor) }}</span>
           </div>
@@ -1133,8 +1180,8 @@ const emit = defineEmits<{
       <!-- Social worker -->
       <Column field="social_worker.name" header="Social worker" :bodyStyle="staffCellBodyStyle">
         <template #body="{ data }">
-          <div class="cc-cell-block" @mousedown="blockEditIfMissing($event, data.social_worker)"
-            @click="blockEditIfMissing($event, data.social_worker)">
+          <div class="cc-cell-block" @mousedown="handleStaffCellPointer($event, data, data.social_worker)"
+            @click="handleStaffCellPointer($event, data, data.social_worker)">
             <span v-if="isLoading" class="cc-skeleton cc-skeleton-md"></span>
             <span v-else>{{ displayStaffName(data.social_worker) }}</span>
           </div>

@@ -28,6 +28,7 @@ import {
   statusBadgeClass,
   useAppointmentsQuery,
 } from "../composables/useAppointmentsQuery";
+import { isFinalStatus } from "../lib/statusTransitions";
 import type { Appointment } from "../types";
 import {
   doctorOptions,
@@ -610,7 +611,20 @@ const openAddDialog = () => {
   isDialogOpen.value = true;
 };
 
+const canEditAppointment = (appointment: Appointment | null | undefined) =>
+  Boolean(appointment?.id) && !isFinalStatus(appointment?.status);
+
 const openEditDialog = (appointment: Appointment) => {
+  if (!canEditAppointment(appointment)) {
+    toast.add({
+      severity: "warn",
+      summary: "Editing not allowed",
+      detail: "Appointments in final status cannot be edited.",
+      life: 4000,
+    });
+    return;
+  }
+
   const fallback = appointment;
   isDetailsOpen.value = false;
   isDialogOpen.value = true;
@@ -619,10 +633,22 @@ const openEditDialog = (appointment: Appointment) => {
   editingAppointment.value = null;
   fetchAppointmentDetails(appointment.id)
     .then((details) => {
-      editingAppointment.value = mergeAppointmentDetails(
+      const mergedAppointment = mergeAppointmentDetails(
         details as Partial<Appointment>,
         fallback,
       );
+      if (!canEditAppointment(mergedAppointment)) {
+        toast.add({
+          severity: "warn",
+          summary: "Editing not allowed",
+          detail: "Appointments in final status cannot be edited.",
+          life: 4000,
+        });
+        isDialogOpen.value = false;
+        editingAppointment.value = null;
+        return;
+      }
+      editingAppointment.value = mergedAppointment;
     })
     .catch((error) => {
       console.error("Failed to load appointment details.", error);

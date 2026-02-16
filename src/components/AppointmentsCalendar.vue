@@ -10,6 +10,7 @@ import {
   cancelAppointment as cancelAppointmentApi,
 } from "../services/appointments";
 import {
+  isFinalStatus,
   isStatusTransitionAllowed,
   normalizeStatusKey,
 } from "../lib/statusTransitions";
@@ -338,6 +339,16 @@ const requestCancelAppointment = (appointment: Appointment) => {
   });
 };
 
+const canEditAppointment = (appointment: Appointment) =>
+  !isFinalStatus(appointment.status);
+
+const handleEditAppointment = (appointment: Appointment) => {
+  if (!appointment?.id || !canEditAppointment(appointment)) {
+    return;
+  }
+  emit("edit", appointment);
+};
+
 const syncRange = () => {
   const focusedDate = parseFocusDate(focus.value);
   let rangeStart = focusedDate;
@@ -543,9 +554,11 @@ watch([focus, viewType], syncRange, { immediate: true });
             :status-badge-class="statusBadgeClass" :is-confirming="isConfirming(event.appointment.id)"
             :is-no-show-loading="isNoShowLoading(event.appointment.id)"
             :is-cancel-loading="isCancelLoading(event.appointment.id)"
+            :can-edit-action="canEditAppointment(event.appointment)"
             :can-confirm-action="isStatusTransitionAllowed(event.appointment.status, 'patient_confirmed')"
             :can-no-show-action="isStatusTransitionAllowed(event.appointment.status, 'no_show')"
-            :can-cancel-action="isStatusTransitionAllowed(event.appointment.status, 'canceled')" @edit="emit('edit', $event)"
+            :can-cancel-action="isStatusTransitionAllowed(event.appointment.status, 'canceled')"
+            @edit="handleEditAppointment"
             @confirm="requestConfirmAll" @no-show="requestNoShow" @cancel="requestCancelAppointment" />
         </template>
       </VCalendar>

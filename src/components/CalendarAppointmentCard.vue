@@ -13,6 +13,7 @@ const props = defineProps<{
   event: CalendarAppointmentEvent;
   formatTimeRange: (appointment: Appointment) => string;
   statusBadgeClass: (status: string | null | undefined) => string;
+  canEditAction: boolean;
   isConfirming: boolean;
   isNoShowLoading: boolean;
   isCancelLoading: boolean;
@@ -86,7 +87,12 @@ const teamInfoTitle = computed(() => {
     .join(", ");
 });
 
-const onEdit = () => emit("edit", appointment.value);
+const onEdit = () => {
+  if (!props.canEditAction) {
+    return;
+  }
+  emit("edit", appointment.value);
+};
 const onConfirm = () => emit("confirm", appointment.value);
 const onNoShow = () => emit("no-show", appointment.value);
 const isCanceledStatus = computed(() => {
@@ -107,7 +113,8 @@ const onCancel = () => {
     class="cc-calendar-event"
     :style="{ borderLeftColor: event.color }"
     role="button"
-    tabindex="0"
+    :tabindex="canEditAction ? 0 : -1"
+    :aria-disabled="!canEditAction"
     @click="onEdit"
   >
     <div class="cc-calendar-event-title">

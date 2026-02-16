@@ -1,6 +1,7 @@
 export const normalizeStatusKey = (value: unknown) =>
   String(value ?? "")
     .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
 
@@ -28,6 +29,8 @@ export const statusLevelLookup: Record<string, number> = {
   cancelled: 3,
   completed: 3,
   no_show: 3,
+  final: 3,
+  final_status: 3,
 };
 
 export const getStatusLevel = (value: unknown) =>

@@ -82,12 +82,15 @@ const makeAppointment = (status: string): Appointment => ({
   state: status,
 });
 
-const mountTable = (appointment: Appointment) =>
+const mountTable = (
+  appointment: Appointment,
+  options: AppointmentStatusOption[] = statusOptions,
+) =>
   mount(AppointmentsTable, {
     props: {
       appointments: [appointment],
       isLoading: false,
-      statusOptions,
+      statusOptions: options,
       statusBadgeClass: () => "",
     },
     global: {
@@ -131,7 +134,7 @@ describe("AppointmentsTable status rules", () => {
     expect(stopImmediatePropagation).toHaveBeenCalledTimes(1);
   });
 
-  it("does not block non-status fields when status is final", () => {
+  it("blocks non-status fields when status is final", () => {
     const appointment = makeAppointment("canceled");
     const wrapper = mountTable(appointment);
     const table = wrapper.findComponent(DataTableStub);
@@ -150,9 +153,50 @@ describe("AppointmentsTable status rules", () => {
       index: 0,
     });
 
-    expect(preventDefault).not.toHaveBeenCalled();
-    expect(stopPropagation).not.toHaveBeenCalled();
-    expect(stopImmediatePropagation).not.toHaveBeenCalled();
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(stopImmediatePropagation).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks doctor and time edits when status is finalStatus", () => {
+    const appointment = makeAppointment("finalStatus");
+    const wrapper = mountTable(appointment);
+    const table = wrapper.findComponent(DataTableStub);
+
+    const preventDefaultDoctor = vi.fn();
+    const stopPropagationDoctor = vi.fn();
+    const stopImmediatePropagationDoctor = vi.fn();
+    table.vm.$emit("cell-edit-init", {
+      originalEvent: {
+        preventDefault: preventDefaultDoctor,
+        stopPropagation: stopPropagationDoctor,
+        stopImmediatePropagation: stopImmediatePropagationDoctor,
+      },
+      data: appointment,
+      field: "doctor",
+      index: 0,
+    });
+
+    const preventDefaultTime = vi.fn();
+    const stopPropagationTime = vi.fn();
+    const stopImmediatePropagationTime = vi.fn();
+    table.vm.$emit("cell-edit-init", {
+      originalEvent: {
+        preventDefault: preventDefaultTime,
+        stopPropagation: stopPropagationTime,
+        stopImmediatePropagation: stopImmediatePropagationTime,
+      },
+      data: appointment,
+      field: "start_time",
+      index: 0,
+    });
+
+    expect(preventDefaultDoctor).toHaveBeenCalledTimes(1);
+    expect(stopPropagationDoctor).toHaveBeenCalledTimes(1);
+    expect(stopImmediatePropagationDoctor).toHaveBeenCalledTimes(1);
+    expect(preventDefaultTime).toHaveBeenCalledTimes(1);
+    expect(stopPropagationTime).toHaveBeenCalledTimes(1);
+    expect(stopImmediatePropagationTime).toHaveBeenCalledTimes(1);
   });
 
   it("limits level-2 statuses to final options", () => {
@@ -197,5 +241,33 @@ describe("AppointmentsTable status rules", () => {
     });
 
     expect(appointment.status).toBe("confirmed");
+  });
+
+  it("treats completed as final even when API status options are misconfigured", () => {
+    const misconfiguredOptions: AppointmentStatusOption[] = [
+      { key: "completed", value: "Completed", level: 1, is_final: false },
+      { key: "new", value: "New", level: 1, is_final: false },
+    ];
+    const appointment = makeAppointment("completed");
+    const wrapper = mountTable(appointment, misconfiguredOptions);
+    const table = wrapper.findComponent(DataTableStub);
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    const stopImmediatePropagation = vi.fn();
+
+    table.vm.$emit("cell-edit-init", {
+      originalEvent: {
+        preventDefault,
+        stopPropagation,
+        stopImmediatePropagation,
+      },
+      data: appointment,
+      field: "start_time",
+      index: 0,
+    });
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(stopImmediatePropagation).toHaveBeenCalledTimes(1);
   });
 });

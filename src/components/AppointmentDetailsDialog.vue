@@ -15,7 +15,10 @@ import {
 import { dialogPt } from "../ui/primevuePt";
 import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
 import { isSameCalendarDay, parseLocalDateOnly } from "../lib/dateUtils";
-import { formatStatusLabel } from "../lib/statusTransitions";
+import {
+  formatStatusLabel,
+  isFinalStatus,
+} from "../lib/statusTransitions";
 
 const visible = defineModel<boolean>({ required: true });
 const props = defineProps<{
@@ -125,6 +128,12 @@ const statusClass = (s: unknown) => {
 const displayStatus = computed(
   () => statusOverride.value ?? appointmentData.value?.status ?? null,
 );
+const canEditAppointment = computed(() => {
+  if (!appointmentId.value) {
+    return false;
+  }
+  return !isFinalStatus(displayStatus.value);
+});
 const normalizedStatus = computed(() =>
   String(displayStatus.value ?? "")
     .trim()
@@ -621,7 +630,7 @@ const handleCheckIn = () => {
 
 const handleEditAppointment = () => {
   const appointment = appointmentData.value;
-  if (!appointment?.id) return;
+  if (!appointment?.id || !canEditAppointment.value) return;
   emit("edit", appointment);
 };
 </script>
@@ -808,7 +817,7 @@ const handleEditAppointment = () => {
           <button
             type="button"
             class="cc-btn save text-light"
-            :disabled="!appointmentId"
+            :disabled="!canEditAppointment"
             @click="handleEditAppointment"
           >
             Edit Appointment
