@@ -37,6 +37,7 @@ import {
 const isDialogOpen = ref(false);
 const isDetailsOpen = ref(false);
 const activeTab = ref("table");
+const showCalendarView = ref(false);
 const page = ref(1);
 const selectedAppointment = ref<Appointment | null>(null);
 const detailsLoadingId = ref<number | null>(null);
@@ -48,6 +49,7 @@ const saveError = ref<string | null>(null);
 const toast = useToast();
 const visitTypes = ref<VisitType[]>([]);
 
+// Shared filter state for both table and calendar views.
 const appointmentsFiltersStore = useAppointmentsFiltersStore();
 const {
   employeeFilter,
@@ -74,6 +76,7 @@ const visitTypeOptions = computed(() => {
   return options;
 });
 
+// Calendar-view range sync helpers (filters vs calendar navigation source).
 const dateFilterSource = ref<"calendar" | "filters" | null>(null);
 
 const setStartDateFromFilter = (value: Date | null) => {
@@ -143,7 +146,10 @@ const tabPanelsPt = {
   root: { class: "cc-tab-content" },
 };
 
-const isCalendarView = computed(() => activeTab.value === "calendar");
+// View switch state.
+const isCalendarView = computed(
+  () => showCalendarView.value && activeTab.value === "calendar",
+);
 
 const mergeAppointmentDetails = (
   details: Partial<Appointment>,
@@ -226,6 +232,7 @@ const quickPatientLabel = computed<string>(
 );
 const quickDoctorLabel = computed<string>(() => doctorOptions[0] ?? "Doctor");
 
+// Table-view only: export current query result as CSV.
 const exportExcel = () => {
   const rows = appointments.value;
 
@@ -270,6 +277,7 @@ const exportExcel = () => {
   URL.revokeObjectURL(url);
 };
 
+// Calendar-view only: keep filter date range synced with calendar range.
 const syncCalendarRange = (payload: { start: string; end: string }) => {
   if (activeTab.value !== "calendar") {
     return;
@@ -503,8 +511,10 @@ onMounted(() => {
         <Tabs v-model:value="activeTab">
           <div class="cc-tabs-wrap d-flex justify-content-between">
             <TabList class="cc-tabs">
+              <!-- Table view -->
               <Tab value="table" :pt="tabLinkPt">Table View</Tab>
-              <Tab value="calendar" :pt="calendarTabLinkPt">Calendar View</Tab>
+              <!-- Calendar view (temporarily hidden behind feature flag) -->
+              <Tab v-if="showCalendarView" value="calendar" :pt="calendarTabLinkPt">Calendar View</Tab>
             </TabList>
             <button
               v-if="activeTab === 'table'"
@@ -517,12 +527,14 @@ onMounted(() => {
           </div>
 
           <TabPanels :pt="tabPanelsPt">
+            <!-- Table view content -->
             <TabPanel value="table">
               <div class="cc-table-card">
                 <AppointmentsTable />
               </div>
             </TabPanel>
-            <TabPanel value="calendar">
+            <!-- Calendar view content -->
+            <TabPanel v-if="showCalendarView" value="calendar">
               <AppointmentsCalendar
                 :appointments="appointments"
                 :is-loading="isLoading"
