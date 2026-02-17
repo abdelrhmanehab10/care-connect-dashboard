@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { flushPromises, shallowMount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppointmentsPage from "../../src/pages/AppointmentsPage.vue";
 
@@ -87,6 +88,7 @@ vi.mock("../../src/components/AppointmentDetailsDialog.vue", () => ({
 const mountPage = () =>
   shallowMount(AppointmentsPage, {
     global: {
+      plugins: [createPinia()],
       stubs: {
         Button: true,
         Tab: true,

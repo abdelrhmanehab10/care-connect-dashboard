@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
@@ -24,6 +25,7 @@ import AppointmentMap from './components/AppointmentMap.vue'
 const app = createApp(App)
 
 const queryClient = new QueryClient()
+const pinia = createPinia()
 const vuetify = createVuetify({
   components: { VCalendar },
   directives,
@@ -31,6 +33,7 @@ const vuetify = createVuetify({
 
 app.use(PrimeVue, { unstyled: true })
 app.use(ToastService)
+app.use(pinia)
 app.use(VueQueryPlugin, { queryClient })
 app.use(vuetify)
 app.component('Toast', Toast)

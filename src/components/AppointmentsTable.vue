@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { useQueryClient } from "@tanstack/vue-query";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
@@ -30,6 +31,7 @@ import {
   statusBadgeClass,
   useAppointmentsQuery,
 } from "../composables/useAppointmentsQuery";
+import { useAppointmentsFiltersStore } from "../stores/appointmentsFilters";
 import {
   formatStatusLabel,
   getStatusLevel as getBaseStatusLevel,
@@ -394,6 +396,34 @@ const detailsRequestSeq = ref(0);
 const isDetailsOpen = ref(false);
 const selectedAppointment = ref<Appointment | null>(null);
 const isInlineSaving = ref(false);
+const appointmentsFiltersStore = useAppointmentsFiltersStore();
+const {
+  employeeFilter,
+  patientFilter,
+  visitTypeFilter,
+  stateFilter,
+  statusTagFilter,
+  startDate,
+  endDate,
+} = storeToRefs(appointmentsFiltersStore);
+const apiStart = computed(() => (startDate.value ? toIsoDate(startDate.value) : ""));
+const apiEnd = computed(() => (endDate.value ? toIsoDate(endDate.value) : ""));
+const patientIdFilter = computed(() => patientFilter.value?.id ?? "");
+const employeeIdsFilter = computed<number[]>(() => {
+  const id = employeeFilter.value?.id;
+  return typeof id === "number" && Number.isFinite(id) ? [id] : [];
+});
+const resolveStateFilter = () => {
+  return stateFilter.value?.value ?? stateFilter.value?.key ?? "";
+};
+const visitTypeFilterId = computed(() => {
+  const name = String(visitTypeFilter.value ?? "").toLowerCase();
+  if (!name) return "";
+  const match = visitTypes.value.find(
+    (type) => String(type?.name ?? "").trim().toLowerCase() === name,
+  );
+  return String(match?.id ?? "").trim();
+});
 
 let queryClient: ReturnType<typeof useQueryClient> | null = null;
 try {
@@ -406,6 +436,16 @@ let queryResult: ReturnType<typeof useAppointmentsQuery> | null = null;
 try {
   queryResult = useAppointmentsQuery({
     page,
+    start: apiStart,
+    end: apiEnd,
+    status: computed(() => statusTagFilter.value ?? ""),
+    employee_ids: employeeIdsFilter,
+    patient_id: patientIdFilter,
+    visit_type: computed(() =>
+      visitTypeFilterId.value ? "" : (visitTypeFilter.value ?? ""),
+    ),
+    visit_type_id: visitTypeFilterId,
+    state: computed(() => resolveStateFilter()),
   });
 } catch {
   queryResult = null;
@@ -525,6 +565,21 @@ const goNext = () => {
   if (!canGoNext.value) return;
   page.value += 1;
 };
+
+watch(
+  [
+    apiStart,
+    apiEnd,
+    employeeFilter,
+    patientFilter,
+    visitTypeFilter,
+    stateFilter,
+    statusTagFilter,
+  ],
+  () => {
+    page.value = 1;
+  },
+);
 const staffCellBodyStyle = { padding: "0" } as const;
 const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 

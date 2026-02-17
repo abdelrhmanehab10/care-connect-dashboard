@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import Button from "primevue/button";
 import Tab from "primevue/tab";
 import TabList from "primevue/tablist";
@@ -18,11 +19,10 @@ import {
   updateAppointment,
   type CreateAppointmentPayload,
   type UpdateAppointmentPayload,
-  type AppointmentStatusOption,
 } from "../services/appointments";
-import type { EmployeeOption } from "../services/employees";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { useAppointmentsQuery } from "../composables/useAppointmentsQuery";
+import { useAppointmentsFiltersStore } from "../stores/appointmentsFilters";
 import { isFinalStatus } from "../lib/statusTransitions";
 import type { Appointment } from "../types";
 import {
@@ -31,7 +31,6 @@ import {
   patientOptions as patientOptionsData,
   socialWorkerOptions,
   weekdayOptions,
-  type AppointmentStatus,
   type PatientOption,
 } from "../data/options";
 
@@ -49,11 +48,16 @@ const saveError = ref<string | null>(null);
 const toast = useToast();
 const visitTypes = ref<VisitType[]>([]);
 
-const employeeFilter = ref<EmployeeOption | null>(null);
-
-const patientFilter = ref<PatientOption | null>(null);
-
-const statusTagFilter = ref<AppointmentStatus | null>(null);
+const appointmentsFiltersStore = useAppointmentsFiltersStore();
+const {
+  employeeFilter,
+  patientFilter,
+  visitTypeFilter,
+  stateFilter,
+  statusTagFilter,
+  startDate,
+  endDate,
+} = storeToRefs(appointmentsFiltersStore);
 
 // Added options list to avoid missing data errors.
 const visitTypeOptions = computed(() => {
@@ -70,11 +74,6 @@ const visitTypeOptions = computed(() => {
   return options;
 });
 
-const visitTypeFilter = ref<string | null>(null);
-const stateFilter = ref<AppointmentStatusOption | null>(null);
-
-const startDate = ref<Date | null>(null);
-const endDate = ref<Date | null>(null);
 const dateFilterSource = ref<"calendar" | "filters" | null>(null);
 
 const setStartDateFromFilter = (value: Date | null) => {

@@ -1,4 +1,5 @@
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import { defineComponent, h, inject, provide } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Appointment } from "../../src/types";
@@ -94,6 +95,7 @@ describe("AppointmentsTable details loading", () => {
 
     const wrapper = mount(AppointmentsTable, {
       global: {
+        plugins: [createPinia()],
         stubs: {
           DataTable: DataTableStub,
           Column: ColumnStub,
