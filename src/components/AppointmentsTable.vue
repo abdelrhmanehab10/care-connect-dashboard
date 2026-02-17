@@ -1,22 +1,35 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import { Eye } from "lucide-vue-next";
+import { useToast } from "primevue/usetoast";
 import type {
   DataTableCellEditCancelEvent,
   DataTableCellEditCompleteEvent,
   DataTableCellEditInitEvent,
 } from "primevue/datatable";
 import AppointmentEditReasonDialog from "./AppointmentEditReasonDialog.vue";
+import AppointmentDetailsDialog from "./AppointmentDetailsDialog.vue";
 import AppAsyncAutocomplete from "./shared/AppAsyncAutocomplete.vue";
 import type { Appointment } from "../types";
 import type { AppointmentStatus } from "../data/options";
-import type { AppointmentStatusOption } from "../services/appointments";
+import {
+  fetchAppointmentDetails,
+  updateAppointment,
+  type AppointmentStatusOption,
+  type UpdateAppointmentPayload,
+} from "../services/appointments";
+import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
 import { autoCompletePt, dataTablePt } from "../ui/primevuePt";
 import { fetchPatientAutocomplete } from "../services/patients";
 import { fetchEmployeeOptionsByTitle } from "../services/employees";
 import { useReasonRequiredAction } from "../composables/useReasonRequiredAction";
+import {
+  statusBadgeClass,
+  useAppointmentsQuery,
+} from "../composables/useAppointmentsQuery";
 import {
   formatStatusLabel,
   getStatusLevel as getBaseStatusLevel,
@@ -365,31 +378,73 @@ const setFieldValue = (data: Appointment, field: string, value: unknown) => {
   setDraft(snapshotKey(data, field), value);
   applyFieldValue(data, field, value);
 };
+const page = ref(1);
+const fallbackToast = {
+  add: () => { },
+};
+let toast: ReturnType<typeof useToast> | typeof fallbackToast = fallbackToast;
+try {
+  toast = useToast();
+} catch {
+  toast = fallbackToast;
+}
+const visitTypes = ref<VisitType[]>([]);
+const localDetailsLoadingId = ref<number | null>(null);
+const detailsRequestSeq = ref(0);
+const isDetailsOpen = ref(false);
+const selectedAppointment = ref<Appointment | null>(null);
+const isInlineSaving = ref(false);
 
-const props = withDefaults(
-  defineProps<{
-    appointments: ReadonlyArray<Appointment>;
-    isLoading: boolean;
-    detailsLoadingId?: number | null;
-    currentPage?: number;
-    totalPages?: number;
-    totalCount?: number;
-    canGoPrev?: boolean;
-    canGoNext?: boolean;
-    statusOptions: ReadonlyArray<AppointmentStatus | AppointmentStatusOption>;
-    statusBadgeClass: (status: AppointmentStatus) => string;
-    visitTypeOptions?: ReadonlyArray<string>;
-  }>(),
-  {
-    currentPage: 1,
-    totalPages: 1,
-    totalCount: 0,
-    canGoPrev: false,
-    canGoNext: false,
-    visitTypeOptions: () => [],
-  },
+let queryClient: ReturnType<typeof useQueryClient> | null = null;
+try {
+  queryClient = useQueryClient();
+} catch {
+  queryClient = null;
+}
+
+let queryResult: ReturnType<typeof useAppointmentsQuery> | null = null;
+try {
+  queryResult = useAppointmentsQuery({
+    page,
+  });
+} catch {
+  queryResult = null;
+}
+
+const queriedAppointments = queryResult?.appointments ?? ref<Appointment[]>([]);
+const appointmentsResponse = queryResult?.data ?? ref<{
+  total?: number;
+  perPage?: number;
+  currentPage?: number;
+  hasMorePages?: boolean;
+} | null>(null);
+const queriedIsLoading = queryResult?.isLoading ?? ref(false);
+const queriedStatusOptions = queryResult?.statusOptions ?? [];
+const refetch = queryResult?.refetch ?? (() => Promise.resolve());
+
+const sourceAppointments = computed<ReadonlyArray<Appointment>>(
+  () => queriedAppointments.value,
 );
-const { isLoading, detailsLoadingId } = toRefs(props);
+const isLoading = computed(() => queriedIsLoading.value);
+const sourceStatusOptions = computed<ReadonlyArray<StatusOptionInput>>(
+  () => queriedStatusOptions,
+);
+const detailsLoadingId = computed(() => localDetailsLoadingId.value);
+
+onMounted(() => {
+  void fetchVisitTypes()
+    .then((items) => {
+      visitTypes.value = items;
+    })
+    .catch((error) => {
+      console.error("Failed to load visit types.", error);
+      visitTypes.value = [];
+    });
+});
+
+const refreshAppointments = () => {
+  void refetch();
+};
 
 const cloneAppointment = (appointment: Appointment): Appointment => ({
   ...appointment,
@@ -411,7 +466,7 @@ const syncEditableAppointments = (items: ReadonlyArray<Appointment>) => {
 };
 
 watch(
-  () => props.appointments,
+  sourceAppointments,
   syncEditableAppointments,
   { immediate: true, deep: true },
 );
@@ -446,6 +501,30 @@ const loadingRows = computed(() =>
 const displayAppointments = computed(() =>
   isLoading.value ? loadingRows.value : editableAppointments.value,
 );
+
+const currentPage = computed(
+  () => appointmentsResponse.value?.currentPage ?? page.value,
+);
+const totalCount = computed(() => appointmentsResponse.value?.total ?? 0);
+const totalPages = computed(() => {
+  const total = appointmentsResponse.value?.total ?? 0;
+  const perPage = appointmentsResponse.value?.perPage ?? 1;
+  return perPage ? Math.max(1, Math.ceil(total / perPage)) : 1;
+});
+const canGoPrev = computed(() => currentPage.value > 1);
+const canGoNext = computed(
+  () => appointmentsResponse.value?.hasMorePages ?? false,
+);
+
+const goPrev = () => {
+  if (!canGoPrev.value) return;
+  page.value = Math.max(1, page.value - 1);
+};
+
+const goNext = () => {
+  if (!canGoNext.value) return;
+  page.value += 1;
+};
 const staffCellBodyStyle = { padding: "0" } as const;
 const editMode = computed(() => (isLoading.value ? undefined : "cell"));
 
@@ -515,7 +594,7 @@ const fallbackStatusMeta = (value: unknown) => {
 
 const baseStatusOptions = computed<NormalizedStatusOption[]>(() => {
   const options: NormalizedStatusOption[] = [];
-  for (const option of props.statusOptions as ReadonlyArray<StatusOptionInput>) {
+  for (const option of sourceStatusOptions.value) {
     if (typeof option === "string") {
       const key = option.trim();
       if (!key) continue;
@@ -647,6 +726,241 @@ const isStatusTransitionAllowed = (from: unknown, to: unknown) => {
   return true;
 };
 
+const visitTypeIdLookup = computed(() => {
+  const map = new Map<string, string>();
+  for (const type of visitTypes.value) {
+    const name = String(type?.name ?? "").trim().toLowerCase();
+    const id = String(type?.id ?? "").trim();
+    if (!name || !id) continue;
+    map.set(name, id);
+  }
+  return map;
+});
+
+const normalizeAddressId = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return String(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : "";
+  }
+  return "";
+};
+
+const normalizeAddressCoordinate = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+  return Number.NaN;
+};
+
+const resolveInlineAddress = (appointment: Appointment) => {
+  const address = String(appointment.patient_address?.address ?? "").trim();
+  if (!address) {
+    return null;
+  }
+
+  const normalizedAddressId = normalizeAddressId(appointment.patient_address?.id);
+  const lat = normalizeAddressCoordinate(appointment.patient_address?.lat);
+  const lng = normalizeAddressCoordinate(appointment.patient_address?.lng);
+  const hasLat = Number.isFinite(lat);
+  const hasLng = Number.isFinite(lng);
+
+  return {
+    id: normalizedAddressId || undefined,
+    address,
+    lat: hasLat ? String(lat) : "",
+    lng: hasLng ? String(lng) : "",
+  };
+};
+
+const normalizeStaffPayloadId = (value: number | null | undefined) =>
+  typeof value === "number" && value > 0 ? String(value) : "";
+
+const buildInlineUpdatePayload = (
+  appointment: Appointment,
+  reason = "",
+): UpdateAppointmentPayload => {
+  const visitTypeId = appointment.visit_type
+    ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
+    : "";
+  const payload: UpdateAppointmentPayload = {
+    patient_id: String(appointment.patient?.id ?? ""),
+    visit_type_id: visitTypeId || "",
+    date: normalizeDateString(appointment.date) || appointment.date,
+    start_time: appointment.start_time ?? "",
+    end_time: appointment.end_time ?? "",
+    is_recurring: "0",
+    status: appointment.status ?? "",
+    doctor_id: normalizeStaffPayloadId(appointment.doctor?.id),
+    nurse_id: normalizeStaffPayloadId(appointment.nurse?.id),
+    social_worker_id: normalizeStaffPayloadId(appointment.social_worker?.id),
+  };
+
+  const normalizedReason = String(reason).trim();
+  if (normalizedReason) {
+    payload.reason = normalizedReason;
+  }
+
+  const address = resolveInlineAddress(appointment);
+  if (address) {
+    payload.new_address = address;
+  }
+
+  return payload;
+};
+
+const applyOptimisticUpdate = (updated: Appointment) => {
+  if (!queryClient) {
+    return;
+  }
+  queryClient.setQueriesData({ queryKey: ["appointments"] }, (oldData) => {
+    if (!oldData || typeof oldData !== "object") return oldData;
+    const typed = oldData as { data?: Appointment[] };
+    if (!Array.isArray(typed.data)) return oldData;
+    const next = typed.data.map((item) =>
+      item.id === updated.id
+        ? {
+          ...item,
+          ...updated,
+          patient: updated.patient ?? item.patient,
+          doctor: updated.doctor ?? item.doctor,
+          nurse: updated.nurse ?? item.nurse,
+          social_worker: updated.social_worker ?? item.social_worker,
+        }
+        : item,
+    );
+    return { ...typed, data: next };
+  });
+};
+
+const restoreOptimisticSnapshot = (snapshot: Array<[unknown, unknown]>) => {
+  if (!queryClient) {
+    return;
+  }
+  snapshot.forEach(([key, data]) => {
+    queryClient.setQueryData(key as any, data);
+  });
+};
+
+const handleInlineUpdate = async (
+  appointment: Appointment,
+  reason = "",
+): Promise<void> => {
+  if (!appointment?.id || isInlineSaving.value) return;
+  isInlineSaving.value = true;
+  const snapshot = queryClient
+    ? queryClient.getQueriesData({ queryKey: ["appointments"] })
+    : [];
+  applyOptimisticUpdate(appointment);
+  try {
+    const payload = buildInlineUpdatePayload(appointment, reason);
+    await updateAppointment(appointment.id, payload);
+    toast.add({
+      severity: "success",
+      summary: "Appointment updated",
+      detail: "Changes saved successfully.",
+      life: 3000,
+    });
+    refreshAppointments();
+  } catch (error) {
+    console.error("Failed to update appointment.", error);
+    restoreOptimisticSnapshot(snapshot);
+    toast.add({
+      severity: "error",
+      summary: "Update failed",
+      detail: "Could not save changes. Please try again.",
+      life: 4000,
+    });
+    refreshAppointments();
+  } finally {
+    isInlineSaving.value = false;
+  }
+};
+
+const isValidIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+const formatDate = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+const normalizeAppointmentDate = (value: string | null | undefined) => {
+  if (!value) return "";
+  const trimmed = value.trim().replace(/\//g, "-");
+  const dateOnly = (trimmed.split("T")[0] ?? "").split(" ")[0] ?? "";
+  if (isValidIsoDate(dateOnly)) {
+    return dateOnly;
+  }
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return formatDate(parsed);
+  }
+  return "";
+};
+const mergeAppointmentDetails = (
+  details: Partial<Appointment>,
+  fallback: Appointment,
+): Appointment => ({
+  ...fallback,
+  ...details,
+  date: normalizeAppointmentDate(details.date) || details.date || fallback.date,
+  start_time: details.start_time ?? fallback.start_time,
+  end_time: details.end_time ?? fallback.end_time,
+  patient: details.patient ?? fallback.patient,
+  doctor: details.doctor ?? fallback.doctor,
+  nurse: details.nurse ?? fallback.nurse,
+});
+
+const openDetails = async (appointment: Appointment) => {
+  const fallback = appointment;
+  const requestSeq = detailsRequestSeq.value + 1;
+  detailsRequestSeq.value = requestSeq;
+  isDetailsOpen.value = true;
+  selectedAppointment.value = fallback;
+  localDetailsLoadingId.value = fallback.id;
+
+  try {
+    const details = await fetchAppointmentDetails(fallback.id);
+    if (requestSeq !== detailsRequestSeq.value) {
+      return;
+    }
+    selectedAppointment.value = mergeAppointmentDetails(
+      details as Partial<Appointment>,
+      fallback,
+    );
+  } catch (error) {
+    if (requestSeq !== detailsRequestSeq.value) {
+      return;
+    }
+    console.error("Failed to load appointment details.", error);
+    toast.add({
+      severity: "warn",
+      summary: "Loaded partial details",
+      detail: "Showing basic appointment data while full details load failed.",
+      life: 3500,
+    });
+  } finally {
+    if (requestSeq === detailsRequestSeq.value) {
+      localDetailsLoadingId.value = null;
+    }
+  }
+};
+
+const handleDetailsEdit = () => {
+  toast.add({
+    severity: "info",
+    summary: "Details view only",
+    detail: "Editing is handled from the main appointment form.",
+    life: 3000,
+  });
+};
+
 const getSnapshotValue = (data: Appointment, field: string) =>
   getSnapshot(snapshotKey(data, field));
 const isRowEditLocked = (data: Appointment) => {
@@ -763,44 +1077,32 @@ const handleCellEditComplete = (
   clearExplicitSave(key);
   const reasonKey = snapshotKey(event.data, event.field);
   const reason = consumeReason(reasonKey);
-  // Pass reason to parent alongside the cell edit payload.
-  (event as any).reason = reason;
-
-  emit("cell-edit-complete", event);
+  void handleInlineUpdate(event.data, reason);
 };
-const emit = defineEmits<{
-  (
-    event: "cell-edit-complete",
-    payload: DataTableCellEditCompleteEvent<Appointment>,
-  ): void;
-  (event: "view-details", payload: Appointment): void;
-  (event: "prev-page"): void;
-  (event: "next-page"): void;
-}>();
 </script>
 <template>
   <div class="cc-card">
     <div class="cc-row cc-row-between cc-row-wrap cc-stack-sm" style="margin-bottom: 0.875rem;">
       <div class="cc-help-text">
-        Total: {{ props.totalCount }}
+        Total: {{ totalCount }}
       </div>
       <div class="cc-row cc-stack-sm">
         <div class="cc-help-text">
-          Page {{ props.currentPage }} of {{ props.totalPages }}
+          Page {{ currentPage }} of {{ totalPages }}
         </div>
         <button
           type="button"
           class="cc-btn cc-btn-outline cc-btn-sm"
-          :disabled="!props.canGoPrev"
-          @click="emit('prev-page')"
+          :disabled="!canGoPrev"
+          @click="goPrev"
         >
           Prev
         </button>
         <button
           type="button"
           class="cc-btn cc-btn-outline cc-btn-sm"
-          :disabled="!props.canGoNext"
-          @click="emit('next-page')"
+          :disabled="!canGoNext"
+          @click="goNext"
         >
           Next
         </button>
@@ -1248,7 +1550,7 @@ const emit = defineEmits<{
           <span v-if="isLoading" class="cc-skeleton cc-skeleton-sm"></span>
           <button v-else type="button" class="cc-icon-btn cc-icon-btn-outline" :disabled="detailsLoadingId === data.id"
             :aria-label="detailsLoadingId === data.id ? 'Loading details' : 'View details'"
-            @click="emit('view-details', data)">
+            @click="openDetails(data)">
             <i v-if="detailsLoadingId === data.id" class="fa-solid fa-spinner fa-spin cc-icon" aria-hidden="true"></i>
             <Eye v-else class="cc-icon" aria-hidden="true" />
           </button>
@@ -1262,6 +1564,16 @@ const emit = defineEmits<{
       @confirm="reasonAction.confirm"
       @cancel="reasonAction.cancel"
       @hide="reasonAction.cancel"
+    />
+    <AppointmentDetailsDialog
+      v-model="isDetailsOpen"
+      :appointment="selectedAppointment"
+      :is-loading="isDetailsOpen && detailsLoadingId !== null"
+      @edit="handleDetailsEdit"
+      @confirm-all="refreshAppointments"
+      @confirm-employee="refreshAppointments"
+      @no-show="refreshAppointments"
+      @cancel="refreshAppointments"
     />
   </div>
 </template>

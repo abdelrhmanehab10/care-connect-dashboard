@@ -1,9 +1,44 @@
 import { mount } from "@vue/test-utils";
 import { defineComponent, h, inject, provide } from "vue";
-import { describe, expect, it } from "vitest";
-import AppointmentsTable from "../../src/components/AppointmentsTable.vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Appointment } from "../../src/types";
-import type { AppointmentStatus } from "../../src/data/options";
+
+const mockState = vi.hoisted(() => ({
+  appointments: [] as Appointment[],
+  isLoading: false,
+  fetchDetails: vi.fn(async () => ({})),
+  updateAppointment: vi.fn(async () => ({})),
+  refetch: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("../../src/composables/useAppointmentsQuery", () => ({
+  statusBadgeClass: () => "",
+  useAppointmentsQuery: () => ({
+    appointments: { value: mockState.appointments },
+    data: {
+      value: {
+        total: mockState.appointments.length,
+        perPage: 10,
+        currentPage: 1,
+        hasMorePages: false,
+      },
+    },
+    isLoading: { value: mockState.isLoading },
+    statusOptions: ["confirmed"],
+    refetch: mockState.refetch,
+  }),
+}));
+
+vi.mock("../../src/services/visitTypes", () => ({
+  fetchVisitTypes: vi.fn(async () => []),
+}));
+
+vi.mock("../../src/services/appointments", () => ({
+  fetchAppointmentDetails: (...args: unknown[]) => mockState.fetchDetails(...args),
+  updateAppointment: (...args: unknown[]) => mockState.updateAppointment(...args),
+}));
+
+import AppointmentsTable from "../../src/components/AppointmentsTable.vue";
 
 const DataTableStub = defineComponent({
   name: "DataTable",
@@ -29,7 +64,14 @@ const ColumnStub = defineComponent({
 });
 
 describe("AppointmentsTable details loading", () => {
-  it("shows a spinner instead of the eye icon while details are loading", () => {
+  beforeEach(() => {
+    mockState.isLoading = false;
+    mockState.refetch.mockClear();
+    mockState.fetchDetails.mockClear();
+    mockState.updateAppointment.mockClear();
+  });
+
+  it("shows a spinner instead of the eye icon while details are loading", async () => {
     const appointment: Appointment = {
       id: 101,
       patient: {
@@ -47,15 +89,10 @@ describe("AppointmentsTable details loading", () => {
       visit_type: "Initial Visit",
       state: "confirmed",
     };
+    mockState.appointments = [appointment];
+    mockState.fetchDetails.mockImplementation(() => new Promise(() => {}));
 
     const wrapper = mount(AppointmentsTable, {
-      props: {
-        appointments: [appointment],
-        isLoading: false,
-        detailsLoadingId: 101,
-        statusOptions: ["confirmed"] as AppointmentStatus[],
-        statusBadgeClass: () => "",
-      },
       global: {
         stubs: {
           DataTable: DataTableStub,
@@ -67,6 +104,7 @@ describe("AppointmentsTable details loading", () => {
 
     const button = wrapper.find("button.cc-icon-btn");
     expect(button.exists()).toBe(true);
+    await button.trigger("click");
     expect(button.find("i.fa-spinner").exists()).toBe(true);
     expect(button.find("svg").exists()).toBe(false);
   });

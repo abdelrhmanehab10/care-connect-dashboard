@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useQueryClient } from "@tanstack/vue-query";
 import Button from "primevue/button";
 import Tab from "primevue/tab";
 import TabList from "primevue/tablist";
 import TabPanel from "primevue/tabpanel";
 import TabPanels from "primevue/tabpanels";
 import Tabs from "primevue/tabs";
-import type { DataTableCellEditCompleteEvent } from "primevue/datatable";
 import { useToast } from "primevue/usetoast";
 import AppointmentsFilters from "../components/AppointmentsFilters.vue";
 import AppointmentDialog from "../components/AppointmentDialog.vue";
@@ -24,10 +22,7 @@ import {
 } from "../services/appointments";
 import type { EmployeeOption } from "../services/employees";
 import { fetchVisitTypes, type VisitType } from "../services/visitTypes";
-import {
-  statusBadgeClass,
-  useAppointmentsQuery,
-} from "../composables/useAppointmentsQuery";
+import { useAppointmentsQuery } from "../composables/useAppointmentsQuery";
 import { isFinalStatus } from "../lib/statusTransitions";
 import type { Appointment } from "../types";
 import {
@@ -51,8 +46,6 @@ const editingAppointment = ref<Appointment | null>(null);
 const isEditLoading = ref(false);
 const isSaving = ref(false);
 const saveError = ref<string | null>(null);
-const isInlineSaving = ref(false);
-const queryClient = useQueryClient();
 const toast = useToast();
 const visitTypes = ref<VisitType[]>([]);
 
@@ -197,9 +190,7 @@ const visitTypeFilterId = computed(() => {
 
 const {
   appointments,
-  data: appointmentsResponse,
   isLoading,
-  statusOptions,
   refetch,
 } = useAppointmentsQuery({
   page,
@@ -301,270 +292,6 @@ const syncCalendarRange = (payload: { start: string; end: string }) => {
   endDate.value = nextEnd;
 };
 
-const resolveInlineAddress = (appointment: Appointment) => {
-  const address = String(appointment.patient_address?.address ?? "").trim();
-  if (!address) {
-    return null;
-  }
-  const addressId = appointment.patient_address?.id;
-  const normalizedAddressId =
-    typeof addressId === "number"
-      ? String(addressId)
-      : String(addressId ?? "").trim();
-  const latRaw = appointment.patient_address?.lat;
-  const lngRaw = appointment.patient_address?.lng;
-  const lat =
-    typeof latRaw === "number" ? latRaw : Number(String(latRaw ?? "").trim());
-  const lng =
-    typeof lngRaw === "number" ? lngRaw : Number(String(lngRaw ?? "").trim());
-  const hasLat = Number.isFinite(lat);
-  const hasLng = Number.isFinite(lng);
-
-  return {
-    id: normalizedAddressId || undefined,
-    address,
-    lat: hasLat ? String(lat) : "",
-    lng: hasLng ? String(lng) : "",
-  };
-};
-
-const normalizeStaffPayloadId = (value: number | null | undefined) =>
-  typeof value === "number" && value > 0 ? String(value) : "";
-
-const normalizeInlineStaffId = (value: unknown): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const parsed = Number(value.trim());
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-};
-
-const resolveInlineStaff = (value: unknown) => {
-  if (value && typeof value === "object") {
-    const typed = value as {
-      id?: number | string | null;
-      employee_id?: number | string | null;
-      name?: string | null;
-      full_name?: string | null;
-      text?: string | null;
-    };
-    const id = normalizeInlineStaffId(typed.id ?? typed.employee_id);
-    const name = String(
-      typed.name ?? typed.full_name ?? typed.text ?? "",
-    ).trim();
-    if (id || name) {
-      return { id, name };
-    }
-    return null;
-  }
-  if (typeof value === "string") {
-    return { id: 0, name: value.trim() };
-  }
-  return null;
-};
-
-const buildInlineUpdatePayload = (
-  appointment: Appointment,
-  reason?: string,
-): UpdateAppointmentPayload => {
-  const visitTypeId = appointment.visit_type
-    ? visitTypeIdLookup.value.get(appointment.visit_type.toLowerCase())
-    : "";
-  const payload: UpdateAppointmentPayload = {
-    patient_id: String(appointment.patient?.id ?? ""),
-    visit_type_id: visitTypeId || "",
-    date: normalizeAppointmentDate(appointment.date) || appointment.date,
-    start_time: appointment.start_time ?? "",
-    end_time: appointment.end_time ?? "",
-    is_recurring: "0",
-    status: appointment.status ?? "",
-    doctor_id: normalizeStaffPayloadId(appointment.doctor?.id),
-    nurse_id: normalizeStaffPayloadId(appointment.nurse?.id),
-    social_worker_id: normalizeStaffPayloadId(appointment.social_worker?.id),
-  };
-
-  const normalizedReason = String(reason ?? "").trim();
-  if (normalizedReason) {
-    payload.reason = normalizedReason;
-  }
-
-  const address = resolveInlineAddress(appointment);
-  if (address) {
-    payload.new_address = address;
-  }
-
-  return payload;
-};
-
-const applyInlineEditChange = (
-  appointment: Appointment,
-  field: string,
-  value: unknown,
-): Appointment => {
-  const updated: Appointment = { ...appointment };
-
-  switch (field) {
-    case "patient.name": {
-      if (value && typeof value === "object") {
-        const typed = value as {
-          id?: string | number | null;
-          name?: string | null;
-          date_of_birth?: string | null;
-          phone?: string | null;
-        };
-        const id = String(typed.id ?? "").trim();
-        const name = String(typed.name ?? "").trim();
-        updated.patient = {
-          ...updated.patient,
-          id,
-          name: name || updated.patient?.name || "",
-          date_of_birth:
-            String(typed.date_of_birth ?? "").trim() ||
-            updated.patient?.date_of_birth ||
-            "",
-          phone:
-            String(typed.phone ?? "").trim() || updated.patient?.phone || "",
-        };
-        return updated;
-      }
-      updated.patient = {
-        ...updated.patient,
-        id: "",
-        name: String(value ?? "").trim(),
-        date_of_birth: updated.patient?.date_of_birth ?? "",
-        phone: updated.patient?.phone ?? "",
-      };
-      return updated;
-    }
-    case "nurse.name": {
-      const staff = resolveInlineStaff(value);
-      if (!staff) return updated;
-      updated.nurse = {
-        ...updated.nurse,
-        id: staff.id,
-        name: staff.name || updated.nurse?.name || "",
-      };
-      return updated;
-    }
-    case "doctor.name": {
-      const staff = resolveInlineStaff(value);
-      if (!staff) return updated;
-      updated.doctor = {
-        ...updated.doctor,
-        id: staff.id,
-        name: staff.name || updated.doctor?.name || "",
-      };
-      return updated;
-    }
-    case "social_worker.name": {
-      const staff = resolveInlineStaff(value);
-      if (!staff) return updated;
-      const existing = updated.social_worker ?? { id: 0, name: "" };
-      updated.social_worker = {
-        ...existing,
-        id: staff.id,
-        name: staff.name || existing.name,
-      };
-      return updated;
-    }
-    case "status":
-      updated.status = String(value ?? "");
-      return updated;
-    case "date":
-      updated.date = String(value ?? "");
-      return updated;
-    case "start_time":
-      updated.start_time = String(value ?? "");
-      return updated;
-    case "end_time":
-      updated.end_time = String(value ?? "");
-      return updated;
-    case "visit_type":
-      updated.visit_type = String(value ?? "");
-      return updated;
-    default:
-      return updated;
-  }
-};
-
-const applyOptimisticUpdate = (updated: Appointment) => {
-  queryClient.setQueriesData({ queryKey: ["appointments"] }, (oldData) => {
-    if (!oldData || typeof oldData !== "object") return oldData;
-    const typed = oldData as { data?: Appointment[] };
-    if (!Array.isArray(typed.data)) return oldData;
-    const next = typed.data.map((item) =>
-      item.id === updated.id
-        ? {
-            ...item,
-            ...updated,
-            patient: updated.patient ?? item.patient,
-            doctor: updated.doctor ?? item.doctor,
-            nurse: updated.nurse ?? item.nurse,
-            social_worker: updated.social_worker ?? item.social_worker,
-          }
-        : item,
-    );
-    return { ...typed, data: next };
-  });
-};
-
-const restoreOptimisticSnapshot = (snapshot: Array<[unknown, unknown]>) => {
-  snapshot.forEach(([key, data]) => {
-    queryClient.setQueryData(key as any, data);
-  });
-};
-
-const handleInlineUpdate = async (
-  appointment: Appointment,
-  reason = "",
-): Promise<void> => {
-  if (!appointment?.id || isInlineSaving.value) return;
-  isInlineSaving.value = true;
-  const snapshot = queryClient.getQueriesData({ queryKey: ["appointments"] });
-  applyOptimisticUpdate(appointment);
-  try {
-    const payload = buildInlineUpdatePayload(appointment, reason);
-    await updateAppointment(appointment.id, payload);
-    toast.add({
-      severity: "success",
-      summary: "Appointment updated",
-      detail: "Changes saved successfully.",
-      life: 3000,
-    });
-    refreshAppointments();
-  } catch (error) {
-    console.error("Failed to update appointment.", error);
-    restoreOptimisticSnapshot(snapshot);
-    toast.add({
-      severity: "error",
-      summary: "Update failed",
-      detail: "Could not save changes. Please try again.",
-      life: 4000,
-    });
-    refreshAppointments();
-  } finally {
-    isInlineSaving.value = false;
-  }
-};
-
-const handleCellEditComplete = (
-  event: DataTableCellEditCompleteEvent<Appointment>,
-) => {
-  const eventReason = String(
-    (
-      event as DataTableCellEditCompleteEvent<Appointment> & {
-        reason?: string;
-      }
-    ).reason ?? "",
-  ).trim();
-  const base = event.newData ?? event.data;
-  const updated = applyInlineEditChange(base, event.field, event.newValue);
-  void handleInlineUpdate(updated, eventReason);
-};
-
 const openDetails = async (appointment: Appointment) => {
   const fallback = appointment;
   const requestSeq = detailsRequestSeq.value + 1;
@@ -598,27 +325,6 @@ const openDetails = async (appointment: Appointment) => {
       detailsLoadingId.value = null;
     }
   }
-};
-
-const canGoPrev = computed(
-  () => (appointmentsResponse.value?.currentPage ?? 1) > 1,
-);
-const canGoNext = computed(
-  () => appointmentsResponse.value?.hasMorePages ?? false,
-);
-
-const totalPages = computed(() => {
-  const total = appointmentsResponse.value?.total ?? 0;
-  const perPage = appointmentsResponse.value?.perPage ?? 1;
-  return perPage ? Math.max(1, Math.ceil(total / perPage)) : 1;
-});
-
-const goPrev = () => {
-  if (page.value > 1) page.value -= 1;
-};
-
-const goNext = () => {
-  if (canGoNext.value) page.value += 1;
 };
 
 const openAddDialog = () => {
@@ -814,23 +520,7 @@ onMounted(() => {
           <TabPanels :pt="tabPanelsPt">
             <TabPanel value="table">
               <div class="cc-table-card">
-                <AppointmentsTable
-                  :appointments="appointments"
-                  :is-loading="isLoading"
-                  :details-loading-id="detailsLoadingId"
-                  :current-page="appointmentsResponse?.currentPage ?? 1"
-                  :total-pages="totalPages"
-                  :total-count="appointmentsResponse?.total ?? 0"
-                  :can-go-prev="canGoPrev"
-                  :can-go-next="canGoNext"
-                  :status-options="statusOptions"
-                  :status-badge-class="statusBadgeClass"
-                  :visit-type-options="visitTypeOptions"
-                  @cell-edit-complete="handleCellEditComplete"
-                  @view-details="openDetails"
-                  @prev-page="goPrev"
-                  @next-page="goNext"
-                />
+                <AppointmentsTable />
               </div>
             </TabPanel>
             <TabPanel value="calendar">

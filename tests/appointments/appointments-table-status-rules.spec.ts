@@ -1,9 +1,46 @@
 import { mount } from "@vue/test-utils";
 import { defineComponent, h, inject, provide } from "vue";
-import { describe, expect, it, vi } from "vitest";
-import AppointmentsTable from "../../src/components/AppointmentsTable.vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Appointment } from "../../src/types";
 import type { AppointmentStatusOption } from "../../src/services/appointments";
+
+const mockState = vi.hoisted(() => ({
+  appointments: [] as Appointment[],
+  isLoading: false,
+  statusOptions: [] as AppointmentStatusOption[],
+  refetch: vi.fn(() => Promise.resolve()),
+  fetchDetails: vi.fn(async () => ({})),
+  updateAppointment: vi.fn(async () => ({})),
+}));
+
+vi.mock("../../src/composables/useAppointmentsQuery", () => ({
+  statusBadgeClass: () => "",
+  useAppointmentsQuery: () => ({
+    appointments: { value: mockState.appointments },
+    data: {
+      value: {
+        total: mockState.appointments.length,
+        perPage: 10,
+        currentPage: 1,
+        hasMorePages: false,
+      },
+    },
+    isLoading: { value: mockState.isLoading },
+    statusOptions: mockState.statusOptions,
+    refetch: mockState.refetch,
+  }),
+}));
+
+vi.mock("../../src/services/visitTypes", () => ({
+  fetchVisitTypes: vi.fn(async () => []),
+}));
+
+vi.mock("../../src/services/appointments", () => ({
+  fetchAppointmentDetails: (...args: unknown[]) => mockState.fetchDetails(...args),
+  updateAppointment: (...args: unknown[]) => mockState.updateAppointment(...args),
+}));
+
+import AppointmentsTable from "../../src/components/AppointmentsTable.vue";
 
 const DataTableStub = defineComponent({
   name: "DataTable",
@@ -85,14 +122,12 @@ const makeAppointment = (status: string): Appointment => ({
 const mountTable = (
   appointment: Appointment,
   options: AppointmentStatusOption[] = statusOptions,
-) =>
-  mount(AppointmentsTable, {
-    props: {
-      appointments: [appointment],
-      isLoading: false,
-      statusOptions: options,
-      statusBadgeClass: () => "",
-    },
+) => {
+  mockState.appointments = [appointment];
+  mockState.isLoading = false;
+  mockState.statusOptions = options;
+
+  return mount(AppointmentsTable, {
     global: {
       stubs: {
         DataTable: DataTableStub,
@@ -101,6 +136,13 @@ const mountTable = (
       },
     },
   });
+};
+
+beforeEach(() => {
+  mockState.refetch.mockClear();
+  mockState.fetchDetails.mockClear();
+  mockState.updateAppointment.mockClear();
+});
 
 describe("AppointmentsTable status rules", () => {
   it("disables status editing for final statuses", () => {
